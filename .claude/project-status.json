@@ -2,22 +2,24 @@
   "proyecto": "Pide Servicio",
   "version_sdd": "1.0",
   "documento_oficial": "docs/SDD-PideServicio.md",
+  "modo_actual": "Frontend First (aprobado por usuario 2026-06-29)",
+  "nota_modo": "El orden original del SDD fue modificado. Primero: Design System → Layout → UI con Mock Data → DB/Backend.",
   "fase_actual": {
-    "numero": 1,
-    "nombre": "Inicializacion",
-    "estado": "completada",
-    "descripcion": "Proyecto React 19 + Vite + TypeScript inicializado con toda la infraestructura tecnica: ESLint, Prettier, Tailwind, shadcn/ui, React Router, TanStack Query, Zustand, Supabase, Vitest, Playwright, Husky. Sin funcionalidades de negocio."
+    "numero": 2,
+    "nombre": "Design System",
+    "estado": "en_progreso",
+    "descripcion": "Paleta de colores, tipografia, espaciado, componentes base shadcn/ui, componentes personalizados (Spinner, EmptyState, StatusBadge, PriorityBadge, ConfirmDialog), iconografia, tema global y pagina showcase de verificacion."
   },
   "fases": [
-    { "numero": 0, "nombre": "Infraestructura", "estado": "completada" },
-    { "numero": 1, "nombre": "Inicializacion", "estado": "completada" },
-    { "numero": 2, "nombre": "Base de Datos", "estado": "pendiente" },
-    { "numero": 3, "nombre": "Autenticacion", "estado": "pendiente" },
-    { "numero": 4, "nombre": "Layout Base", "estado": "pendiente" },
-    { "numero": 5, "nombre": "Componentes Base", "estado": "pendiente" },
-    { "numero": 6, "nombre": "Modulos", "estado": "pendiente" },
-    { "numero": 7, "nombre": "Optimizacion", "estado": "pendiente" },
-    { "numero": 8, "nombre": "Testing", "estado": "pendiente" },
+    { "numero": 0, "nombre": "Infraestructura .claude/", "estado": "completada" },
+    { "numero": 1, "nombre": "Inicializacion React + Stack", "estado": "completada" },
+    { "numero": 2, "nombre": "Design System", "estado": "en_progreso" },
+    { "numero": 3, "nombre": "Layout General (Sidebar, Header, Nav)", "estado": "pendiente" },
+    { "numero": 4, "nombre": "Pantallas con Mock Data", "estado": "pendiente" },
+    { "numero": 5, "nombre": "Base de Datos (Supabase)", "estado": "pendiente" },
+    { "numero": 6, "nombre": "Backend / Edge Functions", "estado": "pendiente" },
+    { "numero": 7, "nombre": "Integracion Real", "estado": "pendiente" },
+    { "numero": 8, "nombre": "Testing y QA", "estado": "pendiente" },
     { "numero": 9, "nombre": "Produccion", "estado": "pendiente" }
   ],
   "modulos": {
@@ -36,12 +38,12 @@
     "runtime": "React 19.0.0",
     "bundler": "Vite 5.4.21",
     "lenguaje": "TypeScript 5.x (strict)",
-    "estilos": "TailwindCSS 3.4.x + shadcn/ui (components.json listo)",
+    "estilos": "TailwindCSS 3.4.x + shadcn/ui (componentes instalados en Fase 2)",
     "routing": "React Router DOM 6.x",
     "estado_servidor": "TanStack Query 5.x",
     "estado_global": "Zustand 5.x",
     "formularios": "React Hook Form 7.x + Zod 3.x",
-    "backend": "Supabase JS 2.x",
+    "backend": "Supabase JS 2.x (sin conectar hasta Fase 5)",
     "pruebas_unitarias": "Vitest 2.x + Testing Library 16.x",
     "pruebas_e2e": "Playwright 1.x",
     "hooks_git": "Husky 9.x + lint-staged 15.x",
@@ -54,7 +56,7 @@
     "tests_unitarios": 5,
     "tests_e2e": 0
   },
-  "ultimo_commit_estable": "fdea03b",
+  "ultimo_commit_estable": "pendiente-commit-fase2",
   "ultima_actualizacion": "2026-06-29",
   "notas": "project-status.json debe actualizarse despues de cada tarea y cada commit (responsable: documentation-manager)."
 }

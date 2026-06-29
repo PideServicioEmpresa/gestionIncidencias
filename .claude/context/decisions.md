@@ -43,6 +43,32 @@
 
 ---
 
+## ADR-004 — Modo Frontend First (prioridad sobre orden SDD)
+**Fecha:** 2026-06-29 · **Estado:** Aceptada
+
+**Contexto:** El SDD define un orden: Infraestructura → DB → Auth → Layout → Componentes → Módulos. El usuario decide cambiar el orden para priorizar una demostración visual funcional antes de integrar el backend.
+
+**Decisión:** Adoptar modo "Frontend First": Design System → Layout General → Pantallas con Mock Data → DB → Backend → Integración real.
+
+**Motivo:** Permite validar la experiencia visual completa con el cliente/stakeholder antes de invertir en backend. Reduce el riesgo de rehacer UI tras feedback.
+
+**Impacto:** El orden de fases en `project-status.json` fue actualizado. El SDD sigue siendo la referencia técnica; solo el orden de implementación cambia. Las restricciones de seguridad del SDD (SEC-001 a SEC-010) se respetan igualmente.
+
+---
+
+## ADR-005 — ESLint override para `src/shared/ui/`
+**Fecha:** 2026-06-29 · **Estado:** Aceptada
+
+**Contexto:** shadcn/ui genera archivos que exportan tanto componentes como variantes (`buttonVariants`, `badgeVariants`) y hooks (`useFormField`) desde el mismo archivo. Esto activa la regla `react-refresh/only-export-components` que consideramos error con `--max-warnings 0`.
+
+**Decisión:** Desactivar `react-refresh/only-export-components` solo para `src/shared/ui/**` mediante un override en `eslint.config.js`.
+
+**Motivo:** `src/shared/ui/` es una librería de componentes base (no código de aplicación). La regla react-refresh aplica a feature components, no a una UI library. Modificar los archivos generados por shadcn crea deuda de mantenimiento al actualizar componentes.
+
+**Impacto:** La regla sigue activa en todo `src/` excepto `src/shared/ui/`.
+
+---
+
 ## PENDIENTE-001 — Typo en `docs/WROKFLOWS.md`
 **Fecha:** 2026-06-29 · **Estado:** Propuesta (requiere aprobación)
 
