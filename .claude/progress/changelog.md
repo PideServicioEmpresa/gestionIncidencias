@@ -2,6 +2,20 @@
 
 > Cambios significativos del proyecto. Formato: fecha — descripción. Se actualiza tras cada commit.
 
+## [Sin versión] — Fase 3.3 · Consistencia visual, scroll y tipografía (2026-06-29)
+
+### commit ed91387 — Scroll horizontal, escala tipográfica y padding compacto
+
+**Múltiples archivos modificados** (22 subagentes, 641k tokens).
+
+- **TicketDetailPage.tsx**: Eliminar scroll horizontal — causa raíz: tab bar `flex` sin `flex-1`. Fix: cada botón de tab tiene `flex-1 items-center justify-center` garantizando 1/3 del ancho disponible sin desbordamiento. Remover `pl-10` en acciones de comentario. `CardContent` → `p-3 pt-0`, `CardHeader` → `px-3 pt-3 pb-2`. Título de página `text-lg` → `text-base`. `CardTitle` → `text-[11px] uppercase tracking-widest`.
+- **CreateTicketPage.tsx**: `CardContent` con `p-3 pt-0` en todos los bloques (default shadcn era `p-6`). Upload zone `py-6 px-6` → `py-4 px-4`. Título de página `text-lg` → `text-base`. `CardTitle` → `text-[11px] uppercase tracking-widest`.
+- **globals.css**: Escala tipográfica canónica `.ps-page-title`, `.ps-card-label`, `.ps-body`, `.ps-meta`, `.ps-label`, `.ps-badge-text`, `.ps-table-header`, `.ps-table-cell`, `.ps-nav-item`, `.ps-mono`. Placeholder → `0.6875rem` (11px). `word-break: break-word` en body.
+- **UsersPage, NotificationsPage, ProfilePage, ReportsPage, AuditPage, SettingsPage**: Normalización completa — `CardHeader`/`CardContent` con padding correcto, títulos de página `text-base`, `CardTitle` `text-[11px] uppercase`, labels `text-xs font-medium`, metadatos `text-[11px] text-muted-foreground`.
+- **MyTicketsPage, DashboardPage**: Verificación y corrección de violaciones tipográficas menores.
+- **LoginPage, AuthLayout**: Ajuste de subtítulos y descripciones a la escala canónica.
+- TypeScript: 0 errores | ESLint: 0 warnings.
+
 ## [Sin versión] — Fase 3.2 · Design System Oscuro + Dashboard Graph-First (2026-06-29)
 
 ### commit 5ebd756 + d5f9385 — Design system v2 + Dashboard interactivo

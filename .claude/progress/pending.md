@@ -11,7 +11,7 @@
 
 ---
 
-## Fase 3.2 — Design System + Dashboard (completada — pendiente aprobación visual)
+## Fases 3.2 y 3.3 — Design System + Dashboard + Consistencia visual (completadas — pendiente aprobación visual)
 
 - [x] Design system oscuro: `#0B0C10` fondo, `#111113` componentes, `#26262B` bordes
 - [x] Migración de fuente Inter → Geist (fonts.bunny.net CDN)
