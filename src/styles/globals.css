@@ -4,132 +4,85 @@
 
 @layer base {
   :root {
-    /* ── Tokens base de shadcn/ui ─────────────────────────── */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    /* === DESIGN SYSTEM PIDE SERVICIO — DARK ONLY === */
+    /* Fondo principal: #0B0C10 = HSL 228 19% 5% */
+    --background: 228 19% 5%;
+    --foreground: 0 0% 92%;
+
+    /* Componentes (cards, forms, sidebar, dropdowns): #111113 = HSL 240 6% 7% */
+    --card: 240 6% 7%;
+    --card-foreground: 0 0% 92%;
+    --popover: 240 6% 7%;
+    --popover-foreground: 0 0% 92%;
+
+    /* Primary: azul corporativo */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary: ligeramente más claro que card */
+    --secondary: 240 6% 12%;
+    --secondary-foreground: 0 0% 85%;
+
+    /* Muted: texto secundario apagado */
+    --muted: 240 6% 10%;
+    --muted-foreground: 240 5% 55%;
+
+    /* Accent: hover/active state */
+    --accent: 240 6% 12%;
+    --accent-foreground: 0 0% 92%;
+
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Bordes: #26262B = HSL 240 6% 16% */
+    --border: 240 6% 16%;
+    --input: 240 6% 16%;
+    --ring: 217 91% 60%;
+
+    /* Radio */
     --radius: 0.5rem;
 
-    /* ── Colores semánticos del sistema ───────────────────── */
+    /* === COLORES SEMÁNTICOS === */
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
-    --warning-foreground: 26 83% 14%;
+    --warning-foreground: 0 0% 10%;
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
 
-    /* ── Estados de tickets ───────────────────────────────── */
-    --ticket-sin-asignar: 220 9% 46%;
-    --ticket-sin-asignar-foreground: 0 0% 100%;
-    --ticket-asignado: 221 83% 53%;
-    --ticket-asignado-foreground: 0 0% 100%;
-    --ticket-en-proceso: 25 95% 53%;
-    --ticket-en-proceso-foreground: 0 0% 100%;
-    --ticket-pendiente: 45 93% 47%;
-    --ticket-pendiente-foreground: 26 83% 14%;
-    --ticket-cerrado: 142 71% 45%;
-    --ticket-cerrado-foreground: 0 0% 100%;
-    --ticket-reabierto: 0 84% 60%;
-    --ticket-reabierto-foreground: 0 0% 100%;
-
-    /* ── Prioridades de tickets ───────────────────────────── */
-    --priority-baja: 142 71% 45%;
-    --priority-baja-foreground: 0 0% 100%;
-    --priority-media: 38 92% 50%;
-    --priority-media-foreground: 26 83% 14%;
-    --priority-alta: 25 95% 53%;
-    --priority-alta-foreground: 0 0% 100%;
-    --priority-critica: 0 84% 60%;
-    --priority-critica-foreground: 0 0% 100%;
-
-    /* ── Sidebar ──────────────────────────────────────────── */
-    --sidebar: 0 0% 98%;
-    --sidebar-foreground: 222.2 84% 4.9%;
-    --sidebar-border: 214.3 31.8% 91.4%;
-    --sidebar-accent: 210 40% 94%;
-    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
-    --sidebar-primary: 221.2 83.2% 53.3%;
-    --sidebar-primary-foreground: 210 40% 98%;
-  }
-
-  .dark {
-    /* ── Tokens base dark ─────────────────────────────────── */
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
-
-    /* ── Colores semánticos dark ──────────────────────────── */
-    --success: 142 71% 38%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 45%;
-    --warning-foreground: 26 83% 14%;
-    --info: 199 89% 42%;
-    --info-foreground: 0 0% 100%;
-
-    /* ── Estados de tickets dark ──────────────────────────── */
+    /* === ESTADOS DE TICKETS === */
     --ticket-sin-asignar: 220 9% 55%;
     --ticket-sin-asignar-foreground: 0 0% 100%;
     --ticket-asignado: 217 91% 60%;
-    --ticket-asignado-foreground: 222.2 47.4% 11.2%;
+    --ticket-asignado-foreground: 0 0% 100%;
     --ticket-en-proceso: 25 95% 58%;
     --ticket-en-proceso-foreground: 0 0% 100%;
     --ticket-pendiente: 45 93% 52%;
-    --ticket-pendiente-foreground: 26 83% 14%;
-    --ticket-cerrado: 142 71% 38%;
+    --ticket-pendiente-foreground: 0 0% 10%;
+    --ticket-cerrado: 142 71% 45%;
     --ticket-cerrado-foreground: 0 0% 100%;
     --ticket-reabierto: 0 72% 55%;
     --ticket-reabierto-foreground: 0 0% 100%;
 
-    /* ── Prioridades dark ─────────────────────────────────── */
-    --priority-baja: 142 71% 38%;
+    /* === PRIORIDADES === */
+    --priority-baja: 142 71% 45%;
     --priority-baja-foreground: 0 0% 100%;
-    --priority-media: 38 92% 45%;
-    --priority-media-foreground: 26 83% 14%;
+    --priority-media: 38 92% 50%;
+    --priority-media-foreground: 0 0% 10%;
     --priority-alta: 25 95% 58%;
     --priority-alta-foreground: 0 0% 100%;
-    --priority-critica: 0 72% 55%;
+    --priority-critica: 0 84% 60%;
     --priority-critica-foreground: 0 0% 100%;
 
-    /* ── Sidebar dark ─────────────────────────────────────── */
-    --sidebar: 222.2 84% 6%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-accent: 217.2 32.6% 14%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-primary: 217.2 91.2% 59.8%;
-    --sidebar-primary-foreground: 222.2 47.4% 11.2%;
+    /* === SIDEBAR: mismo que card === */
+    --sidebar: 240 6% 7%;
+    --sidebar-foreground: 0 0% 88%;
+    --sidebar-border: 240 6% 16%;
+    --sidebar-accent: 240 6% 12%;
+    --sidebar-accent-foreground: 0 0% 92%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
   }
 }
 
@@ -138,46 +91,57 @@
     @apply border-border;
   }
 
-  body {
-    @apply bg-background text-foreground antialiased;
-    font-feature-settings:
-      'rlig' 1,
-      'calt' 1;
-  }
-
-  /* Altura dinámica para evitar el problema del 100vh en móvil */
   html {
     height: -webkit-fill-available;
   }
 
   body {
+    @apply bg-background text-foreground antialiased;
+    font-family:
+      'Geist',
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      sans-serif;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
     min-height: 100vh;
     min-height: -webkit-fill-available;
   }
 
-  /* Tipografía accesible — headings */
   h1 {
-    @apply text-3xl font-bold tracking-tight;
-  }
-  h2 {
     @apply text-2xl font-semibold tracking-tight;
   }
+  h2 {
+    @apply text-lg font-semibold tracking-tight;
+  }
   h3 {
-    @apply text-xl font-semibold;
+    @apply text-base font-semibold;
   }
   h4 {
-    @apply text-lg font-medium;
+    @apply text-sm font-medium;
   }
   h5 {
-    @apply text-base font-medium;
+    @apply text-sm font-medium;
   }
   h6 {
-    @apply text-sm font-medium;
+    @apply text-xs font-medium;
+  }
+
+  ::placeholder {
+    @apply text-muted-foreground/60;
+    font-size: 0.8125rem;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 0.8125rem !important;
   }
 }
 
 @layer utilities {
-  /* Ocultar scrollbar manteniendo la funcionalidad */
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -185,16 +149,12 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
-
-  /* Área segura para dispositivos con notch */
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
   }
   .pt-safe {
     padding-top: env(safe-area-inset-top);
   }
-
-  /* Líneas de texto truncadas */
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -207,9 +167,10 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-
-  /* Gradient text utility */
   .text-gradient {
     @apply bg-gradient-to-r from-primary to-info bg-clip-text text-transparent;
+  }
+  .chart-grid line {
+    stroke: hsl(var(--border)) !important;
   }
 }

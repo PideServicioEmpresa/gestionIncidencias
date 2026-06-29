@@ -53,17 +53,22 @@ function NavItemRow({ item, unread }: { item: NavItem; unread: number }) {
       className={cn(
         'group flex items-center gap-3 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-all',
         isActive
-          ? 'bg-primary text-primary-foreground shadow-sm'
-          : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+          ? 'border-l-2 border-primary bg-primary/15 text-primary'
+          : 'text-muted-foreground hover:bg-accent hover:text-foreground',
       )}
     >
-      <item.icon className="h-4 w-4 shrink-0" />
+      <item.icon
+        className={cn(
+          'h-4 w-4 shrink-0',
+          isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground',
+        )}
+      />
       <span className="flex-1 truncate">{item.label}</span>
       {item.to === ROUTES.NOTIFICATIONS && unread > 0 && (
         <Badge
           className={cn(
             'h-5 min-w-5 px-1 text-[10px] font-bold',
-            isActive ? 'bg-primary-foreground text-primary' : 'bg-primary text-primary-foreground',
+            isActive ? 'bg-primary/20 text-primary' : 'bg-primary text-primary-foreground',
           )}
         >
           {unread > 9 ? '9+' : unread}
@@ -103,9 +108,9 @@ export function AppSidebar() {
         <div className="mt-6 border-t pt-4">
           <NavLink
             to={ROUTES.TICKETS_NEW}
-            className="flex items-center gap-3 rounded-lg bg-primary/10 px-3 py-2 text-sm font-semibold text-primary transition-all hover:bg-primary/20"
+            className="flex items-center gap-2.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            <Plus className="h-4 w-4 shrink-0" />
+            <Plus className="h-3.5 w-3.5" />
             <span>Nuevo ticket</span>
           </NavLink>
         </div>

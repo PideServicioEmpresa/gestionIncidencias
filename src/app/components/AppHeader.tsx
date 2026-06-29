@@ -70,11 +70,11 @@ export function AppHeader({ onMenuClick, title }: AppHeaderProps) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 px-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-[10px] font-bold text-primary">
                   {user.nombre.charAt(0)}
                   {user.apellido?.charAt(0) ?? ''}
                 </div>
-                <span className="hidden max-w-24 truncate text-sm font-medium lg:block">
+                <span className="hidden max-w-20 truncate text-xs font-medium lg:block">
                   {user.nombre}
                 </span>
               </Button>

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Search, Plus, Filter, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
@@ -18,12 +18,19 @@ const PAGE_SIZE = 8
 
 export function MyTicketsPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.rol === 'admin' || user?.rol === 'superadmin'
 
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<TicketStatus | 'all'>('all')
-  const [priorityFilter, setPriorityFilter] = useState<TicketPriority | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<TicketStatus | 'all'>(() => {
+    const s = searchParams.get('status')
+    return (s as TicketStatus) ?? 'all'
+  })
+  const [priorityFilter, setPriorityFilter] = useState<TicketPriority | 'all'>(() => {
+    const p = searchParams.get('priority')
+    return (p as TicketPriority) ?? 'all'
+  })
   const [page, setPage] = useState(1)
 
   const filtered = useMemo(() => {
@@ -63,6 +70,23 @@ export function MyTicketsPage() {
           Nuevo ticket
         </Button>
       </div>
+
+      {/* Banner: filtro activo desde el dashboard */}
+      {(searchParams.get('status') || searchParams.get('priority')) && (
+        <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-1.5 text-xs text-primary">
+          <Filter className="h-3 w-3" />
+          Filtrado desde el dashboard
+          <button
+            className="ml-auto text-primary/70 hover:text-primary"
+            onClick={() => {
+              setStatusFilter('all')
+              setPriorityFilter('all')
+            }}
+          >
+            Limpiar
+          </button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col gap-1.5 sm:flex-row">
