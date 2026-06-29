@@ -5,58 +5,86 @@
   "modo_actual": "Frontend First (aprobado por usuario 2026-06-29)",
   "nota_modo": "El orden original del SDD fue modificado. Primero: Design System → Layout → UI con Mock Data → DB/Backend.",
   "fase_actual": {
-    "numero": 2,
-    "nombre": "Design System",
-    "estado": "completada",
-    "descripcion": "Paleta de colores, tipografia, espaciado, componentes base shadcn/ui, componentes personalizados (Spinner, EmptyState, StatusBadge, PriorityBadge, ConfirmDialog), iconografia, tema global y pagina showcase de verificacion."
+    "numero": 3,
+    "nombre": "Pantallas con Mock Data",
+    "estado": "completada — pendiente aprobacion del usuario",
+    "descripcion": "12 rutas, 10 pantallas completas con datos simulados. Login, Dashboard (trabajador y admin), Crear ticket, Mis tickets, Detalle de ticket, Usuarios, Notificaciones, Perfil, Reportes, Auditoria, Configuracion. Layout con sidebar, header, nav mobile y bottom nav."
   },
   "fases": [
     { "numero": 0, "nombre": "Infraestructura .claude/", "estado": "completada" },
     { "numero": 1, "nombre": "Inicializacion React + Stack", "estado": "completada" },
     { "numero": 2, "nombre": "Design System", "estado": "completada" },
-    { "numero": 3, "nombre": "Layout General (Sidebar, Header, Nav)", "estado": "pendiente" },
-    { "numero": 4, "nombre": "Pantallas con Mock Data", "estado": "pendiente" },
-    { "numero": 5, "nombre": "Base de Datos (Supabase)", "estado": "pendiente" },
-    { "numero": 6, "nombre": "Backend / Edge Functions", "estado": "pendiente" },
-    { "numero": 7, "nombre": "Integracion Real", "estado": "pendiente" },
+    {
+      "numero": 3,
+      "nombre": "Layout + Pantallas con Mock Data",
+      "estado": "completada — pendiente aprobacion del usuario",
+      "commits": [
+        "333cfbe — pantallas del modulo de tickets (Create, MyTickets, TicketDetail)",
+        "7998db1 — modulos de soporte (Usuarios, Notificaciones, Perfil, Reportes, Auditoria, Configuracion)",
+        "commits anteriores: mocks/data.ts, layout, router, login, dashboard"
+      ]
+    },
+    { "numero": 4, "nombre": "Base de Datos (Supabase — migraciones, RLS, seeds)", "estado": "NO INICIAR sin aprobacion del usuario" },
+    { "numero": 5, "nombre": "Backend / Edge Functions", "estado": "pendiente" },
+    { "numero": 6, "nombre": "Autenticacion Real (Supabase Auth)", "estado": "pendiente" },
+    { "numero": 7, "nombre": "Integracion Real (reemplazar mocks por servicios)", "estado": "pendiente" },
     { "numero": 8, "nombre": "Testing y QA", "estado": "pendiente" },
     { "numero": 9, "nombre": "Produccion", "estado": "pendiente" }
   ],
-  "modulos": {
-    "orden": ["usuarios", "configuracion", "tickets", "dashboard", "notificaciones", "auditoria", "reportes"],
-    "estado": {
-      "usuarios": "pendiente",
-      "configuracion": "pendiente",
-      "tickets": "pendiente",
-      "dashboard": "pendiente",
-      "notificaciones": "pendiente",
-      "auditoria": "pendiente",
-      "reportes": "pendiente"
-    }
+  "pantallas_implementadas": {
+    "login": "completada",
+    "dashboard_trabajador": "completada",
+    "dashboard_admin": "completada — con Recharts LineChart y cards de estado",
+    "crear_ticket": "completada — con carga de evidencias simulada",
+    "mis_tickets": "completada — tabla/cards + busqueda + filtros + paginacion",
+    "detalle_ticket": "completada — comentarios, historial, evidencias, acciones contextuales",
+    "usuarios": "completada — CRUD mock, stats, filtros, sucursales/areas",
+    "notificaciones": "completada — tabs all/unread/read, tipos coloreados",
+    "perfil": "completada — datos personales, cambio de password, preferencias",
+    "reportes": "completada — 3 charts Recharts, lista de reportes",
+    "auditoria": "completada — log de eventos, filtros, badges resultado",
+    "configuracion": "completada — general, seguridad, tickets, notificaciones, zona de peligro"
   },
   "stack_instalado": {
     "runtime": "React 19.0.0",
     "bundler": "Vite 5.4.21",
     "lenguaje": "TypeScript 5.x (strict)",
-    "estilos": "TailwindCSS 3.4.x + shadcn/ui (componentes instalados en Fase 2)",
+    "estilos": "TailwindCSS 3.4.x + shadcn/ui",
     "routing": "React Router DOM 6.x",
     "estado_servidor": "TanStack Query 5.x",
-    "estado_global": "Zustand 5.x",
+    "estado_global": "Zustand 5.x (con persist en localStorage)",
     "formularios": "React Hook Form 7.x + Zod 3.x",
-    "backend": "Supabase JS 2.x (sin conectar hasta Fase 5)",
+    "charts": "Recharts 2.x",
+    "iconos": "Lucide React",
+    "toasts": "Sonner",
+    "backend": "Supabase JS 2.x (sin conectar — pendiente Fase 4)",
     "pruebas_unitarias": "Vitest 2.x + Testing Library 16.x",
     "pruebas_e2e": "Playwright 1.x",
     "hooks_git": "Husky 9.x + lint-staged 15.x",
     "linting": "ESLint 9.x (flat config) + Prettier 3.x"
   },
+  "mocks": {
+    "archivo": "src/mocks/data.ts",
+    "datos": "7 usuarios, 4 sucursales, 9 areas, 15 tickets (con historia/comentarios/evidencias), 8 notificaciones, 16 dias de tendencia"
+  },
+  "alias_configurados": {
+    "@": "src/",
+    "@shared": "src/shared/",
+    "@store": "src/store/",
+    "@hooks": "src/hooks/",
+    "@lib": "src/lib/",
+    "@types-app": "src/types/",
+    "@constants": "src/constants/",
+    "@mocks": "src/mocks/"
+  },
   "metricas": {
-    "epics_total": 10,
-    "historias_total": 39,
-    "historias_completadas": 0,
+    "rutas_totales": 12,
+    "pantallas_totales": 10,
+    "archivos_creados_fase3": 18,
     "tests_unitarios": 5,
     "tests_e2e": 0
   },
-  "ultimo_commit_estable": "eecbf16",
+  "ultimo_commit_estable": "7998db1",
   "ultima_actualizacion": "2026-06-29",
-  "notas": "project-status.json debe actualizarse despues de cada tarea y cada commit (responsable: documentation-manager)."
+  "notas": "NO avanzar a la Fase 4 (Base de Datos) sin aprobacion explicita del usuario. La aplicacion es completamente navegable con datos simulados."
 }
