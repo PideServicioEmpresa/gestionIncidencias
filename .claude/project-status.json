@@ -5,10 +5,10 @@
   "modo_actual": "Frontend First (aprobado por usuario 2026-06-29)",
   "nota_modo": "El orden original del SDD fue modificado. Primero: Design System → Layout → UI con Mock Data → DB/Backend.",
   "fase_actual": {
-    "numero": 3,
-    "nombre": "Pantallas con Mock Data",
-    "estado": "completada — pendiente aprobacion del usuario",
-    "descripcion": "12 rutas, 10 pantallas completas con datos simulados. Login, Dashboard (trabajador y admin), Crear ticket, Mis tickets, Detalle de ticket, Usuarios, Notificaciones, Perfil, Reportes, Auditoria, Configuracion. Layout con sidebar, header, nav mobile y bottom nav."
+    "numero": "3.2",
+    "nombre": "Design System Oscuro + Dashboard Graph-First",
+    "estado": "completada — pendiente aprobacion visual del usuario",
+    "descripcion": "Paleta oscura corporativa (#0B0C10/#111113/#26262B), fuente Geist, dashboard Admin reescrito con 9 widgets grafico-first, interactividad click-to-filter, Drag & Drop con @dnd-kit, MyTicketsPage con URL params."
   },
   "fases": [
     { "numero": 0, "nombre": "Infraestructura .claude/", "estado": "completada" },
@@ -17,11 +17,26 @@
     {
       "numero": 3,
       "nombre": "Layout + Pantallas con Mock Data",
-      "estado": "completada — pendiente aprobacion del usuario",
-      "commits": [
-        "333cfbe — pantallas del modulo de tickets (Create, MyTickets, TicketDetail)",
-        "7998db1 — modulos de soporte (Usuarios, Notificaciones, Perfil, Reportes, Auditoria, Configuracion)",
-        "commits anteriores: mocks/data.ts, layout, router, login, dashboard"
+      "estado": "completada — pendiente aprobacion visual del usuario",
+      "sub_fases": [
+        {
+          "numero": "3.0",
+          "nombre": "Pantallas completas con Mock Data",
+          "estado": "completada",
+          "commits": ["333cfbe", "7998db1", "79e43a0", "2746042"]
+        },
+        {
+          "numero": "3.1",
+          "nombre": "Refinamiento Visual y UX",
+          "estado": "completada",
+          "commits": ["49a91df"]
+        },
+        {
+          "numero": "3.2",
+          "nombre": "Design System Oscuro + Dashboard Graph-First",
+          "estado": "completada — pendiente aprobacion visual del usuario",
+          "commits": ["5ebd756", "d5f9385"]
+        }
       ]
     },
     { "numero": 4, "nombre": "Base de Datos (Supabase — migraciones, RLS, seeds)", "estado": "NO INICIAR sin aprobacion del usuario" },
@@ -34,9 +49,9 @@
   "pantallas_implementadas": {
     "login": "completada",
     "dashboard_trabajador": "completada",
-    "dashboard_admin": "completada — con Recharts LineChart y cards de estado",
+    "dashboard_admin": "completada — 9 widgets graficos interactivos con D&D, design system oscuro",
     "crear_ticket": "completada — con carga de evidencias simulada",
-    "mis_tickets": "completada — tabla/cards + busqueda + filtros + paginacion",
+    "mis_tickets": "completada — tabla/cards + busqueda + filtros + paginacion + URL params desde dashboard",
     "detalle_ticket": "completada — comentarios, historial, evidencias, acciones contextuales",
     "usuarios": "completada — CRUD mock, stats, filtros, sucursales/areas",
     "notificaciones": "completada — tabs all/unread/read, tipos coloreados",
@@ -44,6 +59,13 @@
     "reportes": "completada — 3 charts Recharts, lista de reportes",
     "auditoria": "completada — log de eventos, filtros, badges resultado",
     "configuracion": "completada — general, seguridad, tickets, notificaciones, zona de peligro"
+  },
+  "design_system": {
+    "fondo_principal": "#0B0C10 — var(--background) = 228 19% 5%",
+    "componentes": "#111113 — var(--card) = 240 6% 7%",
+    "bordes": "#26262B — var(--border) = 240 6% 16%",
+    "fuente": "Geist (fonts.bunny.net CDN)",
+    "tema": "dark-only (variables oscuras en :root directamente)"
   },
   "stack_instalado": {
     "runtime": "React 19.0.0",
@@ -55,6 +77,8 @@
     "estado_global": "Zustand 5.x (con persist en localStorage)",
     "formularios": "React Hook Form 7.x + Zod 3.x",
     "charts": "Recharts 2.x",
+    "drag_drop": "@dnd-kit/core 6.x + @dnd-kit/sortable 10.x",
+    "fuente": "Geist 1.7.x",
     "iconos": "Lucide React",
     "toasts": "Sonner",
     "backend": "Supabase JS 2.x (sin conectar — pendiente Fase 4)",
@@ -84,7 +108,7 @@
     "tests_unitarios": 5,
     "tests_e2e": 0
   },
-  "ultimo_commit_estable": "7998db1",
+  "ultimo_commit_estable": "5ebd756",
   "ultima_actualizacion": "2026-06-29",
-  "notas": "NO avanzar a la Fase 4 (Base de Datos) sin aprobacion explicita del usuario. La aplicacion es completamente navegable con datos simulados."
+  "notas": "NO avanzar a la Fase 4 (Base de Datos) sin aprobacion explicita del usuario. Pendiente aprobacion visual de Fase 3.2 (design system oscuro + dashboard graph-first)."
 }

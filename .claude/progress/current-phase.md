@@ -1,6 +1,6 @@
 # Fase Actual
 
-## Fase 3.1 — Refinamiento Visual y UX · `completada` | Pendiente: aprobación del usuario
+## Fase 3.2 — Design System Oscuro + Dashboard Graph-First · `completada` | Pendiente: aprobación visual del usuario
 
 > **Modo activo: Frontend First** — Aprobado por usuario el 2026-06-29.
 > Orden modificado: Design System → UI Mock Data → DB → Backend → Integración real.

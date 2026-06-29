@@ -6,7 +6,26 @@
 
 ## Bloqueante actual
 
-**Esperando aprobación del usuario para la Fase 3 (UI con Mock Data) y autorización para iniciar Fase 4 (Base de Datos).**
+**Esperando aprobación visual del usuario para la Fase 3.2 (Design System + Dashboard).**
+**NO iniciar Fase 4 (Base de Datos) hasta aprobación explícita del usuario.**
+
+---
+
+## Fase 3.2 — Design System + Dashboard (completada — pendiente aprobación visual)
+
+- [x] Design system oscuro: `#0B0C10` fondo, `#111113` componentes, `#26262B` bordes
+- [x] Migración de fuente Inter → Geist (fonts.bunny.net CDN)
+- [x] CSS variables actualizadas en `globals.css` (formato HSL)
+- [x] `tailwind.config.ts` actualizado con fontFamily Geist
+- [x] Paquetes instalados: `geist ^1.7.2`, `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`
+- [x] Dashboard Admin reescrito: 9 widgets gráficos distintos (Donut, Bar vertical, Bar horizontal, Area, Stacked Bar, Radar, ComposedChart)
+- [x] Interactividad: clic en gráfico → navega a `/tickets?status=X` / `?priority=X` / `?sucursal=X`
+- [x] Drag & Drop con `@dnd-kit`: modo edición explícito, persistencia en `sessionStorage`
+- [x] `MyTicketsPage`: URL params para prefiltrado desde dashboard + banner contextual
+- [x] AppSidebar: indicador activo (borde izquierdo), iconografía mejorada
+- [x] TypeScript: 0 errores | ESLint: 0 errores
+
+Commits: `5ebd756` (design system + dashboard), `d5f9385` (package.json)
 
 ---
 
@@ -24,10 +43,9 @@ NO iniciar hasta aprobación explícita del usuario.
 
 ---
 
-## Mejoras opcionales a Fase 3 (si el usuario las solicita)
+## Mejoras opcionales (si el usuario las solicita)
 
 - [ ] Vista desktop del Ticket Detail (columna derecha con metadata + acciones)
-- [ ] Modo claro probado en todas las pantallas
 - [ ] Sidebar colapsable en desktop
 - [ ] Filtro por sucursal en el Dashboard Admin
 - [ ] Tabla en lugar de cards para la lista de tickets en desktop

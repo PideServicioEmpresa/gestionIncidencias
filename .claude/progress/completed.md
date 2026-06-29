@@ -24,6 +24,28 @@
 - **2026-06-29** — Build de producción: ✅ 1.93s, 97.78 kB gzip.
 - **2026-06-29** — Vulnerabilidad moderada (esbuild dev-server) documentada; no afecta producción.
 
+## Fase 3.2 — Design System Oscuro + Dashboard Graph-First
+
+- **2026-06-29** — Paleta oscura corporativa aplicada: `--background 228 19% 5%`, `--card 240 6% 7%`, `--border 240 6% 16%`.
+- **2026-06-29** — Fuente Geist configurada (fonts.bunny.net), Inter eliminado de index.html.
+- **2026-06-29** — `tailwind.config.ts`: `fontFamily.sans` → Geist stack.
+- **2026-06-29** — Paquetes instalados: `geist ^1.7.2`, `@dnd-kit/core ^6.3.1`, `@dnd-kit/sortable ^10.0.0`, `@dnd-kit/utilities ^3.2.2`.
+- **2026-06-29** — Dashboard Admin reescrito: 9 widgets con 7 tipos de gráfico distintos (Donut, Bar vertical, Bar horizontal, Area con gradiente, Stacked Bar, RadarChart, ComposedChart Line+Bar).
+- **2026-06-29** — Interactividad dashboard: clic en sector/barra → `navigate('/tickets?status=X')` etc.
+- **2026-06-29** — Drag & Drop con `@dnd-kit`: modo edición con GripVertical, persistencia en `sessionStorage('ps-dashboard-order')`.
+- **2026-06-29** — `MyTicketsPage`: `useSearchParams` para inicializar filtros desde URL + banner "Filtrado desde el dashboard".
+- **2026-06-29** — AppSidebar: borde izquierdo en ítem activo, `bg-primary/15 text-primary`.
+- **2026-06-29** — TypeScript: 0 errores | Commits: `5ebd756`, `d5f9385`.
+
+## Fase 3.1 — Refinamiento Visual y UX
+
+- **2026-06-29** — Escala tipográfica reducida en todas las páginas.
+- **2026-06-29** — Dashboard Admin: AreaChart con gradiente, íconos en stat cards, sección byPriority.
+- **2026-06-29** — LoginPage: Card wrapper, inputs `h-9`, labels `text-xs`.
+- **2026-06-29** — AuthLayout: gradiente de fondo, bullets `CheckCircle2`.
+- **2026-06-29** — Padding Mobile First reducido en todas las páginas.
+- **2026-06-29** — TypeScript: 0 errores | Commit: `49a91df`.
+
 ## Fase 0 — Infraestructura
 
 - **2026-06-29** — Análisis de la estructura existente del proyecto.

@@ -2,6 +2,30 @@
 
 > Cambios significativos del proyecto. Formato: fecha — descripción. Se actualiza tras cada commit.
 
+## [Sin versión] — Fase 3.2 · Design System Oscuro + Dashboard Graph-First (2026-06-29)
+
+### commit 5ebd756 + d5f9385 — Design system v2 + Dashboard interactivo
+
+**7 archivos modificados** (897 inserciones, 342 eliminaciones) + package.json/lock.
+
+- **globals.css**: CSS variables reemplazadas — `:root` ahora usa dark como predeterminado.
+  - `--background: 228 19% 5%` (#0B0C10), `--card: 240 6% 7%` (#111113), `--border: 240 6% 16%` (#26262B).
+  - Variables semánticas de ticket/prioridad preservadas. Fuente Geist aplicada en `body`.
+- **index.html**: Inter (Google Fonts CDN) eliminado; Geist vía `fonts.bunny.net` agregado. `theme-color` → `#0B0C10`.
+- **tailwind.config.ts**: `fontFamily.sans` → `['Geist', '-apple-system', ...]`.
+- **DashboardPage.tsx** (965 líneas, +750): Reescritura completa del dashboard Admin.
+  - 9 widgets: DonutChart (status), BarChart vertical (prioridad), AreaChart (tendencia 16d), BarChart horizontal (sucursal), Stacked BarChart (áreas), PieChart (tipos), BarChart responsables, RadarChart (comparativa), ComposedChart (tendencia semanal).
+  - Interactividad: `onClick` en cada chart → `navigate('/tickets?status=X')` etc.
+  - Drag & Drop con `@dnd-kit`: `DndContext + SortableContext`, modo edición, `sessionStorage('ps-dashboard-order')`.
+  - KPI cards: 4 métricas clave (Total abiertos, Críticos, Cerrados, Tasa resolución).
+  - Tooltip oscuro (`#111113` bg, `#26262B` border) en todos los charts.
+  - WorkerDashboard preservado con estilos del nuevo tema.
+- **MyTicketsPage.tsx**: `useSearchParams` para inicializar filtros desde URL; banner "Filtrado desde el dashboard".
+- **AppSidebar.tsx**: Ítem activo con `bg-primary/15 border-l-2 border-primary`; iconografía mejorada.
+- **AppHeader.tsx**: Ajustes de consistencia visual con el nuevo tema.
+- **Paquetes**: `geist ^1.7.2`, `@dnd-kit/core ^6.3.1`, `@dnd-kit/sortable ^10.0.0`, `@dnd-kit/utilities ^3.2.2`.
+- **Proceso**: workflow multi-agente (11 subagentes, ~10 min, 389k tokens). TypeScript limpio, ESLint sin errores.
+
 ## [Sin versión] — Fase 3.1 · Refinamiento Visual y UX (2026-06-29)
 
 ### commit 49a91df — Refinamiento visual multi-agente
