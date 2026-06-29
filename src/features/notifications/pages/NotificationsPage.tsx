@@ -1,11 +1,21 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, BellOff, Ticket, CheckCheck, MessageSquare, AlertCircle, Info } from 'lucide-react'
+import {
+  Bell,
+  BellOff,
+  Ticket,
+  CheckCheck,
+  MessageSquare,
+  AlertCircle,
+  Info,
+  X,
+} from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@shared/ui/button'
 import { Badge } from '@shared/ui/badge'
 import { Card, CardContent } from '@shared/ui/card'
 import { EmptyState } from '@shared/components/EmptyState'
-import { MOCK_NOTIFICATIONS, getUnreadNotifications } from '@mocks/data'
+import { MOCK_NOTIFICATIONS } from '@mocks/data'
 import { ticketDetailPath } from '@constants/index'
 import { cn } from '@lib/utils'
 import type { MockNotification } from '@mocks/data'
@@ -56,51 +66,81 @@ function timeAgo(dateStr: string): string {
 function NotificationItem({
   notification,
   onNavigate,
+  onMarkRead,
+  onDelete,
 }: {
   notification: MockNotification
   onNavigate: (id: string) => void
+  onMarkRead: (id: string) => void
+  onDelete: (id: string) => void
 }) {
   const config = TYPE_CONFIG[notification.type]
   const Icon = config.icon
 
   return (
-    <button
+    <div
       className={cn(
-        'flex w-full items-start gap-3 rounded-none px-3 py-2.5 text-left transition-all hover:bg-muted/70',
-        !notification.read && 'bg-primary/8 hover:bg-primary/12',
+        'flex w-full items-start gap-3 rounded-none px-3 py-2.5 text-left transition-all',
+        !notification.read && 'bg-primary/8',
       )}
-      onClick={() => {
-        if (notification.ticketId) onNavigate(notification.ticketId)
-      }}
     >
-      {/* Icon */}
-      <div
-        className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', config.bg)}
+      {/* Área clickeable para navegar */}
+      <button
+        className="flex flex-1 items-start gap-3 transition-opacity hover:opacity-80"
+        onClick={() => {
+          if (!notification.read) onMarkRead(notification.id)
+          if (notification.ticketId) onNavigate(notification.ticketId)
+        }}
       >
-        <Icon className={cn('h-3.5 w-3.5', config.color)} />
-      </div>
-
-      {/* Content */}
-      <div className="min-w-0 flex-1 space-y-0.5">
-        <div className="flex items-start justify-between gap-2">
-          <p className={cn('text-xs font-medium', !notification.read && 'font-semibold')}>
-            {notification.title}
-          </p>
-          <span className="shrink-0 whitespace-nowrap text-[11px] text-muted-foreground">
-            {timeAgo(notification.createdAt)}
-          </span>
+        {/* Icon */}
+        <div
+          className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', config.bg)}
+        >
+          <Icon className={cn('h-3.5 w-3.5', config.color)} />
         </div>
-        <p className="text-xs leading-relaxed text-muted-foreground">{notification.body}</p>
-        {notification.ticketCode && (
-          <Badge variant="outline" className="mt-1 text-[10px]">
-            {notification.ticketCode}
-          </Badge>
-        )}
-      </div>
 
-      {/* Unread dot */}
-      {!notification.read && <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />}
-    </button>
+        {/* Content */}
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <div className="flex items-start justify-between gap-2">
+            <p className={cn('text-xs font-medium', !notification.read && 'font-semibold')}>
+              {notification.title}
+            </p>
+            <span className="shrink-0 whitespace-nowrap text-[11px] text-muted-foreground">
+              {timeAgo(notification.createdAt)}
+            </span>
+          </div>
+          <p className="text-xs leading-relaxed text-muted-foreground">{notification.body}</p>
+          {notification.ticketCode && (
+            <Badge variant="outline" className="mt-1 text-[10px]">
+              {notification.ticketCode}
+            </Badge>
+          )}
+        </div>
+      </button>
+
+      {/* Acciones */}
+      <div className="flex shrink-0 items-center gap-1 pt-0.5">
+        {/* Punto de no leído / botón marcar leída */}
+        {!notification.read && (
+          <button
+            title="Marcar como leída"
+            onClick={() => onMarkRead(notification.id)}
+            className="flex h-5 w-5 items-center justify-center rounded-full transition-colors hover:bg-muted"
+          >
+            <div className="h-2 w-2 rounded-full bg-primary" />
+          </button>
+        )}
+
+        {/* Botón eliminar */}
+        <button
+          title="Eliminar notificación"
+          onClick={() => onDelete(notification.id)}
+          className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -108,10 +148,12 @@ type Filter = 'all' | 'unread' | 'read'
 
 export function NotificationsPage() {
   const navigate = useNavigate()
+  const [notifications, setNotifications] = useState<MockNotification[]>(MOCK_NOTIFICATIONS)
   const [filter, setFilter] = useState<Filter>('all')
-  const unreadCount = getUnreadNotifications().length
 
-  const filtered = MOCK_NOTIFICATIONS.filter((n) => {
+  const unreadCount = notifications.filter((n) => !n.read).length
+
+  const filtered = notifications.filter((n) => {
     if (filter === 'unread') return !n.read
     if (filter === 'read') return n.read
     return true
@@ -119,6 +161,20 @@ export function NotificationsPage() {
 
   const handleNavigate = (ticketId: string) => {
     navigate(ticketDetailPath(ticketId))
+  }
+
+  const handleMarkRead = (id: string) => {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
+  }
+
+  const handleDelete = (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id))
+    toast.success('Notificación eliminada')
+  }
+
+  const handleMarkAllRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+    toast.success('Todas las notificaciones marcadas como leídas')
   }
 
   return (
@@ -132,7 +188,7 @@ export function NotificationsPage() {
           )}
         </div>
         {unreadCount > 0 && (
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleMarkAllRead}>
             <CheckCheck className="mr-2 h-3.5 w-3.5" />
             Marcar todo como leído
           </Button>
@@ -143,9 +199,9 @@ export function NotificationsPage() {
       <div className="flex gap-1 rounded-lg bg-muted p-1">
         {(
           [
-            { id: 'all', label: 'Todas', count: MOCK_NOTIFICATIONS.length },
+            { id: 'all', label: 'Todas', count: notifications.length },
             { id: 'unread', label: 'Sin leer', count: unreadCount },
-            { id: 'read', label: 'Leídas', count: MOCK_NOTIFICATIONS.length - unreadCount },
+            { id: 'read', label: 'Leídas', count: notifications.length - unreadCount },
           ] as { id: Filter; label: string; count: number }[]
         ).map((tab) => (
           <button
@@ -188,6 +244,8 @@ export function NotificationsPage() {
                 key={notification.id}
                 notification={notification}
                 onNavigate={handleNavigate}
+                onMarkRead={handleMarkRead}
+                onDelete={handleDelete}
               />
             ))}
           </CardContent>
@@ -195,7 +253,7 @@ export function NotificationsPage() {
       )}
 
       {/* Empty all state */}
-      {MOCK_NOTIFICATIONS.length === 0 && (
+      {notifications.length === 0 && (
         <EmptyState
           icon={Bell}
           title="Todo al día"

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   FileBarChart,
   Download,
@@ -6,6 +7,7 @@ import {
   AlertTriangle,
   CheckCircle2,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@shared/ui/card'
 import { Badge } from '@shared/ui/badge'
@@ -73,6 +75,25 @@ const AVAILABLE_REPORTS = [
 ]
 
 export function ReportsPage() {
+  const [downloading, setDownloading] = useState<string | null>(null)
+
+  const handleDownload = (reportTitle: string) => {
+    if (downloading) return
+    setDownloading(reportTitle)
+    const promise = new Promise<void>((resolve) => {
+      setTimeout(() => {
+        resolve()
+      }, 1500)
+    }).finally(() => {
+      setDownloading(null)
+    })
+    toast.promise(promise, {
+      loading: 'Generando reporte...',
+      success: 'Reporte descargado',
+      error: 'Error al generar el reporte',
+    })
+  }
+
   return (
     <div className="space-y-4 p-3 lg:p-5">
       {/* Header */}
@@ -83,7 +104,11 @@ export function ReportsPage() {
             Análisis y métricas del sistema de tickets.
           </p>
         </div>
-        <Button variant="outline">
+        <Button
+          variant="outline"
+          disabled={downloading !== null}
+          onClick={() => handleDownload('exportar-datos')}
+        >
           <Download className="mr-2 h-4 w-4" />
           Exportar datos
         </Button>
@@ -251,7 +276,13 @@ export function ReportsPage() {
                   </div>
                   <p className="mt-0.5 text-xs text-muted-foreground">{report.description}</p>
                 </div>
-                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 shrink-0"
+                  disabled={downloading === report.title}
+                  onClick={() => handleDownload(report.title)}
+                >
                   <FileBarChart className="h-3.5 w-3.5" />
                 </Button>
               </CardContent>

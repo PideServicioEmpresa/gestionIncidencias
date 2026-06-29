@@ -24,7 +24,7 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="system" storageKey="pide-servicio-theme">
+      <ThemeProvider defaultTheme="dark" storageKey="pide-servicio-theme">
         {children}
         <Toaster richColors position="top-right" duration={4000} closeButton expand={false} />
       </ThemeProvider>

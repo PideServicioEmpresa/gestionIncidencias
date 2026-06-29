@@ -11,6 +11,7 @@ import { Switch } from '@shared/ui/switch'
 import { Separator } from '@shared/ui/separator'
 import { Badge } from '@shared/ui/badge'
 import { useAuthStore } from '@store/auth.store'
+import { toast } from 'sonner'
 
 const profileSchema = z.object({
   nombre: z.string().min(2, 'Mínimo 2 caracteres'),
@@ -52,6 +53,7 @@ export function ProfilePage() {
     statusChanges: true,
     comments: false,
   })
+  const [darkMode, setDarkMode] = useState(false)
 
   const {
     register: regProfile,
@@ -79,15 +81,29 @@ export function ProfilePage() {
     setTimeout(() => {
       setSavingProfile(false)
       setProfileSaved(true)
+      toast.success('Datos personales guardados correctamente')
       setTimeout(() => setProfileSaved(false), 3000)
     }, 1000)
   }
 
-  const onSavePw = (_data: PasswordForm) => {
+  const onSavePw = (data: PasswordForm) => {
+    if (!data.actual || !data.nueva || !data.confirmar) {
+      toast.error('Todos los campos de contraseña son obligatorios')
+      return
+    }
+    if (data.nueva.length < 8) {
+      toast.error('La nueva contraseña debe tener al menos 8 caracteres')
+      return
+    }
+    if (data.nueva !== data.confirmar) {
+      toast.error('La nueva contraseña y la confirmación no coinciden')
+      return
+    }
     setSavingPw(true)
     setTimeout(() => {
       setSavingPw(false)
       resetPw()
+      toast.success('Contraseña actualizada correctamente')
     }, 1000)
   }
 
@@ -112,7 +128,12 @@ export function ProfilePage() {
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/20 text-sm font-bold text-primary">
               {initials}
             </div>
-            <button className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md hover:bg-primary/90">
+            <button
+              type="button"
+              onClick={() => toast.success('Foto de perfil actualizada')}
+              className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md hover:bg-primary/90"
+              title="Cambiar foto"
+            >
               <Camera className="h-3 w-3" />
             </button>
           </div>
@@ -131,6 +152,13 @@ export function ProfilePage() {
                 Activo
               </Badge>
             </div>
+            <button
+              type="button"
+              onClick={() => toast.success('Foto de perfil actualizada')}
+              className="mt-1 text-left text-xs text-primary underline-offset-2 hover:underline"
+            >
+              Cambiar foto
+            </button>
           </div>
         </CardContent>
       </Card>
@@ -335,7 +363,10 @@ export function ProfilePage() {
               </div>
               <Switch
                 checked={notifications[pref.id as keyof typeof notifications]}
-                onCheckedChange={(v) => setNotifications((prev) => ({ ...prev, [pref.id]: v }))}
+                onCheckedChange={(v) => {
+                  setNotifications((prev) => ({ ...prev, [pref.id]: v }))
+                  toast.success('Preferencia guardada')
+                }}
               />
             </div>
           ))}
@@ -359,7 +390,13 @@ export function ProfilePage() {
                 <p className="text-xs text-muted-foreground">Cambia el tema de la aplicación</p>
               </div>
             </div>
-            <Switch />
+            <Switch
+              checked={darkMode}
+              onCheckedChange={(v) => {
+                setDarkMode(v)
+                toast.success('Preferencia guardada')
+              }}
+            />
           </div>
         </CardContent>
       </Card>

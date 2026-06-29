@@ -1,5 +1,6 @@
 import { Shield, Search, Download, User, Ticket, Settings, LogIn } from 'lucide-react'
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@shared/ui/card'
@@ -153,14 +154,28 @@ function formatTimestamp(ts: string) {
 
 export function AuditPage() {
   const [search, setSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState<AuditAction | 'all'>('all')
 
-  const filtered = AUDIT_ENTRIES.filter(
-    (e) =>
+  const filtered = AUDIT_ENTRIES.filter((e) => {
+    const matchSearch =
       !search ||
       e.action.toLowerCase().includes(search.toLowerCase()) ||
       e.user.toLowerCase().includes(search.toLowerCase()) ||
-      e.details.toLowerCase().includes(search.toLowerCase()),
-  )
+      e.details.toLowerCase().includes(search.toLowerCase())
+    const matchType = typeFilter === 'all' || e.type === typeFilter
+    return matchSearch && matchType
+  })
+
+  const handleExport = () => {
+    const promise = new Promise<void>((resolve) => {
+      setTimeout(() => resolve(), 2000)
+    })
+    toast.promise(promise, {
+      loading: 'Generando export...',
+      success: 'Auditoría exportada como audit-log.xlsx',
+      error: 'Error al exportar',
+    })
+  }
 
   return (
     <div className="space-y-4 p-3 lg:p-4">
@@ -175,7 +190,7 @@ export function AuditPage() {
             Registro completo de acciones del sistema.
           </p>
         </div>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={handleExport}>
           <Download className="mr-2 h-4 w-4" />
           Exportar log
         </Button>
@@ -198,15 +213,28 @@ export function AuditPage() {
         ))}
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por acción, usuario o detalle..."
-          className="h-8 pl-9 text-xs"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      {/* Search + type filter */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por acción, usuario o detalle..."
+            className="h-8 pl-9 text-xs"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value as AuditAction | 'all')}
+          className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+        >
+          <option value="all">Todos los tipos</option>
+          <option value="login">Acceso</option>
+          <option value="ticket">Ticket</option>
+          <option value="user">Usuario</option>
+          <option value="config">Configuración</option>
+        </select>
       </div>
 
       {/* Log entries */}
