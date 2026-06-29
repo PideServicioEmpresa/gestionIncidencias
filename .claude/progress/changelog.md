@@ -2,6 +2,23 @@
 
 > Cambios significativos del proyecto. Formato: fecha — descripción. Se actualiza tras cada commit.
 
+## [Sin versión] — Fase 3.1 · Refinamiento Visual y UX (2026-06-29)
+
+### commit 49a91df — Refinamiento visual multi-agente
+- **15 archivos modificados** (392 inserciones, 269 eliminaciones).
+- **Tipografía**: escala reducida en toda la aplicación. Títulos de página `text-xl/2xl` → `text-lg font-semibold`. Valores de stat cards `text-3xl` → `text-xl/2xl font-semibold`. Labels `text-sm` → `text-xs font-medium`.
+- **Espaciado Mobile First**: páginas `p-4 lg:p-6` → `p-3 lg:p-5`. Cards `p-4/5` → `p-3/4`. Gaps `gap-4` → `gap-3`. Section spacing `space-y-6` → `space-y-4`.
+- **LoginPage**: card con `shadow-lg`, inputs `h-9`, labels `text-xs`, demo buttons fuera de la card con `h-9`. Aria-live para accesibilidad.
+- **AuthLayout**: gradiente de fondo `from-background to-muted/30`. Bullets `✓` → íconos `CheckCircle2`. Tipografía del panel de marca reducida.
+- **DashboardPage (Admin)**: `LineChart` → `AreaChart` con gradientes via `<defs>/<linearGradient>`. Status cards ahora tienen íconos (Inbox, AlertCircle, CheckCheck, RotateCcw, Clock, CheckCircle2). Valores `text-2xl font-bold` → `text-xl font-semibold tabular-nums`. Nueva sección `byPriority` con 4 mini-cards. Wrapper `p-3 lg:p-5`.
+- **DashboardPage (Worker)**: heading reducido, tickets recientes más compactos `py-2.5`.
+- **AppHeader**: `ChevronDown` eliminado del trigger del usuario. Solo avatar + nombre desktop.
+- **AppSidebar**: nav items `py-2` → `py-1.5`, `px-3` → `px-2.5`. `ChevronRight` en items activos eliminado.
+- **NotificationsPage**: items `p-4` → `py-2.5 px-3`, íconos `h-9 w-9` → `h-8 w-8`.
+- **UsersPage, ProfilePage, ReportsPage, AuditPage, SettingsPage**: padding reducido, tipografía compactada, filtros `h-8 text-xs`.
+- **Tickets (Create, Detail, MyTickets)**: form inputs `h-9`, filtros `h-8`, paddings reducidos.
+- **Proceso**: workflow multi-agente con 14 subagentes (Auditoría → Especificaciones → Implementación ×4 paralelo → Validación → Commit). TypeScript limpio, ESLint sin errores.
+
 ## [Sin versión] — Fase 3 · Aplicación con Mock Data
 
 ### 2026-06-29
