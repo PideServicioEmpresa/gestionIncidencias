@@ -54,7 +54,7 @@
     "tests_unitarios": 5,
     "tests_e2e": 0
   },
-  "ultimo_commit_estable": "2b97b9c",
+  "ultimo_commit_estable": "fdea03b",
   "ultima_actualizacion": "2026-06-29",
   "notas": "project-status.json debe actualizarse despues de cada tarea y cada commit (responsable: documentation-manager)."
 }
