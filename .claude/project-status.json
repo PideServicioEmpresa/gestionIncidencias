@@ -5,10 +5,10 @@
   "modo_actual": "Frontend First (aprobado por usuario 2026-06-29)",
   "nota_modo": "El orden original del SDD fue modificado. Primero: Design System → Layout → UI con Mock Data → DB/Backend.",
   "fase_actual": {
-    "numero": "3.2",
-    "nombre": "Design System Oscuro + Dashboard Graph-First",
-    "estado": "completada — pendiente aprobacion visual del usuario",
-    "descripcion": "Paleta oscura corporativa (#0B0C10/#111113/#26262B), fuente Geist, dashboard Admin reescrito con 9 widgets grafico-first, interactividad click-to-filter, Drag & Drop con @dnd-kit, MyTicketsPage con URL params."
+    "numero": "3.13",
+    "nombre": "Favicon logo.jpeg, trazabilidad de asignacion en tickets y columna F. creacion",
+    "estado": "completada — pendiente commit (requiere autorizacion explicita del usuario) y aprobacion del usuario",
+    "descripcion": "index.html: favicon cambiado de favicon.svg a /logo.jpeg. MyTicketsPage.tsx: helper getAssignedBy() anade al historial del ticket el autor de la asignacion. Tarjeta mobile: muestra 'Asignado a: [nombre]' + 'Por: [nombre]'. Tabla desktop: columna 'Fecha' renombrada a 'F. creacion'; celda Asignado a incluye sub-linea 'Por: [nombre]'. TypeScript: 0 errores. Preview verificado mobile 375px y desktop 1280px."
   },
   "fases": [
     { "numero": 0, "nombre": "Infraestructura .claude/", "estado": "completada" },
@@ -17,7 +17,7 @@
     {
       "numero": 3,
       "nombre": "Layout + Pantallas con Mock Data",
-      "estado": "completada — pendiente aprobacion visual del usuario",
+      "estado": "completada — pendiente commit de 3.5→3.12 y aprobacion visual final del usuario",
       "sub_fases": [
         {
           "numero": "3.0",
@@ -34,8 +34,68 @@
         {
           "numero": "3.2",
           "nombre": "Design System Oscuro + Dashboard Graph-First",
-          "estado": "completada — pendiente aprobacion visual del usuario",
+          "estado": "completada",
           "commits": ["5ebd756", "d5f9385"]
+        },
+        {
+          "numero": "3.3",
+          "nombre": "Consistencia visual, scroll horizontal y tipografia unificada",
+          "estado": "completada",
+          "commits": ["ed91387", "82462be"]
+        },
+        {
+          "numero": "3.4",
+          "nombre": "Flujo interactivo completo (modales y acciones)",
+          "estado": "completada",
+          "commits": ["dc4c1b8"]
+        },
+        {
+          "numero": "3.5",
+          "nombre": "UX Premium y mejoras de interaccion",
+          "estado": "implementada — pendiente commit (requiere autorizacion del usuario)",
+          "commits": []
+        },
+        {
+          "numero": "3.6",
+          "nombre": "Nomenclatura global, componentes transversales y UX de formularios",
+          "estado": "implementada — pendiente commit (requiere autorizacion del usuario)",
+          "commits": []
+        },
+        {
+          "numero": "3.7",
+          "nombre": "Gap Audit: refinamiento visual y consistencia transversal",
+          "estado": "implementada — pendiente commit (requiere autorizacion del usuario)",
+          "commits": []
+        },
+        {
+          "numero": "3.8",
+          "nombre": "Design System Refactor: componentes base y contextuales",
+          "estado": "implementada — pendiente commit (requiere autorizacion del usuario)",
+          "commits": []
+        },
+        {
+          "numero": "3.9",
+          "nombre": "Vistas dedicadas de usuarios, logo Pidde, breadcrumb y sorting",
+          "estado": "implementada — pendiente commit (requiere autorizacion del usuario)",
+          "commits": []
+        },
+        {
+          "numero": "3.10/3.11",
+          "nombre": "Modificar Ticket como Sheet lateral completo",
+          "estado": "implementada — pendiente commit (requiere autorizacion del usuario)",
+          "commits": []
+        },
+        {
+          "numero": "3.12",
+          "nombre": "Branding, badge de notificaciones, bordes de cards y menu de acciones de tickets",
+          "estado": "implementada — pendiente commit (requiere autorizacion del usuario)",
+          "commits": []
+        },
+        {
+          "numero": "3.13",
+          "nombre": "Favicon logo.jpeg, trazabilidad de asignacion en tickets y columna F. creacion",
+          "estado": "implementada — pendiente commit (requiere autorizacion del usuario)",
+          "commits": []
         }
       ]
     },
@@ -47,25 +107,37 @@
     { "numero": 9, "nombre": "Produccion", "estado": "pendiente" }
   ],
   "pantallas_implementadas": {
-    "login": "completada",
+    "login": "completada — fondo animado, glow border, selector empresa/sucursal, modal olvide contrasena",
     "dashboard_trabajador": "completada",
-    "dashboard_admin": "completada — 9 widgets graficos interactivos con D&D, design system oscuro",
-    "crear_ticket": "completada — con carga de evidencias simulada",
-    "mis_tickets": "completada — tabla/cards + busqueda + filtros + paginacion + URL params desde dashboard",
-    "detalle_ticket": "completada — comentarios, historial, evidencias, acciones contextuales",
-    "usuarios": "completada — CRUD mock, stats, filtros, sucursales/areas",
-    "notificaciones": "completada — tabs all/unread/read, tipos coloreados",
-    "perfil": "completada — datos personales, cambio de password, preferencias",
-    "reportes": "completada — 3 charts Recharts, lista de reportes",
-    "auditoria": "completada — log de eventos, filtros, badges resultado",
-    "configuracion": "completada — general, seguridad, tickets, notificaciones, zona de peligro"
+    "dashboard_admin": "completada — glow cards, sparklines PC, filtros empresa/sucursal, botones Ver todos, 9 widgets graficos, D&D",
+    "crear_ticket": "completada — 2 columnas PC, opcion Otros condicional, evidencias con preview FileReader, labels obligatorio/opcional",
+    "mis_tickets": "completada — sort por fecha, filtros de fecha, tabla PC, UI asignacion mejorada, URL params desde dashboard, EditTicketSheet lateral con todos los campos, filtros mobile 3 filas grid 2 cols, menu de acciones por rol con historial de cambios Dialog, helper getAssignedBy, 'Por: [nombre]' en tarjeta mobile y tabla desktop, columna 'F. creacion'",
+    "detalle_ticket": "completada — history tracking automatico, PC ancho completo, breadcrumb, estado/prioridad/asignado mutable",
+    "usuarios": "completada — campo Estado visible, nomenclatura actualizada, modales Crear/Editar/Ver/Eliminar/Estado/ResetPw",
+    "notificaciones": "completada — patron Undo, estilos Gmail no leidas, 2 columnas PC, marcar/eliminar, contadores reactivos",
+    "perfil": "completada — foto clickeable FileReader, ojo en contrasenas, grupos PC, guardado con validacion",
+    "reportes": "completada — descarga simulada toast.promise, breadcrumb",
+    "auditoria": "completada — exportar toast.promise, breadcrumb",
+    "configuracion": "completada — tooltips ayuda, 2 columnas PC, switches reactivos, Guardar por seccion"
+  },
+  "nomenclatura_global": {
+    "nivel_empresa": "Empresa (antes: Sucursales)",
+    "nivel_sucursal": "Sucursal (antes: Area)",
+    "tipo_ticket": "Tipo de Servicio (antes: Tipo de Solicitud)",
+    "aplicado_en": "mocks, constantes, todos los formularios, tablas, filtros, labels y textos de UI"
+  },
+  "componentes_transversales_nuevos": {
+    "PageBreadcrumb": "src/shared/components/PageBreadcrumb.tsx — breadcrumb en todas las paginas interiores",
+    "CommandMenu": "src/shared/components/CommandMenu.tsx — busqueda global Ctrl+K desde cualquier pantalla",
+    "PageSkeletons": "src/shared/components/PageSkeletons.tsx — skeletons de carga especificos por pagina"
   },
   "design_system": {
     "fondo_principal": "#0B0C10 — var(--background) = 228 19% 5%",
     "componentes": "#111113 — var(--card) = 240 6% 7%",
     "bordes": "#26262B — var(--border) = 240 6% 16%",
     "fuente": "Geist (fonts.bunny.net CDN)",
-    "tema": "dark-only (variables oscuras en :root directamente)"
+    "tema": "dark-only (variables oscuras en :root directamente)",
+    "animaciones": "glow CSS (@keyframes glow en globals.css)"
   },
   "stack_instalado": {
     "runtime": "React 19.0.0",
@@ -89,7 +161,8 @@
   },
   "mocks": {
     "archivo": "src/mocks/data.ts",
-    "datos": "7 usuarios, 4 sucursales, 9 areas, 15 tickets (con historia/comentarios/evidencias), 8 notificaciones, 16 dias de tendencia"
+    "datos": "7 usuarios, 4 empresas, sucursales por empresa, 15 tickets (con historia/comentarios/evidencias), 8 notificaciones, 16 dias de tendencia",
+    "nomenclatura": "actualizada — Empresa/Sucursal/Tipo de Servicio"
   },
   "alias_configurados": {
     "@": "src/",
@@ -102,13 +175,15 @@
     "@mocks": "src/mocks/"
   },
   "metricas": {
-    "rutas_totales": 12,
-    "pantallas_totales": 10,
-    "archivos_creados_fase3": 18,
+    "rutas_totales": 15,
+    "pantallas_totales": 15,
+    "archivos_modificados_iteraciones_3_5_a_3_13": 28,
+    "archivos_nuevos_fase3_6": 3,
+    "archivos_nuevos_fase3_9": 3,
     "tests_unitarios": 5,
     "tests_e2e": 0
   },
-  "ultimo_commit_estable": "5ebd756",
-  "ultima_actualizacion": "2026-06-29",
-  "notas": "NO avanzar a la Fase 4 (Base de Datos) sin aprobacion explicita del usuario. Pendiente aprobacion visual de Fase 3.2 (design system oscuro + dashboard graph-first)."
+  "ultimo_commit_estable": "dc4c1b8",
+  "ultima_actualizacion": "2026-07-06",
+  "notas": "DOBLE BLOQUEO: (1) NO ejecutar commit sin autorizacion explicita del usuario — los cambios 3.5 a 3.13 estan en el working tree sin commitear. (2) NO avanzar a Fase 4 (Base de Datos / Supabase) sin aprobacion visual final del usuario. La serie Fase 3.x esta completa (3.0 → 3.13). Todas las pantallas tienen UX premium, nomenclatura unificada, componentes transversales, consistencia visual auditada, vistas dedicadas de CRUD de usuarios, sheet lateral completo para modificar tickets, branding completo (favicon logo.jpeg), badge rojo, bordes azules, menu de acciones por rol con historial de cambios, y trazabilidad de asignacion visible en tarjetas mobile y tabla desktop."
 }

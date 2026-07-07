@@ -67,11 +67,13 @@ function NavItemRow({ item, unread }: { item: NavItem; unread: number }) {
       {item.to === ROUTES.NOTIFICATIONS && unread > 0 && (
         <Badge
           className={cn(
-            'h-5 min-w-5 px-1 text-[10px] font-bold',
-            isActive ? 'bg-primary/20 text-primary' : 'bg-primary text-primary-foreground',
+            'flex h-5 min-w-5 items-center justify-center px-1 text-[10px] font-bold',
+            isActive
+              ? 'bg-destructive/20 text-destructive'
+              : 'bg-destructive text-destructive-foreground',
           )}
         >
-          {unread > 9 ? '9+' : unread}
+          {unread > 99 ? '99+' : unread}
         </Badge>
       )}
     </NavLink>
@@ -88,11 +90,9 @@ export function AppSidebar() {
     <aside className="bg-sidebar flex h-full w-sidebar flex-col border-r">
       {/* Logo */}
       <div className="flex h-header shrink-0 items-center gap-3 border-b px-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-          <Ticket className="h-4 w-4 text-primary-foreground" />
-        </div>
+        <img src="/logo.jpeg" alt="Pidde Servicio" className="h-8 w-8 rounded-md object-contain" />
         <span className="text-sidebar-foreground text-sm font-bold tracking-tight">
-          Pide Servicio
+          Pidde Servicio
         </span>
       </div>
 

@@ -5,6 +5,7 @@ import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@shared/ui/card'
 import { Badge } from '@shared/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import { cn } from '@lib/utils'
 
 type AuditAction = 'login' | 'ticket' | 'user' | 'config'
@@ -213,9 +214,9 @@ export function AuditPage() {
         ))}
       </div>
 
-      {/* Search + type filter */}
+      {/* Search + type filter — 70/30 */}
       <div className="flex gap-2">
-        <div className="relative flex-1">
+        <div className="relative flex-[7]">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar por acción, usuario o detalle..."
@@ -224,17 +225,20 @@ export function AuditPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value as AuditAction | 'all')}
-          className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-        >
-          <option value="all">Todos los tipos</option>
-          <option value="login">Acceso</option>
-          <option value="ticket">Ticket</option>
-          <option value="user">Usuario</option>
-          <option value="config">Configuración</option>
-        </select>
+        <div className="flex-[3]">
+          <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as AuditAction | 'all')}>
+            <SelectTrigger className="h-8 w-full text-xs">
+              <SelectValue placeholder="Todos los tipos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los tipos</SelectItem>
+              <SelectItem value="login">Acceso</SelectItem>
+              <SelectItem value="ticket">Ticket</SelectItem>
+              <SelectItem value="user">Usuario</SelectItem>
+              <SelectItem value="config">Configuración</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Log entries */}

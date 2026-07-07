@@ -35,6 +35,8 @@ import {
   DialogClose,
   DialogDescription,
 } from '@shared/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
+import { FormField } from '@shared/components/FormField'
 import { getTicketById, MOCK_USERS } from '@mocks/data'
 import { useAuthStore } from '@store/auth.store'
 import { ROUTES } from '@constants/index'
@@ -176,7 +178,9 @@ export function TicketDetailPage() {
   >(ticket?.assignedTo)
   const [localComments, setLocalComments] = useState<MockComment[]>(ticket?.comments ?? [])
   const [localEvidencias, setLocalEvidencias] = useState<MockEvidencia[]>(ticket?.evidencias ?? [])
+  const [localHistory, setLocalHistory] = useState<MockHistoryEntry[]>(ticket?.history ?? [])
   const [assignModal, setAssignModal] = useState(false)
+  const [selectedWorker, setSelectedWorker] = useState('')
   const [changeStatusModal, setChangeStatusModal] = useState(false)
   const [pendingStatus, setPendingStatus] = useState<TicketStatus>(localStatus)
 
@@ -198,7 +202,7 @@ export function TicketDetailPage() {
 
   const tabs: { id: ActiveTab; label: string; count: number }[] = [
     { id: 'comments', label: 'Comentarios', count: localComments.length },
-    { id: 'history', label: 'Historial', count: ticket.history.length },
+    { id: 'history', label: 'Historial', count: localHistory.length },
     { id: 'evidencias', label: 'Evidencias', count: localEvidencias.length },
   ]
 
@@ -219,16 +223,46 @@ export function TicketDetailPage() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
-  function handleAssignWorker(worker: MockUser) {
+  function handleAssignWorker() {
+    const worker = workers.find((w) => w.id === selectedWorker)
+    if (!worker) return
     setLocalAssignedTo({ id: worker.id, fullName: worker.fullName, initials: worker.initials })
     setLocalStatus('asignado')
     setAssignModal(false)
+    setSelectedWorker('')
+    const authorFullName = user ? `${user.nombre} ${user.apellido ?? ''}`.trim() : 'Sistema'
+    const authorInitials = user ? `${user.nombre.charAt(0)}${user.apellido?.charAt(0) ?? ''}` : 'S'
+    setLocalHistory((prev) => [
+      ...prev,
+      {
+        id: 'h-' + String(Date.now()),
+        action: 'Responsable asignado',
+        description: `Asignado a ${worker.fullName}`,
+        author: { id: user?.id ?? 'unknown', fullName: authorFullName, initials: authorInitials },
+        createdAt: new Date().toISOString(),
+      },
+    ])
     toast.success(`Ticket asignado a ${worker.fullName}`)
   }
 
   function handleConfirmStatusChange() {
+    const prevStatus = localStatus
     setLocalStatus(pendingStatus)
     setChangeStatusModal(false)
+    const authorFullName = user ? `${user.nombre} ${user.apellido ?? ''}`.trim() : 'Sistema'
+    const authorInitials = user ? `${user.nombre.charAt(0)}${user.apellido?.charAt(0) ?? ''}` : 'S'
+    setLocalHistory((prev) => [
+      ...prev,
+      {
+        id: 'h-' + String(Date.now()),
+        action: 'Estado actualizado',
+        fromStatus: prevStatus,
+        toStatus: pendingStatus,
+        description: '',
+        author: { id: user?.id ?? 'unknown', fullName: authorFullName, initials: authorInitials },
+        createdAt: new Date().toISOString(),
+      },
+    ])
     toast.success('Estado del ticket actualizado')
   }
 
@@ -249,6 +283,20 @@ export function TicketDetailPage() {
       isInternal,
     }
     setLocalComments((prev) => [...prev, newComment])
+    setLocalHistory((prev) => [
+      ...prev,
+      {
+        id: 'h-' + String(Date.now()),
+        action: 'Comentario agregado',
+        description: comment.trim().slice(0, 80),
+        author: {
+          id: user?.id ?? 'unknown',
+          fullName: user ? `${user.nombre} ${user.apellido ?? ''}`.trim() : 'Usuario',
+          initials: authorInitials,
+        },
+        createdAt: new Date().toISOString(),
+      },
+    ])
     setComment('')
     setIsInternal(false)
     toast.success('Comentario agregado')
@@ -297,38 +345,52 @@ export function TicketDetailPage() {
   return (
     <>
       {/* ── Modal: Asignar trabajador ── */}
-      <Dialog open={assignModal} onOpenChange={setAssignModal}>
-        <DialogContent className="max-w-sm">
+      <Dialog
+        open={assignModal}
+        onOpenChange={(open) => {
+          setAssignModal(open)
+          if (!open) setSelectedWorker('')
+        }}
+      >
+        <DialogContent className="ps-glow-modal max-w-md">
           <DialogHeader>
-            <DialogTitle>Asignar trabajador</DialogTitle>
-            <DialogDescription>
-              Selecciona el trabajador que atenderá este ticket.
-            </DialogDescription>
+            <DialogTitle className="text-base font-semibold">Asignar trabajador</DialogTitle>
           </DialogHeader>
-          <div className="max-h-72 space-y-1 overflow-y-auto py-1">
-            {workers.map((w) => (
-              <button
-                key={w.id}
-                type="button"
-                onClick={() => handleAssignWorker(w)}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-muted"
-              >
-                <Avatar initials={w.initials} size="md" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{w.fullName}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {w.sucursal} · {w.area ?? '—'}
-                  </p>
-                </div>
-              </button>
-            ))}
+          <div className="rounded-lg bg-muted p-3 text-xs">
+            <p className="font-medium">{ticket.title}</p>
+            <p className="text-muted-foreground">{ticket.code}</p>
           </div>
+          <FormField label="Trabajador" required>
+            <Select value={selectedWorker} onValueChange={setSelectedWorker}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona un trabajador" />
+              </SelectTrigger>
+              <SelectContent>
+                {workers.map((w) => (
+                  <SelectItem key={w.id} value={w.id}>
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-[9px] font-semibold text-primary">
+                        {w.initials}
+                      </span>
+                      <span>{w.fullName}</span>
+                      <Badge variant="outline" className="ml-auto text-[9px]">
+                        {w.sucursal}
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => setSelectedWorker('')}>
                 Cancelar
               </Button>
             </DialogClose>
+            <Button size="sm" disabled={!selectedWorker} onClick={handleAssignWorker}>
+              Asignar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -371,7 +433,7 @@ export function TicketDetailPage() {
       </Dialog>
 
       {/* ── Main content ── */}
-      <div className="mx-auto max-w-4xl space-y-4 p-3 lg:p-5">
+      <div className="space-y-4 p-3 lg:px-6 lg:py-5">
         {/* Header */}
         <div className="flex items-start gap-3">
           <Button
@@ -399,9 +461,9 @@ export function TicketDetailPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
           {/* Left column */}
-          <div className="space-y-4 lg:col-span-2">
+          <div className="space-y-4">
             {/* Description */}
             <Card>
               <CardHeader className="px-3 pb-2 pt-3">
@@ -512,9 +574,13 @@ export function TicketDetailPage() {
                 {/* History tab */}
                 {activeTab === 'history' && (
                   <div className="space-y-1">
-                    {ticket.history.map((entry) => (
-                      <HistoryEntry key={entry.id} entry={entry} />
-                    ))}
+                    {localHistory.length === 0 ? (
+                      <div className="py-6 text-center">
+                        <p className="text-sm text-muted-foreground">Sin historial aún.</p>
+                      </div>
+                    ) : (
+                      localHistory.map((entry) => <HistoryEntry key={entry.id} entry={entry} />)
+                    )}
                   </div>
                 )}
 
@@ -557,9 +623,9 @@ export function TicketDetailPage() {
               </CardHeader>
               <CardContent className="space-y-3 p-3 pt-0 text-sm">
                 {[
-                  { label: 'Tipo', value: ticket.type },
-                  { label: 'Sucursal', value: ticket.sucursal },
-                  { label: 'Área', value: ticket.area },
+                  { label: 'Tipo de Servicio', value: ticket.type },
+                  { label: 'Empresa', value: ticket.sucursal },
+                  { label: 'Sucursal', value: ticket.area },
                   ...(ticket.location ? [{ label: 'Ubicación', value: ticket.location }] : []),
                   {
                     label: 'Asignado a',

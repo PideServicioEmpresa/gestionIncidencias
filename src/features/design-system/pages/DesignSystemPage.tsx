@@ -215,7 +215,7 @@ export function DesignSystemPage() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-background">
+      <div className="bg-background">
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <header className="sticky top-0 z-50 border-b bg-background/90 backdrop-blur-sm">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">

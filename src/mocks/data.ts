@@ -139,7 +139,7 @@ export const MOCK_AREAS: MockArea[] = [
   { id: 'a9', name: 'Sistemas / TI', sucursalId: 's3', activo: true },
 ]
 
-// ── Tipos de solicitud ────────────────────────────────────────────────────────
+// ── Tipos de servicio ────────────────────────────────────────────────────────
 
 export const TICKET_TYPES = [
   'Incidencia de Hardware',

@@ -1,18 +1,34 @@
 import { Outlet } from 'react-router-dom'
-import { CheckCircle2, Ticket } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 
 export function AuthLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-background via-background to-muted/30 lg:flex-row">
       {/* Brand panel — desktop only */}
-      <div className="hidden flex-1 flex-col items-center justify-center bg-primary p-12 text-primary-foreground lg:flex">
-        <div className="max-w-md space-y-6">
+      <div className="relative hidden flex-1 flex-col items-center justify-center overflow-hidden bg-primary p-12 text-primary-foreground lg:flex">
+        {/* Animated background circles — brand panel */}
+        <div
+          className="ps-circle-bg ps-animate-float-a h-96 w-96 bg-white"
+          style={{ top: '-80px', left: '-60px' }}
+        />
+        <div
+          className="ps-circle-bg ps-animate-float-b h-80 w-80 bg-white"
+          style={{ bottom: '-60px', right: '-40px' }}
+        />
+        <div
+          className="ps-circle-bg ps-animate-float-c h-64 w-64 bg-white"
+          style={{ top: '40%', left: '30%' }}
+        />
+
+        <div className="relative z-10 max-w-md space-y-6">
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
-              <Ticket className="h-7 w-7" />
-            </div>
+            <img
+              src="/logo.jpeg"
+              alt="Pidde Servicio"
+              className="h-14 w-14 rounded-2xl object-contain"
+            />
             <div>
-              <h1 className="text-xl font-bold tracking-tight">Pide Servicio</h1>
+              <h1 className="text-xl font-bold tracking-tight">Pidde Servicio</h1>
               <p className="text-xs text-primary-foreground/70">
                 Sistema de gestión de incidencias
               </p>
@@ -39,16 +55,32 @@ export function AuthLayout() {
       </div>
 
       {/* Form panel */}
-      <div className="flex flex-1 flex-col items-center justify-center p-5 lg:p-10">
+      <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden p-5 lg:p-10">
+        {/* Animated background circles — form panel */}
+        <div
+          className="ps-circle-bg ps-animate-float-b h-96 w-96 bg-primary"
+          style={{ top: '-100px', right: '-80px' }}
+        />
+        <div
+          className="ps-circle-bg ps-animate-float-a h-80 w-80 bg-primary"
+          style={{ bottom: '-80px', left: '-60px' }}
+        />
+        <div
+          className="ps-circle-bg ps-animate-float-c h-64 w-64 bg-primary"
+          style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+        />
+
         {/* Mobile logo */}
-        <div className="mb-8 flex flex-col items-center gap-3 lg:hidden">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-            <Ticket className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <h1 className="text-base font-bold tracking-tight">Pide Servicio</h1>
+        <div className="relative z-10 mb-8 flex flex-col items-center gap-3 lg:hidden">
+          <img
+            src="/logo.jpeg"
+            alt="Pidde Servicio"
+            className="h-12 w-12 rounded-xl object-contain"
+          />
+          <h1 className="text-base font-bold tracking-tight">Pidde Servicio</h1>
         </div>
 
-        <div className="w-full max-w-sm">
+        <div className="relative z-10 w-full max-w-sm lg:max-w-md">
           <Outlet />
         </div>
       </div>

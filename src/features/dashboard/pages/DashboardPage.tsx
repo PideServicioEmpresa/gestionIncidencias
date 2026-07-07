@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Ticket,
@@ -13,8 +13,10 @@ import {
   RotateCcw,
   GripVertical,
   BarChart3,
+  ChevronRight,
 } from 'lucide-react'
 import { Button } from '@shared/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@shared/ui/card'
 import { StatusBadge } from '@shared/components/StatusBadge'
 import { PriorityBadge } from '@shared/components/PriorityBadge'
@@ -22,14 +24,15 @@ import { useAuthStore } from '@store/auth.store'
 import {
   MOCK_TICKETS,
   MOCK_TREND_DATA,
-  TICKET_STATUS_COUNTS,
   getTicketsByUser,
   MOCK_SUCURSALES,
+  MOCK_AREAS,
   MOCK_USERS,
   TICKET_TYPES,
 } from '@mocks/data'
 import { ROUTES, ticketDetailPath } from '@constants/index'
 import { cn } from '@lib/utils'
+import { DashboardSkeleton } from '@shared/components/PageSkeletons'
 import {
   ResponsiveContainer,
   PieChart,
@@ -50,6 +53,7 @@ import {
   Radar,
   ComposedChart,
   Line,
+  LineChart,
 } from 'recharts'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import type { DragEndEvent } from '@dnd-kit/core'
@@ -125,19 +129,33 @@ function ChartCard({
   description,
   children,
   className,
+  viewAllPath,
 }: {
   title: string
   description?: string
   children: React.ReactNode
   className?: string
+  viewAllPath?: string
 }) {
+  const navigate = useNavigate()
   return (
-    <Card className={cn('border-border/60 bg-card', className)}>
-      <CardHeader className="px-3 pb-2 pt-3">
-        <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-          {title}
-        </CardTitle>
-        {description && <CardDescription className="text-[10px]">{description}</CardDescription>}
+    <Card className={cn('ps-glow-card border-border/60 bg-card', className)}>
+      <CardHeader className="flex-row items-start justify-between px-3 pb-2 pt-3">
+        <div>
+          <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            {title}
+          </CardTitle>
+          {description && <CardDescription className="text-[10px]">{description}</CardDescription>}
+        </div>
+        {viewAllPath && (
+          <button
+            onClick={() => navigate(viewAllPath)}
+            className="flex shrink-0 items-center gap-0.5 text-xs text-primary hover:underline"
+          >
+            Ver todos
+            <ChevronRight className="h-3 w-3" />
+          </button>
+        )}
       </CardHeader>
       <CardContent className="p-3 pt-0">{children}</CardContent>
     </Card>
@@ -228,7 +246,10 @@ function WorkerDashboard() {
   const myInProgress = myTickets.filter((t) => t.status === 'en_proceso')
   const myClosed = myTickets.filter((t) => t.status === 'cerrado')
   const myCritical = myTickets.filter((t) => t.priority === 'critica' && t.status !== 'cerrado')
-  const recentTickets = myTickets.slice(0, 5)
+  const recentTickets = myTickets
+    .slice()
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 5)
 
   return (
     <div className="space-y-4 p-3 lg:p-4">
@@ -337,10 +358,38 @@ function WorkerDashboard() {
 
 // ── Admin Dashboard ─────────────────────────────────────────────────────────────
 
+// ── Sparkline mini-chart ────────────────────────────────────────────────────────
+
+function Sparkline({ data, color }: { data: number[]; color: string }) {
+  const points = data.map((v, i) => ({ v, i }))
+  return (
+    <div className="hidden items-end justify-end lg:flex">
+      <LineChart width={60} height={24} data={points}>
+        <Line
+          type="monotone"
+          dataKey="v"
+          stroke={color}
+          strokeWidth={2}
+          dot={false}
+          isAnimationActive={false}
+        />
+      </LineChart>
+    </div>
+  )
+}
+
 function AdminDashboard() {
   const navigate = useNavigate()
+  const user = useAuthStore((s) => s.user)
+  const isAdmin = user?.rol === 'admin' || user?.rol === 'superadmin'
   const [widgetOrder, setWidgetOrder] = useState<string[]>(getSavedOrder)
   const [editMode, setEditMode] = useState(false)
+  const [selectedEmpresa, setSelectedEmpresa] = useState<string>(
+    isAdmin ? 'general' : (user?.sucursalId ?? 'general'),
+  )
+  const [selectedSucursal, setSelectedSucursal] = useState<string>(
+    isAdmin ? 'general' : (user?.areaId ?? 'general'),
+  )
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
@@ -354,58 +403,91 @@ function AdminDashboard() {
     sessionStorage.setItem('ps-dashboard-order', JSON.stringify(newOrder))
   }
 
+  // ── Filtros empresa / sucursal ────────────────────────────────────────────────
+
+  const empresaActiva = selectedEmpresa === 'general' ? null : selectedEmpresa
+  const sucursalActiva = selectedSucursal === 'general' ? null : selectedSucursal
+
+  // Áreas disponibles para la empresa seleccionada
+  const areasFiltradas =
+    empresaActiva !== null
+      ? MOCK_AREAS.filter((a) => a.sucursalId === empresaActiva && a.activo)
+      : MOCK_AREAS.filter((a) => a.activo)
+
+  // Tickets filtrados según empresa y sucursal (área) activos
+  const filteredTickets = MOCK_TICKETS.filter((t) => {
+    if (empresaActiva !== null && t.sucursalId !== empresaActiva) return false
+    if (sucursalActiva !== null && t.areaId !== sucursalActiva) return false
+    return true
+  })
+
+  // Reset sucursal cuando cambia empresa
+  function handleEmpresaChange(val: string) {
+    setSelectedEmpresa(val)
+    setSelectedSucursal('general')
+  }
+
   // ── Cálculo de KPIs ───────────────────────────────────────────────────────────
 
-  const totalAbiertos =
-    TICKET_STATUS_COUNTS.sin_asignar +
-    TICKET_STATUS_COUNTS.asignado +
-    TICKET_STATUS_COUNTS.en_proceso +
-    TICKET_STATUS_COUNTS.pendiente_validacion +
-    TICKET_STATUS_COUNTS.reabierto
+  const totalAbiertos = filteredTickets.filter((t) =>
+    ['sin_asignar', 'asignado', 'en_proceso', 'pendiente_validacion', 'reabierto'].includes(
+      t.status,
+    ),
+  ).length
 
-  const criticos = MOCK_TICKETS.filter(
+  const criticos = filteredTickets.filter(
     (t) => t.priority === 'critica' && t.status !== 'cerrado',
   ).length
 
-  const cerrados = TICKET_STATUS_COUNTS.cerrado
-  const tasaResolucion = Math.round((cerrados / MOCK_TICKETS.length) * 100)
+  const cerrados = filteredTickets.filter((t) => t.status === 'cerrado').length
+  const tasaResolucion =
+    filteredTickets.length > 0 ? Math.round((cerrados / filteredTickets.length) * 100) : 0
+
+  // ── Sparkline trend data (últimos 7 días del MOCK_TREND_DATA) ──────────────────
+
+  const sparkTrend = MOCK_TREND_DATA.slice(-7).map((d) => d.creados)
+  const sparkCriticos = MOCK_TREND_DATA.slice(-7).map((_, i) => Math.max(0, 3 - Math.floor(i / 2)))
+  const sparkCerrados = MOCK_TREND_DATA.slice(-7).map((d) => d.resueltos)
+  const sparkTasa = MOCK_TREND_DATA.slice(-7).map((d) =>
+    Math.round((d.resueltos / Math.max(d.creados, 1)) * 100),
+  )
 
   // ── Datos para los gráficos ───────────────────────────────────────────────────
 
   const statusData = [
     {
       name: 'Sin asignar',
-      value: TICKET_STATUS_COUNTS.sin_asignar,
+      value: filteredTickets.filter((t) => t.status === 'sin_asignar').length,
       color: COLORS.sin_asignar,
       status: 'sin_asignar',
     },
     {
       name: 'Asignados',
-      value: TICKET_STATUS_COUNTS.asignado,
+      value: filteredTickets.filter((t) => t.status === 'asignado').length,
       color: COLORS.asignado,
       status: 'asignado',
     },
     {
       name: 'En proceso',
-      value: TICKET_STATUS_COUNTS.en_proceso,
+      value: filteredTickets.filter((t) => t.status === 'en_proceso').length,
       color: COLORS.en_proceso,
       status: 'en_proceso',
     },
     {
       name: 'Pend. validación',
-      value: TICKET_STATUS_COUNTS.pendiente_validacion,
+      value: filteredTickets.filter((t) => t.status === 'pendiente_validacion').length,
       color: COLORS.pendiente_validacion,
       status: 'pendiente_validacion',
     },
     {
       name: 'Cerrados',
-      value: TICKET_STATUS_COUNTS.cerrado,
+      value: filteredTickets.filter((t) => t.status === 'cerrado').length,
       color: COLORS.cerrado,
       status: 'cerrado',
     },
     {
       name: 'Reabiertos',
-      value: TICKET_STATUS_COUNTS.reabierto,
+      value: filteredTickets.filter((t) => t.status === 'reabierto').length,
       color: COLORS.reabierto,
       status: 'reabierto',
     },
@@ -414,25 +496,25 @@ function AdminDashboard() {
   const priorityData = [
     {
       name: 'Baja',
-      value: MOCK_TICKETS.filter((t) => t.priority === 'baja').length,
+      value: filteredTickets.filter((t) => t.priority === 'baja').length,
       color: COLORS.baja,
       priority: 'baja',
     },
     {
       name: 'Media',
-      value: MOCK_TICKETS.filter((t) => t.priority === 'media').length,
+      value: filteredTickets.filter((t) => t.priority === 'media').length,
       color: COLORS.media,
       priority: 'media',
     },
     {
       name: 'Alta',
-      value: MOCK_TICKETS.filter((t) => t.priority === 'alta').length,
+      value: filteredTickets.filter((t) => t.priority === 'alta').length,
       color: COLORS.alta,
       priority: 'alta',
     },
     {
       name: 'Crítica',
-      value: MOCK_TICKETS.filter((t) => t.priority === 'critica').length,
+      value: filteredTickets.filter((t) => t.priority === 'critica').length,
       color: COLORS.critica,
       priority: 'critica',
     },
@@ -441,29 +523,29 @@ function AdminDashboard() {
   const sucursalData = MOCK_SUCURSALES.filter((s) => s.activo).map((s) => ({
     name: s.name.length > 12 ? s.name.substring(0, 12) + '...' : s.name,
     fullName: s.name,
-    value: MOCK_TICKETS.filter((t) => t.sucursalId === s.id).length,
+    value: filteredTickets.filter((t) => t.sucursalId === s.id).length,
     sucursalId: s.id,
   }))
 
-  const uniqueAreas = [...new Set(MOCK_TICKETS.map((t) => t.area))]
+  const uniqueAreas = [...new Set(filteredTickets.map((t) => t.area))]
   const areasData = uniqueAreas
     .map((area) => ({
       name: area.length > 14 ? area.substring(0, 14) + '.' : area,
-      abiertos: MOCK_TICKETS.filter((t) => t.area === area && t.status !== 'cerrado').length,
-      cerrados: MOCK_TICKETS.filter((t) => t.area === area && t.status === 'cerrado').length,
+      abiertos: filteredTickets.filter((t) => t.area === area && t.status !== 'cerrado').length,
+      cerrados: filteredTickets.filter((t) => t.area === area && t.status === 'cerrado').length,
     }))
     .filter((a) => a.abiertos + a.cerrados > 0)
 
   const tiposData = TICKET_TYPES.map((type, i) => ({
     name: type.length > 16 ? type.substring(0, 16) + '.' : type,
-    value: MOCK_TICKETS.filter((t) => t.type === type).length,
+    value: filteredTickets.filter((t) => t.type === type).length,
     color: TICKET_TYPE_COLORS[i % TICKET_TYPE_COLORS.length],
   })).filter((t) => t.value > 0)
 
   const responsableData = MOCK_USERS.filter((u) => u.rol === 'worker' && u.activo)
     .map((u) => ({
       name: u.name + ' ' + (u.apellido?.charAt(0) ?? '') + '.',
-      total: MOCK_TICKETS.filter((t) => t.assignedTo?.id === u.id).length,
+      total: filteredTickets.filter((t) => t.assignedTo?.id === u.id).length,
     }))
     .filter((r) => r.total > 0)
     .sort((a, b) => b.total - a.total)
@@ -471,7 +553,7 @@ function AdminDashboard() {
   const radarData = ['Sin asignar', 'En proceso', 'Cerrados', 'Críticos'].map((metric) => {
     const entry: Record<string, string | number> = { metric }
     MOCK_SUCURSALES.filter((s) => s.activo).forEach((s) => {
-      const tickets = MOCK_TICKETS.filter((t) => t.sucursalId === s.id)
+      const tickets = filteredTickets.filter((t) => t.sucursalId === s.id)
       const parts = s.name.split(' ')
       const shortName = parts.length > 1 ? parts[1] : parts[0]
       if (metric === 'Sin asignar')
@@ -492,6 +574,10 @@ function AdminDashboard() {
   })
   const radarColors = ['#3b82f6', '#f97316', '#22c55e', '#8b5cf6']
 
+  const filteredTicketsSorted = filteredTickets
+    .slice()
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
   const weeklyData = [0, 1, 2, 3].map((w) => {
     const week = MOCK_TREND_DATA.slice(w * 4, (w + 1) * 4)
     return {
@@ -505,12 +591,19 @@ function AdminDashboard() {
 
   const WIDGET_DEFS: Record<
     string,
-    { title: string; description?: string; colSpan: number; chart: React.ReactNode }
+    {
+      title: string
+      description?: string
+      colSpan: number
+      viewAllPath?: string
+      chart: React.ReactNode
+    }
   > = {
     status: {
       title: 'Estado del sistema',
       description: 'Distribución por estado actual',
       colSpan: 1,
+      viewAllPath: ROUTES.TICKETS,
       chart: (
         <ResponsiveContainer width="100%" height={220}>
           <PieChart>
@@ -544,6 +637,7 @@ function AdminDashboard() {
       title: 'Por prioridad',
       description: 'Total de tickets por nivel de prioridad',
       colSpan: 1,
+      viewAllPath: ROUTES.TICKETS,
       chart: (
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={priorityData} margin={{ top: 4, right: 8, bottom: 4, left: -20 }}>
@@ -573,6 +667,7 @@ function AdminDashboard() {
       title: 'Tendencia 16 días',
       description: 'Tickets creados vs. resueltos',
       colSpan: 2,
+      viewAllPath: ROUTES.REPORTS,
       chart: (
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={MOCK_TREND_DATA} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
@@ -622,9 +717,10 @@ function AdminDashboard() {
     },
 
     sucursal: {
-      title: 'Por sucursal',
-      description: 'Total de tickets por sede activa',
+      title: 'Por empresa',
+      description: 'Total de tickets por empresa activa',
       colSpan: 1,
+      viewAllPath: ROUTES.TICKETS,
       chart: (
         <ResponsiveContainer width="100%" height={220}>
           <BarChart
@@ -659,9 +755,10 @@ function AdminDashboard() {
     },
 
     areas: {
-      title: 'Distribución por área',
-      description: 'Abiertos vs. cerrados por área',
+      title: 'Distribución por sucursal',
+      description: 'Abiertos vs. cerrados por sucursal',
       colSpan: 2,
+      viewAllPath: ROUTES.TICKETS,
       chart: (
         <ResponsiveContainer width="100%" height={200}>
           <BarChart
@@ -701,9 +798,10 @@ function AdminDashboard() {
     },
 
     tipos: {
-      title: 'Por tipo de solicitud',
+      title: 'Por tipo de servicio',
       description: 'Distribución por categoría',
       colSpan: 1,
+      viewAllPath: ROUTES.TICKETS,
       chart: (
         <ResponsiveContainer width="100%" height={220}>
           <PieChart>
@@ -734,6 +832,7 @@ function AdminDashboard() {
       title: 'Por responsable',
       description: 'Tickets asignados por trabajador',
       colSpan: 1,
+      viewAllPath: ROUTES.USERS,
       chart: (
         <ResponsiveContainer width="100%" height={220}>
           <BarChart
@@ -759,9 +858,10 @@ function AdminDashboard() {
     },
 
     radar: {
-      title: 'Comparativa sucursales',
-      description: 'Métricas normalizadas por sede',
+      title: 'Comparativa empresas',
+      description: 'Métricas normalizadas por empresa',
       colSpan: 1,
+      viewAllPath: ROUTES.REPORTS,
       chart: (
         <ResponsiveContainer width="100%" height={220}>
           <RadarChart data={radarData} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
@@ -789,6 +889,7 @@ function AdminDashboard() {
       title: 'Tendencia semanal',
       description: 'Barras = creados · Línea = resueltos acumulado',
       colSpan: 1,
+      viewAllPath: ROUTES.REPORTS,
       chart: (
         <ResponsiveContainer width="100%" height={220}>
           <ComposedChart data={weeklyData} margin={{ top: 4, right: 8, bottom: 4, left: -20 }}>
@@ -827,6 +928,8 @@ function AdminDashboard() {
       icon: Ticket,
       color: 'text-blue-400',
       bg: 'bg-blue-500/15',
+      sparkData: sparkTrend,
+      sparkColor: COLORS.primary,
     },
     {
       label: 'Críticos',
@@ -834,6 +937,8 @@ function AdminDashboard() {
       icon: AlertTriangle,
       color: criticos > 0 ? 'text-red-400' : 'text-muted-foreground',
       bg: criticos > 0 ? 'bg-red-500/15' : 'bg-muted/40',
+      sparkData: sparkCriticos,
+      sparkColor: COLORS.critica,
     },
     {
       label: 'Cerrados hoy',
@@ -841,6 +946,8 @@ function AdminDashboard() {
       icon: CheckCheck,
       color: 'text-green-400',
       bg: 'bg-green-500/15',
+      sparkData: sparkCerrados,
+      sparkColor: COLORS.success,
     },
     {
       label: 'Tasa resolución',
@@ -849,6 +956,8 @@ function AdminDashboard() {
       icon: AlertCircle,
       color: 'text-amber-400',
       bg: 'bg-amber-500/15',
+      sparkData: sparkTasa,
+      sparkColor: COLORS.pendiente_validacion,
     },
   ]
 
@@ -867,7 +976,45 @@ function AdminDashboard() {
             })}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {isAdmin && (
+            <>
+              {/* Filtro Empresa */}
+              <Select value={selectedEmpresa} onValueChange={handleEmpresaChange}>
+                <SelectTrigger className="h-8 w-auto min-w-[140px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="general">General (todas)</SelectItem>
+                  {MOCK_SUCURSALES.filter((s) => s.activo).map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {/* Filtro Sucursal (dependiente de empresa) */}
+              <Select
+                value={selectedSucursal}
+                onValueChange={setSelectedSucursal}
+                disabled={selectedEmpresa === 'general'}
+              >
+                <SelectTrigger className="h-8 w-auto min-w-[140px] text-xs">
+                  <SelectValue
+                    placeholder={selectedEmpresa === 'general' ? 'Todas las sucursales' : 'Todas'}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="general">Todas las sucursales</SelectItem>
+                  {areasFiltradas.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
           <Button
             variant={editMode ? 'default' : 'outline'}
             size="sm"
@@ -888,7 +1035,7 @@ function AdminDashboard() {
         {kpiCards.map((kpi) => {
           const Icon = kpi.icon
           return (
-            <Card key={kpi.label} className="border-border/60">
+            <Card key={kpi.label} className="ps-glow-card border-border/60">
               <CardContent className="p-3">
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -898,14 +1045,17 @@ function AdminDashboard() {
                     <Icon className={cn('h-3 w-3', kpi.color)} />
                   </div>
                 </div>
-                <p className="mt-1.5 text-2xl font-semibold tabular-nums">
-                  {kpi.value}
-                  {kpi.suffix && (
-                    <span className="ml-0.5 text-sm font-normal text-muted-foreground">
-                      {kpi.suffix}
-                    </span>
-                  )}
-                </p>
+                <div className="mt-1.5 flex items-end justify-between">
+                  <p className="text-2xl font-semibold tabular-nums">
+                    {kpi.value}
+                    {kpi.suffix && (
+                      <span className="ml-0.5 text-sm font-normal text-muted-foreground">
+                        {kpi.suffix}
+                      </span>
+                    )}
+                  </p>
+                  <Sparkline data={kpi.sparkData} color={kpi.sparkColor} />
+                </div>
               </CardContent>
             </Card>
           )
@@ -917,42 +1067,42 @@ function AdminDashboard() {
         {[
           {
             label: 'Sin asignar',
-            value: TICKET_STATUS_COUNTS.sin_asignar,
+            value: filteredTickets.filter((t) => t.status === 'sin_asignar').length,
             icon: Inbox,
             color: 'text-slate-400',
             status: 'sin_asignar',
           },
           {
             label: 'Asignados',
-            value: TICKET_STATUS_COUNTS.asignado,
+            value: filteredTickets.filter((t) => t.status === 'asignado').length,
             icon: CheckCircle2,
             color: 'text-blue-400',
             status: 'asignado',
           },
           {
             label: 'En proceso',
-            value: TICKET_STATUS_COUNTS.en_proceso,
+            value: filteredTickets.filter((t) => t.status === 'en_proceso').length,
             icon: Clock,
             color: 'text-orange-400',
             status: 'en_proceso',
           },
           {
             label: 'Pend. valid.',
-            value: TICKET_STATUS_COUNTS.pendiente_validacion,
+            value: filteredTickets.filter((t) => t.status === 'pendiente_validacion').length,
             icon: AlertCircle,
             color: 'text-amber-400',
             status: 'pendiente_validacion',
           },
           {
             label: 'Cerrados',
-            value: TICKET_STATUS_COUNTS.cerrado,
+            value: filteredTickets.filter((t) => t.status === 'cerrado').length,
             icon: CheckCheck,
             color: 'text-green-400',
             status: 'cerrado',
           },
           {
             label: 'Reabiertos',
-            value: TICKET_STATUS_COUNTS.reabierto,
+            value: filteredTickets.filter((t) => t.status === 'reabierto').length,
             icon: RotateCcw,
             color: 'text-red-400',
             status: 'reabierto',
@@ -982,7 +1132,11 @@ function AdminDashboard() {
               if (!widget) return null
               return (
                 <SortableWidget key={id} id={id} colSpan={widget.colSpan} editMode={editMode}>
-                  <ChartCard title={widget.title} description={widget.description}>
+                  <ChartCard
+                    title={widget.title}
+                    description={widget.description}
+                    viewAllPath={widget.viewAllPath}
+                  >
                     {widget.chart}
                   </ChartCard>
                 </SortableWidget>
@@ -1008,7 +1162,7 @@ function AdminDashboard() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y">
-            {MOCK_TICKETS.slice(0, 5).map((ticket) => (
+            {filteredTicketsSorted.slice(0, 5).map((ticket) => (
               <button
                 key={ticket.id}
                 className="flex w-full items-start gap-3 px-4 py-2.5 text-left transition-colors hover:bg-muted/50"
@@ -1042,5 +1196,14 @@ function AdminDashboard() {
 export function DashboardPage() {
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.rol === 'admin' || user?.rol === 'superadmin'
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const t = setTimeout(() => setIsLoading(false), 600)
+    return () => clearTimeout(t)
+  }, [])
+
+  if (isLoading) return <DashboardSkeleton />
+
   return isAdmin ? <AdminDashboard /> : <WorkerDashboard />
 }

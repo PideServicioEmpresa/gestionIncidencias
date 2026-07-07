@@ -1,4 +1,4 @@
-import { Menu, Bell, LogOut, User, Settings } from 'lucide-react'
+import { Menu, Bell, LogOut, User, Settings, Command } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@shared/ui/button'
 import { Badge } from '@shared/ui/badge'
@@ -17,9 +17,10 @@ import { getUnreadNotifications } from '@mocks/data'
 interface AppHeaderProps {
   onMenuClick?: () => void
   title?: string
+  onCommandOpen?: () => void
 }
 
-export function AppHeader({ onMenuClick, title }: AppHeaderProps) {
+export function AppHeader({ onMenuClick, title, onCommandOpen }: AppHeaderProps) {
   const navigate = useNavigate()
   const { user, clearAuth } = useAuthStore()
   const unreadCount = getUnreadNotifications().length
@@ -47,8 +48,20 @@ export function AppHeader({ onMenuClick, title }: AppHeaderProps) {
         {title && <h1 className="text-sm font-semibold text-foreground">{title}</h1>}
       </div>
 
-      {/* Right: notifications + avatar */}
+      {/* Right: command button + notifications + avatar */}
       <div className="flex items-center gap-1">
+        {/* Command Menu trigger */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 gap-1.5 px-2 text-xs text-muted-foreground"
+          onClick={onCommandOpen}
+          aria-label="Abrir menú de comandos"
+        >
+          <Command className="h-3 w-3" />
+          <span className="hidden sm:inline">Ctrl+K</span>
+        </Button>
+
         {/* Notifications bell */}
         <Button
           variant="ghost"
@@ -59,8 +72,8 @@ export function AppHeader({ onMenuClick, title }: AppHeaderProps) {
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <Badge className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
-              {unreadCount > 9 ? '9+' : unreadCount}
+            <Badge className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
+              {unreadCount > 99 ? '99+' : unreadCount}
             </Badge>
           )}
         </Button>

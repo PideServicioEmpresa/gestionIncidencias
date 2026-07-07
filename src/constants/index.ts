@@ -9,6 +9,9 @@ export const ROUTES = {
   TICKETS_NEW: '/tickets/nuevo',
   TICKETS_DETAIL: '/tickets/:id',
   USERS: '/usuarios',
+  USERS_NEW: '/usuarios/nuevo',
+  USERS_DETAIL: '/usuarios/:id',
+  USERS_EDIT: '/usuarios/:id/editar',
   WORKERS: '/trabajadores',
   SETTINGS: '/configuracion',
   NOTIFICATIONS: '/notificaciones',
@@ -19,6 +22,14 @@ export const ROUTES = {
 
 export function ticketDetailPath(id: string) {
   return `/tickets/${id}`
+}
+
+export function userDetailPath(id: string) {
+  return '/usuarios/' + id
+}
+
+export function userEditPath(id: string) {
+  return '/usuarios/' + id + '/editar'
 }
 
 // Paginacion por defecto

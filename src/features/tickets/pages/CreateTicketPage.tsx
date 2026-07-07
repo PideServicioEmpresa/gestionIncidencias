@@ -1,35 +1,78 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Upload, X, CheckCircle2, Loader2, MapPin, ChevronLeft } from 'lucide-react'
+import {
+  Upload,
+  X,
+  CheckCircle2,
+  Loader2,
+  MapPin,
+  ChevronLeft,
+  FileText,
+  Paperclip,
+} from 'lucide-react'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
-import { Label } from '@shared/ui/label'
 import { Textarea } from '@shared/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@shared/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
+import { FormField } from '@shared/components/FormField'
 import { useAuthStore } from '@store/auth.store'
 import { MOCK_SUCURSALES, MOCK_AREAS, TICKET_TYPES } from '@mocks/data'
 import { ROUTES } from '@constants/index'
 
-const createTicketSchema = z.object({
-  title: z
-    .string()
-    .min(10, 'El título debe tener al menos 10 caracteres')
-    .max(150, 'Máximo 150 caracteres'),
-  type: z.string().min(1, 'Selecciona el tipo de solicitud'),
-  priority: z.enum(['baja', 'media', 'alta', 'critica']),
-  sucursalId: z.string().min(1, 'Selecciona la sucursal'),
-  areaId: z.string().min(1, 'Selecciona el área'),
-  location: z.string().max(200, 'Máximo 200 caracteres').optional(),
-  description: z
-    .string()
-    .min(20, 'Describe el problema con al menos 20 caracteres')
-    .max(5000, 'Máximo 5000 caracteres'),
-})
+// ── Schema ────────────────────────────────────────────────────────────────────
+
+const createTicketSchema = z
+  .object({
+    title: z
+      .string()
+      .min(1, 'Ingresa un titulo para la solicitud.')
+      .min(10, 'El titulo debe tener al menos 10 caracteres.')
+      .max(150, 'Maximo 150 caracteres.'),
+    type: z.string().min(1, 'Selecciona un tipo de servicio.'),
+    tipoPersonalizado: z.string().optional(),
+    priority: z.enum(['baja', 'media', 'alta', 'critica'], {
+      errorMap: () => ({ message: 'Selecciona una prioridad.' }),
+    }),
+    sucursalId: z.string().min(1, 'Selecciona una empresa.'),
+    areaId: z.string().min(1, 'Selecciona una sucursal.'),
+    areaPersonalizada: z.string().optional(),
+    location: z.string().max(200, 'Máximo 200 caracteres').optional(),
+    description: z
+      .string()
+      .min(1, 'Describe el problema que deseas reportar.')
+      .min(20, 'Describe el problema con al menos 20 caracteres.')
+      .max(5000, 'Maximo 5000 caracteres.'),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.type === 'otros' &&
+      (!data.tipoPersonalizado || data.tipoPersonalizado.trim() === '')
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Especifica el tipo de servicio',
+        path: ['tipoPersonalizado'],
+      })
+    }
+    if (
+      data.areaId === 'otros' &&
+      (!data.areaPersonalizada || data.areaPersonalizada.trim() === '')
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Especifica la sucursal',
+        path: ['areaPersonalizada'],
+      })
+    }
+  })
+
 type CreateTicketForm = z.infer<typeof createTicketSchema>
+
+// ── Constantes ────────────────────────────────────────────────────────────────
 
 const PRIORITY_OPTIONS = [
   { value: 'baja', label: 'Baja', description: 'Sin impacto operativo urgente' },
@@ -38,12 +81,33 @@ const PRIORITY_OPTIONS = [
   { value: 'critica', label: 'Crítica', description: 'Detiene completamente las operaciones' },
 ]
 
+// ── Tipos de evidencias ───────────────────────────────────────────────────────
+
+interface AttachedFile {
+  id: string
+  file: File
+  preview: string | null // objectURL para imágenes, null para otros
+  name: string
+  size: string // "1.2 MB" formateado
+  type: string // mime type
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) {
+    return (bytes / 1024).toFixed(1) + ' KB'
+  }
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
+// ── Página ────────────────────────────────────────────────────────────────────
+
 export function CreateTicketPage() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [files, setFiles] = useState<string[]>([])
+  const [attachments, setAttachments] = useState<AttachedFile[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const defaultSucursal = user?.sucursalId ?? ''
 
@@ -52,6 +116,7 @@ export function CreateTicketPage() {
     handleSubmit,
     control,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<CreateTicketForm>({
     resolver: zodResolver(createTicketSchema),
@@ -61,7 +126,10 @@ export function CreateTicketPage() {
     },
   })
 
+  const watchedType = watch('type')
   const watchedSucursal = watch('sucursalId')
+  const watchedAreaId = watch('areaId')
+
   const areasForSucursal = MOCK_AREAS.filter((a) => a.sucursalId === watchedSucursal && a.activo)
 
   const onSubmit = (_data: CreateTicketForm) => {
@@ -72,10 +140,24 @@ export function CreateTicketPage() {
     }, 1200)
   }
 
-  const addFakeFile = () => {
-    const fakes = ['foto-equipo.jpg', 'captura-error.png', 'reporte.pdf', 'video-fallo.mp4']
-    const name = fakes[files.length % fakes.length]
-    setFiles((f) => [...f, name])
+  function handleFiles(fileList: FileList) {
+    const newFiles: AttachedFile[] = Array.from(fileList).map((file) => ({
+      id: file.name + file.size,
+      file,
+      preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
+      name: file.name,
+      size: formatFileSize(file.size),
+      type: file.type,
+    }))
+    setAttachments((prev) => [...prev, ...newFiles])
+  }
+
+  function removeAttachment(id: string) {
+    setAttachments((prev) => {
+      const removed = prev.find((a) => a.id === id)
+      if (removed?.preview) URL.revokeObjectURL(removed.preview)
+      return prev.filter((a) => a.id !== id)
+    })
   }
 
   if (submitted) {
@@ -102,7 +184,7 @@ export function CreateTicketPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4 p-3 lg:p-5">
+    <div className="space-y-4 p-3 lg:p-5">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
@@ -117,157 +199,194 @@ export function CreateTicketPage() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-        {/* Tipo y prioridad */}
+        {/* ── Clasificación ────────────────────────────────────────────── */}
         <Card>
           <CardHeader className="px-3 pb-2 pt-3">
             <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
               Clasificación
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-3 p-3 pt-0 sm:grid-cols-2">
-            {/* Tipo */}
-            <div className="space-y-1.5">
-              <Label htmlFor="type" className="text-xs font-medium">
-                Tipo de solicitud
-              </Label>
-              <Controller
-                control={control}
-                name="type"
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger id="type">
-                      <SelectValue placeholder="Seleccionar tipo..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TICKET_TYPES.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {t}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+          <CardContent className="p-3 pt-0">
+            <div className="grid gap-3 lg:grid-cols-2">
+              {/* Tipo de Servicio */}
+              <FormField label="Tipo de servicio" required error={errors.type?.message}>
+                <Controller
+                  control={control}
+                  name="type"
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger
+                        id="type"
+                        className="[data-error=true]:ring-1 [data-error=true]:ring-destructive/50 h-8 text-xs"
+                        data-error={!!errors.type}
+                      >
+                        <SelectValue placeholder="Seleccionar tipo..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TICKET_TYPES.map((t) => (
+                          <SelectItem key={t} value={t}>
+                            {t}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="otros">Otros</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {watchedType === 'otros' && (
+                  <div className="pt-1">
+                    <FormField
+                      label="Especifica el tipo de servicio"
+                      required
+                      error={errors.tipoPersonalizado?.message}
+                    >
+                      <Input
+                        id="tipoPersonalizado"
+                        className="h-8 text-xs"
+                        placeholder="Describe el tipo de servicio..."
+                        {...register('tipoPersonalizado')}
+                      />
+                    </FormField>
+                  </div>
                 )}
-              />
-              {errors.type && <p className="text-xs text-destructive">{errors.type.message}</p>}
-            </div>
+              </FormField>
 
-            {/* Prioridad */}
-            <div className="space-y-1.5">
-              <Label htmlFor="priority" className="text-xs font-medium">
-                Prioridad
-              </Label>
-              <Controller
-                control={control}
-                name="priority"
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger id="priority">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PRIORITY_OPTIONS.map((p) => (
-                        <SelectItem key={p.value} value={p.value}>
-                          <div>
-                            <p className="font-medium">{p.label}</p>
-                            <p className="text-xs text-muted-foreground">{p.description}</p>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              {/* Empresa (sucursalId) */}
+              <FormField label="Empresa" required error={errors.sucursalId?.message}>
+                <Controller
+                  control={control}
+                  name="sucursalId"
+                  render={({ field }) => (
+                    <Select
+                      onValueChange={(v) => {
+                        field.onChange(v)
+                        setValue('areaId', '')
+                      }}
+                      value={field.value}
+                    >
+                      <SelectTrigger
+                        id="sucursalId"
+                        className="[data-error=true]:ring-1 [data-error=true]:ring-destructive/50 h-8 text-xs"
+                        data-error={!!errors.sucursalId}
+                      >
+                        <SelectValue placeholder="Seleccionar empresa..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MOCK_SUCURSALES.filter((s) => s.activo).map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </FormField>
+
+              {/* Sucursal (areaId) */}
+              <FormField label="Sucursal" required error={errors.areaId?.message}>
+                <Controller
+                  control={control}
+                  name="areaId"
+                  render={({ field }) => (
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={!watchedSucursal}
+                    >
+                      <SelectTrigger
+                        id="areaId"
+                        className="[data-error=true]:ring-1 [data-error=true]:ring-destructive/50 h-8 text-xs"
+                        data-error={!!errors.areaId}
+                      >
+                        <SelectValue
+                          placeholder={
+                            watchedSucursal
+                              ? 'Selecciona una sucursal.'
+                              : 'Primero selecciona una empresa.'
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {areasForSucursal.map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.name}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="otros">Otros</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {watchedAreaId === 'otros' && (
+                  <div className="pt-1">
+                    <FormField
+                      label="Especifica la sucursal"
+                      required
+                      error={errors.areaPersonalizada?.message}
+                    >
+                      <Input
+                        id="areaPersonalizada"
+                        className="h-8 text-xs"
+                        placeholder="Nombre de la sucursal..."
+                        {...register('areaPersonalizada')}
+                      />
+                    </FormField>
+                  </div>
                 )}
-              />
+              </FormField>
+
+              {/* Prioridad */}
+              <FormField label="Prioridad" required>
+                <Controller
+                  control={control}
+                  name="priority"
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger id="priority" className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PRIORITY_OPTIONS.map((p) => (
+                          <SelectItem key={p.value} value={p.value}>
+                            <div>
+                              <p className="font-medium">{p.label}</p>
+                              <p className="text-xs text-muted-foreground">{p.description}</p>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </FormField>
             </div>
           </CardContent>
         </Card>
 
-        {/* Ubicación */}
+        {/* ── Ubicación específica ──────────────────────────────────────── */}
         <Card>
           <CardHeader className="px-3 pb-2 pt-3">
             <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
               Ubicación
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-3 p-3 pt-0 sm:grid-cols-2">
-            {/* Sucursal */}
-            <div className="space-y-1.5">
-              <Label htmlFor="sucursalId" className="text-xs font-medium">
-                Sucursal
-              </Label>
-              <Controller
-                control={control}
-                name="sucursalId"
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger id="sucursalId">
-                      <SelectValue placeholder="Seleccionar sucursal..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MOCK_SUCURSALES.filter((s) => s.activo).map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {errors.sucursalId && (
-                <p className="text-xs text-destructive">{errors.sucursalId.message}</p>
-              )}
-            </div>
-
-            {/* Área */}
-            <div className="space-y-1.5">
-              <Label htmlFor="areaId" className="text-xs font-medium">
-                Área
-              </Label>
-              <Controller
-                control={control}
-                name="areaId"
-                render={({ field }) => (
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    disabled={!watchedSucursal}
-                  >
-                    <SelectTrigger id="areaId">
-                      <SelectValue
-                        placeholder={
-                          watchedSucursal ? 'Seleccionar área...' : 'Primero elige la sucursal'
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {areasForSucursal.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {errors.areaId && <p className="text-xs text-destructive">{errors.areaId.message}</p>}
-            </div>
-
-            {/* Ubicación específica */}
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="location" className="flex items-center gap-1.5 text-xs font-medium">
-                <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                Ubicación específica{' '}
-                <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
-              </Label>
-              <Input
-                id="location"
-                placeholder="Ej: Piso 3 — Módulo B, Impresora del fondo..."
-                {...register('location')}
-              />
-            </div>
+          <CardContent className="p-3 pt-0">
+            <FormField label="Ubicación específica" optional>
+              <div className="relative">
+                <MapPin className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="location"
+                  className="h-8 pl-7 text-xs"
+                  placeholder="Ej: Piso 3 — Módulo B, Impresora del fondo..."
+                  {...register('location')}
+                />
+              </div>
+            </FormField>
           </CardContent>
         </Card>
 
-        {/* Descripción */}
+        {/* ── Detalle de la solicitud ───────────────────────────────────── */}
         <Card>
           <CardHeader className="px-3 pb-2 pt-3">
             <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -275,82 +394,121 @@ export function CreateTicketPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 p-3 pt-0">
-            <div className="space-y-1.5">
-              <Label htmlFor="title" className="text-xs font-medium">
-                Título
-              </Label>
+            <FormField label="Título" required error={errors.title?.message}>
               <Input
                 id="title"
+                className="h-8 text-xs"
                 placeholder="Describe brevemente el problema o solicitud..."
                 {...register('title')}
               />
-              {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="description" className="text-xs font-medium">
-                Descripción completa
-              </Label>
+            </FormField>
+            <FormField label="Descripción completa" required error={errors.description?.message}>
               <Textarea
                 id="description"
                 rows={5}
                 placeholder="Describe con detalle: ¿Qué ocurrió? ¿Cuándo empezó? ¿Qué intentaste hacer para resolverlo? ¿A cuántos usuarios afecta?"
-                className="resize-none"
+                className="resize-none text-xs"
                 {...register('description')}
               />
-              {errors.description && (
-                <p className="text-xs text-destructive">{errors.description.message}</p>
-              )}
-            </div>
+            </FormField>
+            <FormField label="Observaciones adicionales" optional>
+              <Textarea
+                id="observaciones"
+                rows={2}
+                placeholder="Cualquier información adicional relevante..."
+                className="resize-none text-xs"
+              />
+            </FormField>
           </CardContent>
         </Card>
 
-        {/* Evidencias */}
+        {/* ── Evidencias ───────────────────────────────────────────────── */}
         <Card>
           <CardHeader className="px-3 pb-2 pt-3">
             <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
               Evidencias
+              <span className="ml-1 text-[10px] font-normal normal-case tracking-normal text-muted-foreground">
+                (Opcional)
+              </span>
             </CardTitle>
             <CardDescription className="text-[11px] text-muted-foreground">
-              Adjunta fotos, capturas de pantalla o documentos.
+              Adjunta fotos, capturas de pantalla, videos o documentos.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 p-3 pt-0">
-            {files.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {files.map((f, i) => (
+            {/* Galería de archivos adjuntos */}
+            {attachments.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {attachments.map((att) => (
                   <div
-                    key={i}
-                    className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-1.5 text-xs"
+                    key={att.id}
+                    className="group relative overflow-hidden rounded-lg border bg-muted"
                   >
-                    <span className="max-w-32 truncate font-medium">{f}</span>
+                    {/* Preview */}
+                    {att.preview ? (
+                      <img src={att.preview} alt={att.name} className="h-20 w-full object-cover" />
+                    ) : (
+                      <div className="flex h-20 items-center justify-center">
+                        {att.type.includes('pdf') && <FileText className="h-8 w-8 text-red-500" />}
+                        {(att.type.includes('word') || att.type.includes('doc')) && (
+                          <FileText className="h-8 w-8 text-blue-500" />
+                        )}
+                        {!att.type.includes('pdf') &&
+                          !att.type.includes('word') &&
+                          !att.type.includes('doc') && (
+                            <Paperclip className="h-8 w-8 text-muted-foreground" />
+                          )}
+                      </div>
+                    )}
+
+                    {/* Información del archivo */}
+                    <div className="p-1.5">
+                      <p className="truncate text-[10px] font-medium">{att.name}</p>
+                      <p className="text-[9px] text-muted-foreground">{att.size}</p>
+                    </div>
+
+                    {/* Botón eliminar — siempre visible para garantizar acceso táctil */}
                     <button
                       type="button"
-                      onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))}
-                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => removeAttachment(att.id)}
+                      className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-background/90 shadow-sm transition-colors hover:bg-background"
+                      aria-label={`Eliminar ${att.name}`}
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 ))}
               </div>
             )}
+
+            {/* Input real de archivo (oculto) */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx"
+              className="sr-only"
+              onChange={(e) => e.target.files && handleFiles(e.target.files)}
+            />
+
+            {/* Zona de clic para abrir el selector */}
             <button
               type="button"
-              onClick={addFakeFile}
+              onClick={() => fileInputRef.current?.click()}
               className="flex w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border px-4 py-4 transition-colors hover:border-primary/50 hover:bg-muted/50"
             >
               <Upload className="h-5 w-5 text-muted-foreground" />
               <div className="text-center">
                 <p className="text-xs font-medium">Haz clic para adjuntar archivo</p>
                 <p className="text-[11px] text-muted-foreground">
-                  PNG, JPG, PDF, MP4 · máx. 10 MB por archivo
+                  PNG, JPG, GIF, WEBP, MP4, MOV, PDF, DOC, XLS · máx. 10 MB por archivo
                 </p>
               </div>
             </button>
           </CardContent>
         </Card>
 
-        {/* Actions */}
+        {/* ── Acciones ─────────────────────────────────────────────────── */}
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" onClick={() => navigate(-1)} disabled={loading}>
             Cancelar

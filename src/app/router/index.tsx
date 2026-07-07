@@ -11,6 +11,9 @@ import { MyTicketsPage } from '@features/tickets/pages/MyTicketsPage'
 import { CreateTicketPage } from '@features/tickets/pages/CreateTicketPage'
 import { TicketDetailPage } from '@features/tickets/pages/TicketDetailPage'
 import { UsersPage } from '@features/users/pages/UsersPage'
+import { UserNewPage } from '@features/users/pages/UserNewPage'
+import { UserDetailPage } from '@features/users/pages/UserDetailPage'
+import { UserEditPage } from '@features/users/pages/UserEditPage'
 import { NotificationsPage } from '@features/notifications/pages/NotificationsPage'
 import { ProfilePage } from '@features/profile/pages/ProfilePage'
 import { DesignSystemPage } from '@features/design-system/pages/DesignSystemPage'
@@ -68,6 +71,9 @@ const router = createBrowserRouter([
           { path: ROUTES.TICKETS_NEW, element: <CreateTicketPage /> },
           { path: '/tickets/:id', element: <TicketDetailPage /> },
           { path: ROUTES.USERS, element: <UsersPage /> },
+          { path: ROUTES.USERS_NEW, element: <UserNewPage /> },
+          { path: ROUTES.USERS_DETAIL, element: <UserDetailPage /> },
+          { path: ROUTES.USERS_EDIT, element: <UserEditPage /> },
           { path: ROUTES.NOTIFICATIONS, element: <NotificationsPage /> },
           { path: ROUTES.PROFILE, element: <ProfilePage /> },
           { path: ROUTES.REPORTS, element: <ReportsPage /> },

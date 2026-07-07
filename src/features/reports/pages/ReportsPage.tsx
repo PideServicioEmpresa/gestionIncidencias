@@ -67,8 +67,9 @@ const AVAILABLE_REPORTS = [
     badge: 'Disponible',
   },
   {
-    title: 'Índice de cierre por área',
-    description: 'Porcentaje de tickets cerrados por área y sucursal en el período seleccionado.',
+    title: 'Índice de cierre por sucursal',
+    description:
+      'Porcentaje de tickets cerrados por sucursal y empresa en el período seleccionado.',
     icon: CheckCircle2,
     badge: 'Disponible',
   },
@@ -120,7 +121,7 @@ export function ReportsPage() {
         <Card className="lg:col-span-2">
           <CardHeader className="px-3 pb-2 pt-3">
             <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Tickets por sucursal
+              Tickets por empresa
             </CardTitle>
             <CardDescription>Comparativo resueltos vs. pendientes</CardDescription>
           </CardHeader>
@@ -215,7 +216,7 @@ export function ReportsPage() {
       <Card>
         <CardHeader className="px-3 pb-2 pt-3">
           <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Tickets por tipo de solicitud
+            Tickets por tipo de servicio
           </CardTitle>
           <CardDescription>Histograma de categorías más frecuentes</CardDescription>
         </CardHeader>
