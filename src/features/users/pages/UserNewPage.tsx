@@ -1,34 +1,39 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, User } from 'lucide-react'
+import { ArrowLeft, User, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { Badge } from '@shared/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import { FormField } from '@shared/components/FormField'
-import { MOCK_SUCURSALES, MOCK_AREAS } from '@mocks/data'
-import type { MockArea } from '@mocks/data'
+import { useCrearUsuario } from '../hooks/useUsuarios'
+import { useAuthStore } from '@store/auth.store'
 import type { UserRole } from '@types-app/index'
 import { ROUTES } from '@constants/index'
 
-// ── Constantes de presentacion ────────────────────────────────────────────────
+// ── Constantes de presentación ────────────────────────────────────────────────
 
 const ROL_LABELS: Record<UserRole, string> = {
   superadmin: 'SuperAdministrador',
   admin: 'Administrador',
-  worker: 'Trabajador',
-  user: 'Usuario',
+  supervisor: 'Supervisor',
+  tecnico: 'Técnico',
+  trabajador: 'Trabajador',
+  usuario: 'Usuario',
 }
 
 const ROL_COLORS: Record<UserRole, string> = {
   superadmin:
     'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border-transparent',
   admin: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-transparent',
-  worker:
+  supervisor: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400 border-transparent',
+  tecnico:
     'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-transparent',
-  user: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border-transparent',
+  trabajador:
+    'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-transparent',
+  usuario: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border-transparent',
 }
 
 // ── Estado del formulario ─────────────────────────────────────────────────────
@@ -38,10 +43,9 @@ interface FormState {
   apellido: string
   correo: string
   telefono: string
+  contrasena: string
+  confirmarContrasena: string
   rol: UserRole | ''
-  sucursalId: string
-  areaId: string
-  estado: 'activo' | 'inactivo'
 }
 
 const INITIAL_FORM: FormState = {
@@ -49,25 +53,22 @@ const INITIAL_FORM: FormState = {
   apellido: '',
   correo: '',
   telefono: '',
+  contrasena: '',
+  confirmarContrasena: '',
   rol: '',
-  sucursalId: '',
-  areaId: '',
-  estado: 'activo',
 }
 
 // ── UserNewPage ───────────────────────────────────────────────────────────────
 
 export function UserNewPage() {
   const navigate = useNavigate()
+  const crearUsuario = useCrearUsuario()
+  const currentUser = useAuthStore((s) => s.user)
 
   const [form, setForm] = useState<FormState>(INITIAL_FORM)
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({})
-
-  // Areas filtradas por empresa seleccionada
-  const areasFiltered = useMemo<MockArea[]>(
-    () => MOCK_AREAS.filter((a) => a.sucursalId === form.sucursalId && a.activo),
-    [form.sucursalId],
-  )
+  const [showPw, setShowPw] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   // Iniciales calculadas en tiempo real
   const initials = useMemo(() => {
@@ -79,37 +80,49 @@ export function UserNewPage() {
   // ── Handlers ────────────────────────────────────────────────────────────────
 
   function handleChange(field: keyof FormState, value: string) {
-    setForm((prev) => ({
-      ...prev,
-      [field]: value,
-      // Al cambiar empresa se limpia la sucursal
-      ...(field === 'sucursalId' ? { areaId: '' } : {}),
-    }))
+    setForm((prev) => ({ ...prev, [field]: value }))
     setErrors((prev) => ({ ...prev, [field]: undefined }))
   }
 
   function validate(): boolean {
     const next: Partial<Record<keyof FormState, string>> = {}
-    if (!form.name.trim()) next.name = 'Ingresa tu nombre completo.'
-    if (!form.apellido.trim()) next.apellido = 'Ingresa tu apellido completo.'
-    if (!form.correo.trim()) next.correo = 'Ingresa un correo electronico valido.'
+    if (!form.name.trim()) next.name = 'Ingresa el nombre completo.'
+    if (!form.apellido.trim()) next.apellido = 'Ingresa el apellido completo.'
+    if (!form.correo.trim()) next.correo = 'Ingresa un correo electrónico válido.'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.correo))
-      next.correo = 'Ingresa un correo electronico valido.'
+      next.correo = 'Ingresa un correo electrónico válido.'
+    if (!form.contrasena) next.contrasena = 'Ingresa una contraseña temporal.'
+    else if (form.contrasena.length < 8) next.contrasena = 'Mínimo 8 caracteres.'
+    if (form.confirmarContrasena !== form.contrasena)
+      next.confirmarContrasena = 'Las contraseñas no coinciden.'
     if (!form.rol) next.rol = 'Selecciona un rol.'
-    if (!form.sucursalId) next.sucursalId = 'Selecciona una empresa.'
-    if (!form.estado) next.estado = 'Selecciona un estado.'
     setErrors(next)
     return Object.keys(next).length === 0
   }
 
   function handleSubmit() {
     if (!validate()) return
-
-    const id = Math.random().toString(36).slice(2, 8)
-    void id // id generado para uso futuro en BD
-
-    toast.success('Usuario creado correctamente')
-    navigate(ROUTES.USERS)
+    const sucursalId = currentUser?.sucursalId
+    if (!sucursalId) {
+      toast.error('No se pudo determinar la sucursal del usuario actual.')
+      return
+    }
+    const nombreUsuario = form.correo.split('@')[0] ?? form.correo
+    crearUsuario.mutate(
+      {
+        sucursalId,
+        nombre: form.name.trim(),
+        apellido: form.apellido.trim(),
+        correo: form.correo.trim(),
+        nombreUsuario,
+        contrasena: form.contrasena,
+        telefono: form.telefono.trim() || undefined,
+        rol: form.rol.toUpperCase(),
+      },
+      {
+        onSuccess: () => navigate(ROUTES.USERS),
+      },
+    )
   }
 
   function handleCancel() {
@@ -197,6 +210,52 @@ export function UserNewPage() {
                   autoComplete="tel"
                 />
               </FormField>
+
+              <FormField label="Contraseña temporal" required error={errors.contrasena}>
+                <div className="relative">
+                  <Input
+                    className="h-9 pr-9 text-sm"
+                    type={showPw ? 'text' : 'password'}
+                    placeholder="Mínimo 8 caracteres"
+                    value={form.contrasena}
+                    onChange={(e) => handleChange('contrasena', e.target.value)}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => setShowPw((v) => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:outline-none"
+                  >
+                    {showPw ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+              </FormField>
+
+              <FormField label="Confirmar contraseña" required error={errors.confirmarContrasena}>
+                <div className="relative">
+                  <Input
+                    className="h-9 pr-9 text-sm"
+                    type={showConfirm ? 'text' : 'password'}
+                    placeholder="Repite la contraseña"
+                    value={form.confirmarContrasena}
+                    onChange={(e) => handleChange('confirmarContrasena', e.target.value)}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => setShowConfirm((v) => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:outline-none"
+                  >
+                    {showConfirm ? (
+                      <EyeOff className="h-3.5 w-3.5" />
+                    ) : (
+                      <Eye className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </div>
+              </FormField>
             </CardContent>
           </Card>
 
@@ -206,84 +265,26 @@ export function UserNewPage() {
               <CardTitle className="text-sm font-semibold">Acceso y permisos</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 p-3 pt-0">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <FormField label="Rol" required error={errors.rol}>
-                  <Select value={form.rol} onValueChange={(v) => handleChange('rol', v)}>
-                    <SelectTrigger className="h-9 text-sm">
-                      <SelectValue placeholder="Seleccionar rol" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="worker">Trabajador</SelectItem>
-                      <SelectItem value="admin">Administrador</SelectItem>
-                      <SelectItem value="superadmin">SuperAdministrador</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormField>
-
-                <FormField label="Estado" required error={errors.estado}>
-                  <Select
-                    value={form.estado}
-                    onValueChange={(v) => handleChange('estado', v as 'activo' | 'inactivo')}
-                  >
-                    <SelectTrigger className="h-9 text-sm">
-                      <SelectValue placeholder="Seleccionar estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="activo">Activo</SelectItem>
-                      <SelectItem value="inactivo">Inactivo</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormField>
-              </div>
-
-              <FormField label="Empresa" required error={errors.sucursalId}>
-                <Select
-                  value={form.sucursalId}
-                  onValueChange={(v) => handleChange('sucursalId', v)}
-                >
+              <FormField label="Rol" required error={errors.rol}>
+                <Select value={form.rol} onValueChange={(v) => handleChange('rol', v)}>
                   <SelectTrigger className="h-9 text-sm">
-                    <SelectValue placeholder="Seleccionar empresa" />
+                    <SelectValue placeholder="Seleccionar rol" />
                   </SelectTrigger>
                   <SelectContent>
-                    {MOCK_SUCURSALES.filter((s) => s.activo).map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="trabajador">Trabajador</SelectItem>
+                    <SelectItem value="tecnico">Técnico</SelectItem>
+                    <SelectItem value="supervisor">Supervisor</SelectItem>
+                    <SelectItem value="admin">Administrador</SelectItem>
+                    <SelectItem value="superadmin">SuperAdministrador</SelectItem>
                   </SelectContent>
                 </Select>
               </FormField>
 
-              <FormField label="Sucursal" optional>
-                <Select
-                  value={form.areaId}
-                  onValueChange={(v) => handleChange('areaId', v)}
-                  disabled={!form.sucursalId}
-                >
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue
-                      placeholder={
-                        form.sucursalId
-                          ? 'Selecciona una sucursal.'
-                          : 'Primero selecciona una empresa.'
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {areasFiltered.length === 0 ? (
-                      <SelectItem value="_empty" disabled>
-                        Sin sucursales disponibles
-                      </SelectItem>
-                    ) : (
-                      areasFiltered.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </FormField>
+              {currentUser?.sucursalId && (
+                <p className="text-xs text-muted-foreground">
+                  El usuario será creado en tu sucursal actual.
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -292,7 +293,9 @@ export function UserNewPage() {
             <Button variant="outline" onClick={handleCancel}>
               Cancelar
             </Button>
-            <Button onClick={handleSubmit}>Crear usuario</Button>
+            <Button disabled={crearUsuario.isPending} onClick={handleSubmit}>
+              {crearUsuario.isPending ? 'Creando...' : 'Crear usuario'}
+            </Button>
           </div>
         </div>
 
@@ -339,32 +342,10 @@ export function UserNewPage() {
 
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">Estado</span>
-                  {form.estado === 'activo' ? (
-                    <Badge className="border-transparent bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                      Activo
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary">Inactivo</Badge>
-                  )}
+                  <Badge className="border-transparent bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                    Activo
+                  </Badge>
                 </div>
-
-                {form.sucursalId && (
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Empresa</span>
-                    <span className="max-w-[140px] truncate text-right font-medium">
-                      {MOCK_SUCURSALES.find((s) => s.id === form.sucursalId)?.name ?? ''}
-                    </span>
-                  </div>
-                )}
-
-                {form.areaId && (
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Sucursal</span>
-                    <span className="max-w-[140px] truncate text-right font-medium">
-                      {MOCK_AREAS.find((a) => a.id === form.areaId)?.name ?? ''}
-                    </span>
-                  </div>
-                )}
               </div>
 
               {/* Hint */}

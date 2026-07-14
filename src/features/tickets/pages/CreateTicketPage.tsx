@@ -20,55 +20,32 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@shar
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import { FormField } from '@shared/components/FormField'
 import { useAuthStore } from '@store/auth.store'
-import { MOCK_SUCURSALES, MOCK_AREAS, TICKET_TYPES } from '@mocks/data'
 import { ROUTES } from '@constants/index'
+import { useCrearTicket } from '../hooks/useTickets'
+import { useTiposServicio, useSucursales, useAreas, useCategorias } from '../hooks/useCatalogos'
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
-const createTicketSchema = z
-  .object({
-    title: z
-      .string()
-      .min(1, 'Ingresa un titulo para la solicitud.')
-      .min(10, 'El titulo debe tener al menos 10 caracteres.')
-      .max(150, 'Maximo 150 caracteres.'),
-    type: z.string().min(1, 'Selecciona un tipo de servicio.'),
-    tipoPersonalizado: z.string().optional(),
-    priority: z.enum(['baja', 'media', 'alta', 'critica'], {
-      errorMap: () => ({ message: 'Selecciona una prioridad.' }),
-    }),
-    sucursalId: z.string().min(1, 'Selecciona una empresa.'),
-    areaId: z.string().min(1, 'Selecciona una sucursal.'),
-    areaPersonalizada: z.string().optional(),
-    location: z.string().max(200, 'Máximo 200 caracteres').optional(),
-    description: z
-      .string()
-      .min(1, 'Describe el problema que deseas reportar.')
-      .min(20, 'Describe el problema con al menos 20 caracteres.')
-      .max(5000, 'Maximo 5000 caracteres.'),
-  })
-  .superRefine((data, ctx) => {
-    if (
-      data.type === 'otros' &&
-      (!data.tipoPersonalizado || data.tipoPersonalizado.trim() === '')
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Especifica el tipo de servicio',
-        path: ['tipoPersonalizado'],
-      })
-    }
-    if (
-      data.areaId === 'otros' &&
-      (!data.areaPersonalizada || data.areaPersonalizada.trim() === '')
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Especifica la sucursal',
-        path: ['areaPersonalizada'],
-      })
-    }
-  })
+const createTicketSchema = z.object({
+  title: z
+    .string()
+    .min(1, 'Ingresa un titulo para la solicitud.')
+    .min(10, 'El titulo debe tener al menos 10 caracteres.')
+    .max(150, 'Maximo 150 caracteres.'),
+  type: z.string().min(1, 'Selecciona un tipo de servicio.'),
+  categoriaId: z.string().min(1, 'Selecciona una categoría.'),
+  priority: z.enum(['baja', 'media', 'alta', 'critica'], {
+    errorMap: () => ({ message: 'Selecciona una prioridad.' }),
+  }),
+  sucursalId: z.string().min(1, 'Selecciona una empresa.'),
+  areaId: z.string().min(1, 'Selecciona una sucursal.'),
+  location: z.string().max(200, 'Máximo 200 caracteres').optional(),
+  description: z
+    .string()
+    .min(1, 'Describe el problema que deseas reportar.')
+    .min(20, 'Describe el problema con al menos 20 caracteres.')
+    .max(5000, 'Maximo 5000 caracteres.'),
+})
 
 type CreateTicketForm = z.infer<typeof createTicketSchema>
 
@@ -81,7 +58,7 @@ const PRIORITY_OPTIONS = [
   { value: 'critica', label: 'Crítica', description: 'Detiene completamente las operaciones' },
 ]
 
-// ── Tipos de evidencias ───────────────────────────────────────────────────────
+// ── Tipos de evidencias adjuntas ──────────────────────────────────────────────
 
 interface AttachedFile {
   id: string
@@ -105,9 +82,19 @@ export function CreateTicketPage() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const [submitted, setSubmitted] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [createdCode, setCreatedCode] = useState<string>('')
   const [attachments, setAttachments] = useState<AttachedFile[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const crearTicket = useCrearTicket()
+  const tiposServicioQuery = useTiposServicio(user?.empresaId)
+  const tiposServicio = (tiposServicioQuery.data ?? []).filter((t) => t.activo)
+  const categoriasQuery = useCategorias(user?.empresaId)
+  const categorias = (categoriasQuery.data ?? []).filter((c) => c.activa)
+  const sucursalesQuery = useSucursales(user?.empresaId)
+  const sucursales = (sucursalesQuery.data ?? []).filter((s) => s.activa)
+  const areasQuery = useAreas(user?.empresaId)
+  const areas = (areasQuery.data ?? []).filter((a) => a.activa)
 
   const defaultSucursal = user?.sucursalId ?? ''
 
@@ -126,18 +113,27 @@ export function CreateTicketPage() {
     },
   })
 
-  const watchedType = watch('type')
   const watchedSucursal = watch('sucursalId')
-  const watchedAreaId = watch('areaId')
 
-  const areasForSucursal = MOCK_AREAS.filter((a) => a.sucursalId === watchedSucursal && a.activo)
-
-  const onSubmit = (_data: CreateTicketForm) => {
-    setLoading(true)
-    setTimeout(() => {
-      setLoading(false)
-      setSubmitted(true)
-    }, 1200)
+  const onSubmit = (data: CreateTicketForm) => {
+    crearTicket.mutate(
+      {
+        titulo: data.title,
+        descripcion: data.description,
+        sucursalId: data.sucursalId,
+        areaId: data.areaId,
+        tipoServicioId: data.type,
+        categoriaId: data.categoriaId,
+        prioridad: data.priority.toUpperCase(),
+        ubicacion: data.location,
+      },
+      {
+        onSuccess: (ticketCode) => {
+          setCreatedCode(ticketCode ?? '')
+          setSubmitted(true)
+        },
+      },
+    )
   }
 
   function handleFiles(fileList: FileList) {
@@ -171,7 +167,9 @@ export function CreateTicketPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             Tu solicitud fue registrada y será asignada en breve.
           </p>
-          <p className="mt-1 font-mono text-sm font-semibold text-primary">PS-0016</p>
+          {createdCode && (
+            <p className="mt-1 font-mono text-sm font-semibold text-primary">{createdCode}</p>
+          )}
         </div>
         <div className="flex gap-3">
           <Button variant="outline" onClick={() => navigate(ROUTES.TICKETS)}>
@@ -187,8 +185,14 @@ export function CreateTicketPage() {
     <div className="space-y-4 p-3 lg:p-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
-          <ChevronLeft className="h-4 w-4" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => navigate(-1)}
+          aria-label="Volver"
+        >
+          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
         </Button>
         <div>
           <h2 className="text-base font-semibold tracking-tight">Nuevo ticket</h2>
@@ -214,41 +218,66 @@ export function CreateTicketPage() {
                   control={control}
                   name="type"
                   render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={tiposServicioQuery.isLoading}
+                    >
                       <SelectTrigger
                         id="type"
                         className="[data-error=true]:ring-1 [data-error=true]:ring-destructive/50 h-8 text-xs"
                         data-error={!!errors.type}
                       >
-                        <SelectValue placeholder="Seleccionar tipo..." />
+                        <SelectValue
+                          placeholder={
+                            tiposServicioQuery.isLoading ? 'Cargando...' : 'Seleccionar tipo...'
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
-                        {TICKET_TYPES.map((t) => (
-                          <SelectItem key={t} value={t}>
-                            {t}
+                        {tiposServicio.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.nombre}
                           </SelectItem>
                         ))}
-                        <SelectItem value="otros">Otros</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
                 />
-                {watchedType === 'otros' && (
-                  <div className="pt-1">
-                    <FormField
-                      label="Especifica el tipo de servicio"
-                      required
-                      error={errors.tipoPersonalizado?.message}
+              </FormField>
+
+              {/* Categoría */}
+              <FormField label="Categoría" required error={errors.categoriaId?.message}>
+                <Controller
+                  control={control}
+                  name="categoriaId"
+                  render={({ field }) => (
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={categoriasQuery.isLoading}
                     >
-                      <Input
-                        id="tipoPersonalizado"
-                        className="h-8 text-xs"
-                        placeholder="Describe el tipo de servicio..."
-                        {...register('tipoPersonalizado')}
-                      />
-                    </FormField>
-                  </div>
-                )}
+                      <SelectTrigger
+                        id="categoriaId"
+                        className="[data-error=true]:ring-1 [data-error=true]:ring-destructive/50 h-8 text-xs"
+                        data-error={!!errors.categoriaId}
+                      >
+                        <SelectValue
+                          placeholder={
+                            categoriasQuery.isLoading ? 'Cargando...' : 'Seleccionar categoría...'
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categorias.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </FormField>
 
               {/* Empresa (sucursalId) */}
@@ -263,18 +292,23 @@ export function CreateTicketPage() {
                         setValue('areaId', '')
                       }}
                       value={field.value}
+                      disabled={sucursalesQuery.isLoading}
                     >
                       <SelectTrigger
                         id="sucursalId"
                         className="[data-error=true]:ring-1 [data-error=true]:ring-destructive/50 h-8 text-xs"
                         data-error={!!errors.sucursalId}
                       >
-                        <SelectValue placeholder="Seleccionar empresa..." />
+                        <SelectValue
+                          placeholder={
+                            sucursalesQuery.isLoading ? 'Cargando...' : 'Seleccionar empresa...'
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
-                        {MOCK_SUCURSALES.filter((s) => s.activo).map((s) => (
+                        {sucursales.map((s) => (
                           <SelectItem key={s.id} value={s.id}>
-                            {s.name}
+                            {s.nombre}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -292,7 +326,7 @@ export function CreateTicketPage() {
                     <Select
                       onValueChange={field.onChange}
                       value={field.value}
-                      disabled={!watchedSucursal}
+                      disabled={!watchedSucursal || areasQuery.isLoading}
                     >
                       <SelectTrigger
                         id="areaId"
@@ -301,39 +335,24 @@ export function CreateTicketPage() {
                       >
                         <SelectValue
                           placeholder={
-                            watchedSucursal
-                              ? 'Selecciona una sucursal.'
-                              : 'Primero selecciona una empresa.'
+                            !watchedSucursal
+                              ? 'Primero selecciona una empresa.'
+                              : areasQuery.isLoading
+                                ? 'Cargando...'
+                                : 'Selecciona una sucursal.'
                           }
                         />
                       </SelectTrigger>
                       <SelectContent>
-                        {areasForSucursal.map((a) => (
+                        {areas.map((a) => (
                           <SelectItem key={a.id} value={a.id}>
-                            {a.name}
+                            {a.nombre}
                           </SelectItem>
                         ))}
-                        <SelectItem value="otros">Otros</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
                 />
-                {watchedAreaId === 'otros' && (
-                  <div className="pt-1">
-                    <FormField
-                      label="Especifica la sucursal"
-                      required
-                      error={errors.areaPersonalizada?.message}
-                    >
-                      <Input
-                        id="areaPersonalizada"
-                        className="h-8 text-xs"
-                        placeholder="Nombre de la sucursal..."
-                        {...register('areaPersonalizada')}
-                      />
-                    </FormField>
-                  </div>
-                )}
               </FormField>
 
               {/* Prioridad */}
@@ -409,14 +428,6 @@ export function CreateTicketPage() {
                 placeholder="Describe con detalle: ¿Qué ocurrió? ¿Cuándo empezó? ¿Qué intentaste hacer para resolverlo? ¿A cuántos usuarios afecta?"
                 className="resize-none text-xs"
                 {...register('description')}
-              />
-            </FormField>
-            <FormField label="Observaciones adicionales" optional>
-              <Textarea
-                id="observaciones"
-                rows={2}
-                placeholder="Cualquier información adicional relevante..."
-                className="resize-none text-xs"
               />
             </FormField>
           </CardContent>
@@ -510,11 +521,16 @@ export function CreateTicketPage() {
 
         {/* ── Acciones ─────────────────────────────────────────────────── */}
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <Button type="button" variant="outline" onClick={() => navigate(-1)} disabled={loading}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate(-1)}
+            disabled={crearTicket.isPending}
+          >
             Cancelar
           </Button>
-          <Button type="submit" disabled={loading} className="sm:min-w-32">
-            {loading ? (
+          <Button type="submit" disabled={crearTicket.isPending} className="sm:min-w-32">
+            {crearTicket.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Enviando...

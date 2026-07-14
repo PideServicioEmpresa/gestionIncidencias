@@ -5,10 +5,45 @@
   "modo_actual": "Frontend First (aprobado por usuario 2026-06-29)",
   "nota_modo": "El orden original del SDD fue modificado. Primero: Design System → Layout → UI con Mock Data → DB/Backend.",
   "fase_actual": {
-    "numero": "3.13",
-    "nombre": "Favicon logo.jpeg, trazabilidad de asignacion en tickets y columna F. creacion",
-    "estado": "completada — pendiente commit (requiere autorizacion explicita del usuario) y aprobacion del usuario",
-    "descripcion": "index.html: favicon cambiado de favicon.svg a /logo.jpeg. MyTicketsPage.tsx: helper getAssignedBy() anade al historial del ticket el autor de la asignacion. Tarjeta mobile: muestra 'Asignado a: [nombre]' + 'Por: [nombre]'. Tabla desktop: columna 'Fecha' renombrada a 'F. creacion'; celda Asignado a incluye sub-linea 'Por: [nombre]'. TypeScript: 0 errores. Preview verificado mobile 375px y desktop 1280px."
+    "numero": "7.0-en-curso",
+    "nombre": "Hardening y Estabilización RC — En Curso",
+    "estado": "EN_CURSO",
+    "descripcion": "FASE 6.6 COMPLETADA (2026-07-11). Integración completa Frontend-Backend-Supabase. 13 páginas frontend migradas de mocks a API real. Servicios HTTP: ticketService, usuarioService, notificacionService, configuracionService, auditoriaService. Hooks TanStack Query. Backend compilando en net10.0 (0 errores). 57/57 handlers verificados. Auth hook skeleton creado. QA Docs: 84 casos de prueba, 9 limitaciones, guía deployment.",
+    "bloqueante_l001": "JWT de Supabase no incluye claims personalizados (usuario_id, rol, empresa_id). Sin esto, /auth/me retorna 401. Implementar Auth Hook en Supabase Dashboard.",
+    "backend_completado": true,
+    "frontend_integrado": true,
+    "ultimo_artefacto_creado": "docs/deployment/DEPLOYMENT_GUIDE.md",
+    "entidades_dominio": 20,
+    "value_objects": 2,
+    "proyectos_backend": 6,
+    "archivos_backend_fase_6_1": 72,
+    "archivos_application_fase_6_3": 169,
+    "repositorios_persistence_fase_6_4": 19,
+    "servicios_infrastructure_fase_6_4": 7,
+    "controllers_api_fase_6_5": 13,
+    "endpoints_totales_fase_6_5": 56,
+    "politicas_autorizacion_fase_6_5": 5,
+    "paginas_integradas_fase_6_6": 13,
+    "servicios_frontend_fase_6_6": 5,
+    "hooks_tanstack_fase_6_6": 3,
+    "casos_prueba_qa": 84,
+    "limitaciones_documentadas": 9,
+    "docs_backend_completadas": true,
+    "fase_6_1_completada": true,
+    "fase_6_2_completada": true,
+    "fase_6_3_completada": true,
+    "fase_6_4_completada": true,
+    "fase_6_5_completada": true,
+    "fase_6_6_completada": true,
+    "modulos_application": 11,
+    "interfaces_repositorios": 19,
+    "proxima_fase": "7 — Optimización (pendiente resolución de bloqueante L001 primero)",
+    "fase_4_estado": "COMPLETADA — Migraciones 001-010 completadas (2026-07-10). Pendiente M-011 (sla_configuraciones + feriados).",
+    "migraciones_completadas": 10,
+    "ultima_migracion_completada": "010_security_storage_rls.sql",
+    "proxima_migracion": "011_sla_holidays.sql",
+    "documentacion_bd_completa": true,
+    "modelo_congelado": true
   },
   "fases": [
     { "numero": 0, "nombre": "Infraestructura .claude/", "estado": "completada" },
@@ -17,7 +52,7 @@
     {
       "numero": 3,
       "nombre": "Layout + Pantallas con Mock Data",
-      "estado": "completada — pendiente commit de 3.5→3.12 y aprobacion visual final del usuario",
+      "estado": "completada — pendiente commit de 3.5→3.15 y aprobacion visual final del usuario",
       "sub_fases": [
         {
           "numero": "3.0",
@@ -96,10 +131,447 @@
           "nombre": "Favicon logo.jpeg, trazabilidad de asignacion en tickets y columna F. creacion",
           "estado": "implementada — pendiente commit (requiere autorizacion del usuario)",
           "commits": []
+        },
+        {
+          "numero": "3.14",
+          "nombre": "UserEditPage ancho completo, Configuracion restringida a admin, modal Cambiar Estado rediseniado, gestion empresas/sucursales en UsersPage, filtros y graficos en ReportsPage, restructuracion ProfilePage",
+          "estado": "implementada — pendiente commit (requiere autorizacion del usuario)",
+          "commits": []
+        },
+        {
+          "numero": "3.15",
+          "nombre": "Arquitectura de Notificaciones Multi-Canal",
+          "estado": "implementada — pendiente commit (requiere autorizacion del usuario)",
+          "commits": []
+        },
+        {
+          "numero": "3.16",
+          "nombre": "Nueva Estructura Documental Modular",
+          "estado": "completada — sin commit requerido (solo documentacion)",
+          "commits": [],
+          "archivos_creados": "~185 archivos markdown en docs/README.md, docs/METHODOLOGY.md, docs/architecture/ (8 READMEs), docs/modules/ (15 modulos x 11 archivos), docs/decisions/ (ADR-001 a ADR-009)",
+          "cambio_metodologia": "Document-First obligatoria desde esta iteracion"
+        },
+        {
+          "numero": "3.17",
+          "nombre": "Documentacion de Negocio del Modulo Usuarios",
+          "estado": "completada — pendiente revision y aprobacion del usuario",
+          "commits": [],
+          "archivos_creados": "8 archivos markdown en docs/modules/users/ (README, DOMAIN, BUSINESS-RULES, PERMISSIONS, VALIDATIONS, EVENTS, FLOWS, FUTURE)",
+          "qa_resultado": "CRIT-01/03/04 resueltos; CRIT-02 pendiente decision del usuario; OBS-01 a OBS-08 gestionadas",
+          "duda_pendiente": "CRIT-02 — Contradiccion entre PERMISSIONS.md y docs/architecture/permissions/README.md sobre si Admin puede restablecer contrasenas de otros usuarios"
+        },
+        {
+          "numero": "3.18",
+          "nombre": "Documentacion de Negocio del Modulo Empresas",
+          "estado": "completada — pendiente revision y aprobacion del usuario",
+          "commits": [],
+          "archivos_creados": "8 archivos markdown en docs/modules/companies/ (README, DOMAIN, BUSINESS-RULES, PERMISSIONS, VALIDATIONS, EVENTS, FLOWS, FUTURE)",
+          "qa_resultado": "Rechazo inicial con 3 criticos (C-001/C-002/C-003) — todos corregidos. Estado final: aprobado con observaciones menores",
+          "dudas_pendientes": [
+            "DUDA-CO-001 (critica — bloqueante): mono-tenant vs multi-tenant — afecta DATABASE.md de todos los modulos",
+            "DUD-CO-001: puede Administrador editar nombre, logo y colores de su empresa",
+            "DUD-CO-004: tickets activos bloquean desactivacion o solo generan advertencia",
+            "QA-DUD-001: notificacion a administradores al desactivar empresa",
+            "QA-DUD-002: cambios de identidad visual generan company.updated o company.config_updated"
+          ]
+        },
+        {
+          "numero": "3.21",
+          "nombre": "Documentacion de Negocio del Modulo Areas",
+          "estado": "aprobado QA — 8/8 documentos aprobados",
+          "fecha_aprobacion": "2026-07-08",
+          "commits": [],
+          "archivos_aprobados": [
+            "docs/modules/areas/README.md",
+            "docs/modules/areas/DOMAIN.md",
+            "docs/modules/areas/BUSINESS-RULES.md",
+            "docs/modules/areas/FLOWS.md",
+            "docs/modules/areas/VALIDATIONS.md",
+            "docs/modules/areas/PERMISSIONS.md",
+            "docs/modules/areas/EVENTS.md",
+            "docs/modules/areas/FUTURE.md"
+          ],
+          "qa_resultado": "Aprobado tras 4 ciclos de revision (iteraciones 3.19 a 3.21). Defectos del ciclo final: NEW-01 (referencia DUDA-AR-001 en VALIDATIONS.md), NEW-02 (tilde en 'Si' en tablas), NEW-03 (glosario DOMAIN.md). 24 reglas de negocio BR-AR-001 a BR-AR-024. 7 eventos de dominio. 6 flujos FL-AR-001 a FL-AR-006. 13 DUDAs registradas DUDA-AR-001 a DUDA-AR-013.",
+          "bloqueante": "DUDA-AR-001 — relacion area-sucursal (Opcion A vs Opcion B). Bloquea DATABASE.md y API.md del modulo Areas. Todos los documentos asumen Opcion A como supuesto de trabajo."
+        },
+        {
+          "numero": "3.23",
+          "nombre": "Documentacion de Negocio del Modulo Catalogos del Sistema",
+          "estado": "aprobado QA — 8/8 documentos aprobados",
+          "fecha_aprobacion": "2026-07-08",
+          "commits": [],
+          "archivos_aprobados": [
+            "docs/modules/system-catalogs/README.md",
+            "docs/modules/system-catalogs/DOMAIN.md",
+            "docs/modules/system-catalogs/BUSINESS-RULES.md",
+            "docs/modules/system-catalogs/PERMISSIONS.md",
+            "docs/modules/system-catalogs/EVENTS.md",
+            "docs/modules/system-catalogs/VALIDATIONS.md",
+            "docs/modules/system-catalogs/FLOWS.md",
+            "docs/modules/system-catalogs/FUTURE.md"
+          ],
+          "qa_resultado": "Aprobado QA. 27 reglas de negocio BR-SC-001 a BR-SC-027. 10 eventos de dominio. 9 flujos FL-SC-001 a FL-SC-009. 10 funcionalidades futuras FUT-SC-001 a FUT-SC-010. 6 DUDAs registradas DUDA-SC-001 a DUDA-SC-006, todas abiertas.",
+          "bloqueante": "DUDA-SC-001 — catalogos globales vs por empresa. Bloquea DATABASE.md y API.md del modulo Catalogos del Sistema.",
+          "dudas_abiertas": [
+            "DUDA-SC-001 (critica — bloqueante): global vs. por empresa — afecta esquema de tablas y RLS",
+            "DUDA-SC-002: puede Administrador crear nuevos Tipos de Catalogo o solo SuperAdministrador",
+            "DUDA-SC-003: estados del Ticket son configurables desde este modulo o fijos en el codigo",
+            "DUDA-SC-004: puede Administrador modificar o desactivar Elementos con Valor de sistema marcado",
+            "DUDA-SC-005: este modulo absorbe el modulo Tipos de Servicio ya documentado o coexisten independientemente",
+            "DUDA-SC-006: reordenamiento de elementos es por posicion absoluta o relativa"
+          ]
+        },
+        {
+          "numero": "3.37",
+          "nombre": "Documentos Tecnicos Pre-Migracion",
+          "estado": "COMPLETADO — Modelo congelado",
+          "fecha_completacion": "2026-07-10",
+          "archivos_creados": [
+            "docs/database/NAMING_CONVENTIONS.md",
+            "docs/database/INDEX_STRATEGY.md",
+            "docs/database/RLS_MATRIX.md"
+          ],
+          "naming_conventions": {
+            "secciones": 13,
+            "categorias": ["tablas", "columnas", "constraints", "indices", "funciones", "triggers", "politicas_rls", "vistas", "storage", "edge_functions", "supabase", "seeds", "comentarios"]
+          },
+          "index_strategy": {
+            "indices_documentados": "50+",
+            "tipos": ["btree", "gin", "parciales", "compuestos", "null_safe"],
+            "checklist_fk_coverage": true
+          },
+          "rls_matrix": {
+            "tablas": 23,
+            "roles": 6,
+            "operaciones": 4,
+            "roles_detalle": ["SA", "AD", "SU", "TE", "TR", "US"]
+          },
+          "modelo_congelado": true,
+          "restricciones_congelamiento": [
+            "NO crear nuevas entidades salvo error critico de arquitectura",
+            "NO renombrar tablas aprobadas",
+            "NO renombrar columnas aprobadas",
+            "NO modificar relaciones aprobadas",
+            "NO agregar nuevos estados al ENUM",
+            "NO agregar nuevos roles",
+            "NO crear nuevas DUDAs salvo que bloqueen tecnicamente la generacion SQL"
+          ]
+        },
+        {
+          "numero": "3.36",
+          "nombre": "Plan de Migraciones SQL",
+          "estado": "COMPLETADO — Documentacion de BD completa",
+          "fecha_completacion": "2026-07-10",
+          "archivos_creados": [
+            "docs/database/MIGRATION-PLAN.md"
+          ],
+          "migration_plan": {
+            "fases": 14,
+            "migraciones": 44,
+            "tablas": 25,
+            "enums": 9,
+            "secuencias": 1,
+            "funciones": 12,
+            "triggers": 12,
+            "buckets_storage": 4,
+            "tablas_realtime": 4,
+            "niveles_rollback": 3,
+            "grupos_riesgos": 6,
+            "veredicto": "APROBADO — listo para iniciar migraciones SQL"
+          },
+          "fase_4_estado": "LISTA_PARA_INICIAR"
+        },
+        {
+          "numero": "3.35",
+          "nombre": "Resolución 7 Dudas Arquitectónicas + Validación Final MODEL-PHYSICAL.md",
+          "estado": "COMPLETADO — Fase 4 DESBLOQUEADA",
+          "fecha_completacion": "2026-07-10",
+          "archivos_modificados": [
+            "docs/database/MODEL-PHYSICAL.md"
+          ],
+          "resolucion_dudas": {
+            "DUDA_ARQ_001": "Supervisor sin implementacion funcional en MVP — permanece en ENUM",
+            "DUDA_ARQ_002": "Tecnico multi-sucursal via tabla puente tecnico_sucursales (N:M usuarios x sucursales)",
+            "DUDA_ARQ_008": "RBAC completo: tablas roles, permisos, role_permissions",
+            "DUDA_ARQ_009": "audit_logs sin particionamiento en MVP",
+            "DUDA_ARQ_010": "prioridad_efectiva como columna fisica en tickets",
+            "DUDA_ARQ_011": "Solo espanol en MVP — sin infraestructura i18n en BD",
+            "DUDA_ARQ_012": "SLA en tiempo laboral real con nueva tabla feriados"
+          },
+          "tablas_nuevas": ["roles", "permisos", "role_permissions", "tecnico_sucursales", "feriados"],
+          "total_tablas": 25,
+          "veredicto": "APROBADO — MODEL-PHYSICAL.md es el contrato definitivo para migraciones SQL",
+          "fase_4_estado": "DESBLOQUEADA"
+        },
+        {
+          "numero": "3.34",
+          "nombre": "Arquitectura de Base de Datos — Documento Contrato Definitivo (MODEL-PHYSICAL.md)",
+          "estado": "COMPLETADO",
+          "fecha_completacion": "2026-07-10",
+          "archivos_creados": [
+            "docs/database/MODEL-PHYSICAL.md"
+          ],
+          "modelo_physical": {
+            "tablas": 21,
+            "enums": 9,
+            "secuencias": 1,
+            "indices": "40+",
+            "auditoria": "estandar completo con deleted_by y version en todas las tablas relevantes",
+            "checklist_premigracion": 20,
+            "integracion_supabase": ["RLS por rol", "Auth (auth.users)", "Storage (ticket-evidencias, empresa-logos)", "Realtime (canales por empresa y ticket)", "Edge Functions", "Cron Jobs", "Triggers"],
+            "escalabilidad": "disenado para millones de tickets",
+            "dudas_pendientes_seccion_13": ["DUDA-ARQ-001: nivel de multi-tenancy", "DUDA-ARQ-002: UUID v4 o ULID", "DUDA-ARQ-008: particion audit_logs", "DUDA-ARQ-009: prioridad_efectiva generada o vista", "DUDA-ARQ-010: validacion transiciones en BD o solo EF", "DUDA-ARQ-011: SLA tiempo calendario vs laboral en MVP", "DUDA-ARQ-012: Tecnico multi-sucursal"],
+            "veredicto": "COMPLETO — documento contrato definitivo listo; Fase 4 bloqueada hasta resolucion de 7 dudas arquitectonicas"
+          },
+          "proxima_tarea": "Fase 4 — migraciones SQL para Supabase — requiere resolucion de DUDA-ARQ-001, 002, 008, 009, 010, 011, 012 por el usuario"
+        },
+        {
+          "numero": "3.33",
+          "nombre": "Arquitectura de Base de Datos — Fase 3 — Modelo Fisico",
+          "estado": "COMPLETADO — pendiente aprobacion del usuario para iniciar Fase 4",
+          "fecha_completacion": "2026-07-09",
+          "archivos_creados": [
+            "docs/database/MODEL-FISICO.md"
+          ],
+          "modelo_fisico": {
+            "tablas": 18,
+            "enums": 9,
+            "secuencias": 2,
+            "funciones": 8,
+            "triggers": 9,
+            "vistas": 5,
+            "rls": "politicas por rol en todas las tablas (SuperAdministrador, Administrador, Tecnico, Trabajador)",
+            "integracion_supabase": ["Auth (auth.users)", "Storage (ticket-evidencias, empresa-logos)", "Realtime (canales por empresa y ticket)", "Edge Functions (hooks on_ticket_created, on_ticket_status_changed, on_ticket_assigned)"],
+            "decision_ml_dec_013": "DUDA-ML-001 resuelta — MotivoRechazo = catalogo configurable (tabla motivos_rechazo) + comentario libre; Otro requiere comentario obligatorio",
+            "checklist_pendiente": ["PF-001: particion audit_logs", "PF-002: prioridad_efectiva generada o vista", "PF-003: validacion estado en BD o solo EF", "PF-004: SLA tiempo calendario vs laboral en MVP", "DUDA-ARQ-001: permisos Supervisor sobre otras areas", "DUDA-ARQ-002: Tecnico multi-sucursal"],
+            "veredicto": "COMPLETO — listo para migraciones SQL condicionado a aprobacion del usuario y respuestas al checklist §14"
+          },
+          "proxima_tarea": "Fase 4 — migraciones SQL para Supabase — requiere aprobacion del usuario del MODEL-FISICO.md y respuesta a los 6 pendientes del checklist §14"
+        },
+        {
+          "numero": "3.32",
+          "nombre": "Arquitectura de Base de Datos — Fase 2 — Modelo Logico",
+          "estado": "COMPLETADO — bloqueado para Modelo Fisico hasta resolucion de DUDA-ML-001",
+          "fecha_completacion": "2026-07-09",
+          "archivos_creados": [
+            "docs/database/MODEL-LOGICO.md"
+          ],
+          "modelo_logico": {
+            "entidades_persistentes": 18,
+            "entidades_solo_lectura": 2,
+            "entidades_nuevas": 1,
+            "nombre_entidad_nueva": "ConfiguracionSLA (resolucion DUDA-ARQ-003)",
+            "enumeraciones": "4 principales + 5 adicionales",
+            "relaciones": 33,
+            "decisiones": 12,
+            "rango_decisiones": "ML-DEC-001 a ML-DEC-012",
+            "normalizacion": "3FN con denormalizaciones justificadas",
+            "dudas_pendientes": 7,
+            "rango_dudas": "DUDA-ML-001 a DUDA-ML-007",
+            "bloqueante_modelo_fisico": "DUDA-ML-001 — MotivoRechazo catálogo o texto libre en MVP",
+            "veredicto": "COMPLETO — listo para Modelo Fisico condicionado a DUDA-ML-001"
+          },
+          "proxima_tarea": "docs/database/MODEL-FISICO.md — requiere resolucion de DUDA-ML-001 por el usuario"
+        },
+        {
+          "numero": "3.31",
+          "nombre": "Arquitectura de Base de Datos — Fase 1 — Modelo Conceptual",
+          "estado": "COMPLETADO",
+          "fecha_completacion": "2026-07-09",
+          "archivos_creados": [
+            "docs/database/MODEL-CONCEPTUAL.md"
+          ],
+          "modelo_conceptual": {
+            "dominios": 7,
+            "entidades": 24,
+            "agregados": 6,
+            "riesgos": 8,
+            "dudas_abiertas": 7,
+            "escenarios_escalabilidad": 8,
+            "veredicto": "COMPLETO — listo para Modelo Logico condicionado a DUDA-ARQ-003"
+          },
+          "dudas_arquitectonicas": [
+            "DUDA-ARQ-001: nivel de multi-tenancy (row-level empresa_id vs schema separado)",
+            "DUDA-ARQ-002: UUID v4 o ULID como PK",
+            "DUDA-ARQ-003 (BLOQUEANTE): SLA configurables con automatizacion o campo informativo en MVP",
+            "DUDA-ARQ-004: tabla unificada de historial o tablas separadas por entidad",
+            "DUDA-ARQ-005: soft-delete con deleted_at o tablas de archivo separadas",
+            "DUDA-ARQ-006: notificaciones persistidas en BD o solo despachadas en tiempo real",
+            "DUDA-ARQ-007: campo area en tickets referencia tabla areas o texto libre"
+          ],
+          "proxima_tarea": "docs/database/MODEL-LOGICO.md — requiere aprobacion expresa del usuario y resolucion de DUDA-ARQ-003"
+        },
+        {
+          "numero": "3.30",
+          "nombre": "Modulo Tickets — CERRADO definitivamente",
+          "estado": "CERRADO — 9 documentos actualizados con 3 decisiones finales del usuario",
+          "fecha_completacion": "2026-07-09",
+          "archivos_actualizados": [
+            "docs/modules/tickets/PERMISSIONS.md",
+            "docs/modules/tickets/LIFECYCLE.md",
+            "docs/modules/tickets/DOMAIN.md",
+            "docs/modules/tickets/EVENTS.md",
+            "docs/modules/tickets/VALIDATIONS.md",
+            "docs/modules/tickets/BUSINESS-RULES.md",
+            "docs/modules/tickets/README.md",
+            "docs/modules/tickets/REVIEW.md",
+            "docs/modules/tickets/SUMMARY.md"
+          ],
+          "decisiones_resueltas": {
+            "rol_tecnico": "El Tecnico ejecuta el trabajo asignado. El Trabajador crea y consulta sus propios tickets.",
+            "DUDA_TK_012": "Categoria OBLIGATORIA (NOT NULL)",
+            "DUDA_TK_003": "Area solo editable en Sin Asignar por Admin/SA; excepcion en estados operativos con auditoria y motivo obligatorio"
+          },
+          "dudas_abiertas_no_bloqueantes": ["DUDA-TK-005", "DUDA-TK-008", "DUDA-TK-010", "DUDA-TK-011", "DUDA-PERM-001", "DUDA-VAL-001", "DUDA-VAL-003", "DUDA-VAL-004"],
+          "proxima_tarea": "docs/modules/tickets/DATABASE.md — requiere aprobacion expresa del usuario para iniciar"
+        },
+        {
+          "numero": "3.29",
+          "nombre": "Modulo Tickets — Fase 7 (Consolidacion Final) COMPLETADA",
+          "estado": "COMPLETADA — bloqueada para implementacion hasta 3 decisiones del usuario",
+          "fecha_completacion": "2026-07-09",
+          "archivos_creados": [
+            "docs/modules/tickets/REVIEW.md",
+            "docs/modules/tickets/SUMMARY.md"
+          ],
+          "consolidacion_final": {
+            "documentos_leidos": 7,
+            "lineas_revisadas": "~8.358",
+            "inconsistencias_identificadas": 20,
+            "decisiones_origen": "31 decisiones resueltas el 2026-07-09",
+            "review_md": "Auditoria completa: 20 inconsistencias, impacto de 31 decisiones, DUDAs bloqueantes, veredicto de preparacion para DATABASE.md, plan de actualizacion",
+            "summary_md": "Resumen ejecutivo para desarrolladores nuevos: actores, ciclo de vida, invariantes, entidades, permisos, validaciones, eventos, integracion, preparacion para implementacion",
+            "bloqueantes_database_md": ["rol Tecnico no definido en documentos", "DUDA-TK-003 (area cambiable post-creacion)", "DUDA-TK-012 (categoria obligatoria)"]
+          },
+          "proximos_pasos": ["Usuario resuelve rol Tecnico", "Usuario resuelve DUDA-TK-003", "Usuario resuelve DUDA-TK-012", "Propagar 20 inconsistencias en 6 documentos existentes", "Iniciar DATABASE.md"]
+        },
+        {
+          "numero": "3.28",
+          "nombre": "Modulo Tickets — VALIDATIONS.md creado (borrador, Fase 2, Documento #6)",
+          "estado": "APROBADO — incluido en revision de Consolidacion Final (3.29)",
+          "fecha_creacion": "2026-07-09",
+          "archivos_creados": [
+            "docs/modules/tickets/VALIDATIONS.md"
+          ],
+          "validations": {
+            "estado": "BORRADOR",
+            "validaciones_funcionales": "39 (VAL-TK-001 a VAL-TK-039)",
+            "casos_especiales": "19 (CASE-TK-001 a CASE-TK-019)",
+            "mensajes_funcionales": "48 en español (MSG-TK-001 a MSG-TK-048)",
+            "nuevas_dudas": "7 (DUDA-VAL-001 a DUDA-VAL-007) — bloquean DATABASE.md y API.md",
+            "metodologia": "Document-First cumplida — sin codigo, sin referencias tecnicas"
+          },
+          "proximos_documentos": ["Aprobacion de VALIDATIONS.md", "FLOWS.md (Documento #7)", "FUTURE.md (Documento #8)"]
+        },
+        {
+          "numero": "3.27",
+          "nombre": "Modulo Tickets — EVENTS.md aprobado QA (Fase 2, Documento #5)",
+          "estado": "APROBADO QA",
+          "fecha_aprobacion": "2026-07-09",
+          "archivos_aprobados": [
+            "docs/modules/tickets/EVENTS.md"
+          ],
+          "events": {
+            "estado": "APROBADO",
+            "eventos_aplicables": "21 (EVT-TK-001 a EVT-TK-021)",
+            "eventos_nuevos_justificados": "2 (EVT-TK-005 TicketReasignadoSinSucesor, EVT-TK-011 TicketRetomado)",
+            "eventos_no_aplicables_mvp": "3 (EmpresaModificada, ComentarioEditado, ComentarioEliminado)",
+            "registros_auditoria": "20 (AUD-TK-001 a AUD-TK-020)",
+            "secciones": "Catalogo de eventos, Matriz de consumidores, Notificaciones (MVP: interna+correo; futuro: push+WhatsApp), Dashboard (14 indicadores), Reportes (11 tablas), Integraciones futuras (6), Escalabilidad, Dudas pendientes",
+            "ciclos_qa": 1,
+            "resumen_qa": "9 hallazgos: 0 CRITICO, 5 MAYOR, 4 MENOR. Todos corregidos y verificados. Resultado: APROBADO.",
+            "nueva_duda": "DUDA-EVT-001 (contenido de comentarios en historial del ticket)"
+          },
+          "proximos_documentos": ["VALIDATIONS.md (Documento #6)", "FLOWS.md (Documento #7)", "FUTURE.md (Documento #8)"]
+        },
+        {
+          "numero": "3.25",
+          "nombre": "Modulo Tickets — BUSINESS-RULES.md y PERMISSIONS.md aprobados QA (Fase 2)",
+          "estado": "APROBADO QA",
+          "fecha_aprobacion": "2026-07-09",
+          "archivos_aprobados": [
+            "docs/modules/tickets/BUSINESS-RULES.md",
+            "docs/modules/tickets/PERMISSIONS.md"
+          ],
+          "business_rules": {
+            "estado": "APROBADO",
+            "reglas": "82 (BR-TK-001 a BR-TK-082)",
+            "ciclos_qa": 3,
+            "resumen_qa": "Primer ciclo RECHAZADO (13 hallazgos corregidos). Segundo ciclo RECHAZADO (5 hallazgos corregidos). Tercer ciclo APROBADO (verificacion parcial). Correccion critica H-02: BR-TK-064 reescrita en tiempo condicional alineada con LIFECYCLE.md §10.1."
+          },
+          "permissions": {
+            "estado": "APROBADO",
+            "acciones": 33,
+            "roles": 4,
+            "estados": 9,
+            "restricciones_absolutas": "REST-TK-001 a REST-TK-015 (15 total)",
+            "excepciones_operacionales": "EXC-TK-001 a EXC-TK-010 (10 total)",
+            "extensiones_futuras": "EXT-TK-001 a EXT-TK-008 (8 total)",
+            "ciclos_qa": 1,
+            "resumen_qa": "Primer ciclo: APROBADO CON OBSERVACIONES (9 hallazgos). Todos corregidos y verificados como RESUELTO. Resultado final: APROBADO.",
+            "nuevas_dudas": ["DUDA-TK-016 (rol Tecnico no definido en SDD)", "DUDA-PERM-001 (cambio de sucursal post-creacion no definido en SDD)"]
+          },
+          "proximos_documentos": ["VALIDATIONS.md (Documento #6)", "FLOWS.md (Documento #7)", "FUTURE.md (Documento #8)"]
+        },
+        {
+          "numero": "3.24",
+          "nombre": "Modulo Tickets — Fase 1 (Dominio)",
+          "estado": "aprobado QA — Fase 1 completa (2/2 documentos aprobados)",
+          "fecha_aprobacion": "2026-07-08",
+          "commits": [],
+          "archivos_aprobados": [
+            "docs/modules/tickets/README.md",
+            "docs/modules/tickets/DOMAIN.md"
+          ],
+          "qa_resultado": "Aprobado tras 3 ciclos de correccion QA. README.md: 189 lineas, punto de entrada del modulo, 7 DUDAs en tabla de decisiones pendientes + 2 adicionales. DOMAIN.md: 836 lineas, 12 secciones, 31 terminos en glosario, 12 DUDAs registradas. Todos los defectos corregidos. Veredicto: FASE 1 APROBADA.",
+          "bloqueante": "12 DUDAs abiertas (DUDA-TK-001 a DUDA-TK-012). Las 5 criticas bloquean Fase 2: DUDA-TK-001 (puede el Trabajador crear tickets — bloquea PERMISSIONS.md), DUDA-TK-004 (prioridad efectiva — bloquea BUSINESS-RULES.md), DUDA-TK-006 (validacion siempre obligatoria — bloquea BUSINESS-RULES.md y FLOWS.md), DUDA-TK-007 (un responsable o co-responsables — bloquea DATABASE.md), DUDA-TK-009 (existe estado Cancelado — bloquea BUSINESS-RULES.md y PERMISSIONS.md).",
+          "dudas_abiertas": [
+            "DUDA-TK-001 (critica): puede el Trabajador crear tickets en nombre de un Usuario",
+            "DUDA-TK-002: puede el Trabajador reasignarse a si mismo tickets de otros",
+            "DUDA-TK-003: cuantas veces puede reabrirse un ticket",
+            "DUDA-TK-004 (critica): cual prioridad es efectiva cuando hay conflicto entre tipo de servicio y creador",
+            "DUDA-TK-005: el campo Descripcion es editable post-creacion",
+            "DUDA-TK-006 (critica): la etapa Pendiente de Validacion es siempre obligatoria",
+            "DUDA-TK-007 (critica): un ticket tiene un unico responsable o puede tener co-responsables",
+            "DUDA-TK-008: el ticket guarda la Sucursal del creador o permite seleccionar otra",
+            "DUDA-TK-009 (critica): existe un estado Cancelado y quien puede cancelar",
+            "DUDA-TK-010: los comentarios son privados o visibles para el Usuario creador",
+            "DUDA-TK-011: las evidencias tienen limite de tamano o tipo",
+            "DUDA-TK-012: el SLA se mide desde la creacion o desde la asignacion"
+          ],
+          "siguiente_fase": "Fase 2 — BUSINESS-RULES.md, PERMISSIONS.md, EVENTS.md, VALIDATIONS.md, FLOWS.md, FUTURE.md (bloqueada hasta resolucion de DUDAs criticas)"
+        },
+        {
+          "numero": "3.22",
+          "nombre": "Documentacion de Negocio del Modulo Tipos de Servicio",
+          "estado": "aprobado QA — 8/8 documentos aprobados",
+          "fecha_aprobacion": "2026-07-08",
+          "commits": [],
+          "archivos_aprobados": [
+            "docs/modules/service-types/README.md",
+            "docs/modules/service-types/DOMAIN.md",
+            "docs/modules/service-types/BUSINESS-RULES.md",
+            "docs/modules/service-types/PERMISSIONS.md",
+            "docs/modules/service-types/EVENTS.md",
+            "docs/modules/service-types/VALIDATIONS.md",
+            "docs/modules/service-types/FLOWS.md",
+            "docs/modules/service-types/FUTURE.md"
+          ],
+          "qa_resultado": "Aprobado en primera revision QA formal. 18 reglas de negocio BR-TS-001 a BR-TS-018. 6 eventos de dominio (service_type.created/updated/activated/deactivated/deleted/reordered). 7 flujos FL-TS-001 a FL-TS-007. 10 funcionalidades futuras FUT-TS-001 a FUT-TS-010. 6 DUDAs registradas DUDA-TS-001 a DUDA-TS-006.",
+          "bloqueante": "DUDA-TS-001 — tipos de servicio globales vs por empresa. Bloquea DATABASE.md y API.md del modulo Tipos de Servicio.",
+          "dudas_abiertas": [
+            "DUDA-TS-001 (critica — bloqueante): global vs. por empresa — afecta esquema de tablas y RLS",
+            "DUDA-TS-002: puede Administrador gestionar tipos de servicio o solo SuperAdministrador",
+            "DUDA-TS-003: tipo de servicio de un ticket es inmutable una vez creado el ticket",
+            "DUDA-TS-004: comportamiento al borrar logicamente un tipo con tickets activos",
+            "DUDA-TS-005: reordenamiento absoluto (posicion exacta) o relativo (subir/bajar uno)",
+            "DUDA-TS-006: nuevo tipo de servicio puede crearse en estado Inactivo"
+          ]
         }
       ]
     },
-    { "numero": 4, "nombre": "Base de Datos (Supabase — migraciones, RLS, seeds)", "estado": "NO INICIAR sin aprobacion del usuario" },
+    { "numero": 4, "nombre": "Base de Datos (Supabase — migraciones, RLS, seeds)", "estado": "EN_CURSO — SQL 001-006 completadas (2026-07-10). Documentacion MIGRATION-007.md completada (2026-07-10): ticket_asignaciones + ticket_historial, 2 tablas append-only, 10 indices, 9 FKs. SQL 007 pendiente. Proxima: 007_ticket_modules.sql. Plan aprobado (MIGRATION-PLAN.md: 14 fases, 44 migraciones, 25 tablas)." },
     { "numero": 5, "nombre": "Backend / Edge Functions", "estado": "pendiente" },
     { "numero": 6, "nombre": "Autenticacion Real (Supabase Auth)", "estado": "pendiente" },
     { "numero": 7, "nombre": "Integracion Real (reemplazar mocks por servicios)", "estado": "pendiente" },
@@ -112,13 +584,14 @@
     "dashboard_admin": "completada — glow cards, sparklines PC, filtros empresa/sucursal, botones Ver todos, 9 widgets graficos, D&D",
     "crear_ticket": "completada — 2 columnas PC, opcion Otros condicional, evidencias con preview FileReader, labels obligatorio/opcional",
     "mis_tickets": "completada — sort por fecha, filtros de fecha, tabla PC, UI asignacion mejorada, URL params desde dashboard, EditTicketSheet lateral con todos los campos, filtros mobile 3 filas grid 2 cols, menu de acciones por rol con historial de cambios Dialog, helper getAssignedBy, 'Por: [nombre]' en tarjeta mobile y tabla desktop, columna 'F. creacion'",
-    "detalle_ticket": "completada — history tracking automatico, PC ancho completo, breadcrumb, estado/prioridad/asignado mutable",
-    "usuarios": "completada — campo Estado visible, nomenclatura actualizada, modales Crear/Editar/Ver/Eliminar/Estado/ResetPw",
+    "detalle_ticket": "completada — history tracking automatico, PC ancho completo, breadcrumb, estado/prioridad/asignado mutable, modal Cambiar Estado con ps-glow-modal+StatusBadge+Check+deshabilitado sin cambio, ConfirmDialog cancelar ticket",
+    "usuarios": "completada — campo Estado visible, nomenclatura actualizada, modales Crear/Editar/Ver/Eliminar/Estado/ResetPw, gestion de empresas (Building2, badge activa/inactiva, toggle) y sucursales (filtro, dropdown, 2 ConfirmDialogs)",
     "notificaciones": "completada — patron Undo, estilos Gmail no leidas, 2 columnas PC, marcar/eliminar, contadores reactivos",
-    "perfil": "completada — foto clickeable FileReader, ojo en contrasenas, grupos PC, guardado con validacion",
-    "reportes": "completada — descarga simulada toast.promise, breadcrumb",
+    "perfil": "completada — foto clickeable FileReader, ojo en contrasenas, grupos PC, guardado con validacion, Cambiar foto eliminado, campo Usuario condicional en col. izquierda, Apariencia en col. izquierda, grid Correo+Telefono, seccion solo lectura eliminada",
+    "reportes": "completada — filtros Desde/Hasta/Empresa/Estado, Ver todo en graficos, AreaChart tendencia semanal, PieChart donut por estado, descarga simulada toast.promise, breadcrumb",
     "auditoria": "completada — exportar toast.promise, breadcrumb",
-    "configuracion": "completada — tooltips ayuda, 2 columnas PC, switches reactivos, Guardar por seccion"
+    "configuracion": "completada — tooltips ayuda, 2 columnas PC, switches reactivos, Guardar por seccion (solo visible en header para admin/superadmin desde iteracion 3.14)",
+    "editar_usuario": "completada — formulario ancho completo sin max-w-xl, grids Correo+Telefono y Empresa+Sucursal, props error en Inputs para borde rojo en campos invalidos"
   },
   "nomenclatura_global": {
     "nivel_empresa": "Empresa (antes: Sucursales)",
@@ -177,13 +650,70 @@
   "metricas": {
     "rutas_totales": 15,
     "pantallas_totales": 15,
-    "archivos_modificados_iteraciones_3_5_a_3_13": 28,
+    "archivos_modificados_iteraciones_3_5_a_3_15": 35,
     "archivos_nuevos_fase3_6": 3,
     "archivos_nuevos_fase3_9": 3,
+    "archivos_nuevos_iteracion3_15": 28,
+    "archivos_nuevos_iteracion3_16": 185,
+    "archivos_nuevos_iteracion3_17": 8,
+    "archivos_nuevos_iteracion3_18": 8,
+    "archivos_aprobados_iteracion3_21": 8,
+    "archivos_aprobados_iteracion3_22": 8,
+    "archivos_aprobados_iteracion3_23": 8,
+    "archivos_aprobados_iteracion3_24_tickets_fase1": 2,
+    "archivos_aprobados_iteracion3_25_tickets_business_rules_y_permissions": 2,
+    "archivos_aprobados_iteracion3_27_tickets_events": 1,
+    "archivos_creados_iteracion3_28_tickets_validations": 1,
+    "archivos_creados_iteracion3_29_tickets_consolidacion_final": 2,
+    "archivos_actualizados_iteracion3_30_tickets_cierre": 9,
+    "archivos_nuevos_iteracion3_31_modelo_conceptual": 1,
+    "archivos_nuevos_iteracion3_32_modelo_logico": 1,
+    "archivos_nuevos_iteracion3_33_modelo_fisico": 1,
+    "archivos_nuevos_iteracion3_34_modelo_physical": 1,
+    "archivos_modificados_iteracion3_35_resolucion_dudas": 1,
+    "archivos_nuevos_iteracion3_36_migration_plan": 1,
+    "archivos_nuevos_iteracion3_37_documentos_tecnicos": 3,
+    "archivos_nuevos_iteracion4_6_migration006": 1,
+    "archivos_nuevos_iteracion4_7_migration007_doc": 1,
+    "modelo_congelado_desde": "2026-07-10",
+    "tablas_bd_total": 25,
     "tests_unitarios": 5,
     "tests_e2e": 0
   },
+  "metodologia": {
+    "tipo": "Document-First",
+    "vigente_desde": "3.16",
+    "orden_obligatorio": [
+      "1-Dominio",
+      "2-Reglas",
+      "3-Flujos",
+      "4-Permisos",
+      "5-Eventos",
+      "6-Validaciones",
+      "7-Aprobacion",
+      "8-DB",
+      "9-API",
+      "10-Backend"
+    ],
+    "nota": "Los pasos 1-7 deben completarse y ser aprobados por el usuario antes de implementar cualquier modulo. Sin documentacion aprobada no se escribe codigo."
+  },
+  "preparacion_produccion": "62%",
+  "apto_uat": false,
+  "apto_rc": false,
   "ultimo_commit_estable": "dc4c1b8",
-  "ultima_actualizacion": "2026-07-06",
-  "notas": "DOBLE BLOQUEO: (1) NO ejecutar commit sin autorizacion explicita del usuario — los cambios 3.5 a 3.13 estan en el working tree sin commitear. (2) NO avanzar a Fase 4 (Base de Datos / Supabase) sin aprobacion visual final del usuario. La serie Fase 3.x esta completa (3.0 → 3.13). Todas las pantallas tienen UX premium, nomenclatura unificada, componentes transversales, consistencia visual auditada, vistas dedicadas de CRUD de usuarios, sheet lateral completo para modificar tickets, branding completo (favicon logo.jpeg), badge rojo, bordes azules, menu de acciones por rol con historial de cambios, y trazabilidad de asignacion visible en tarjetas mobile y tabla desktop."
+  "ultima_actualizacion": "2026-07-11",
+  "notas_integracion": "FASE 6.6 COMPLETADA. Bloqueante L001: JWT claims hook pendiente en Supabase. Sin L001 resuelto el sistema no puede autenticarse end-to-end.",
+  "archivos_backend_total": 256,
+  "archivos_backend_fase_6_1": 72,
+  "archivos_backend_fase_6_3": 169,
+  "repositorios_persistence_fase_6_4": 19,
+  "servicios_infrastructure_fase_6_4": 7,
+  "controllers_api_fase_6_5": 13,
+  "docs_backend_fase_6_5": 2,
+  "proyectos_backend_total": 6,
+  "entidades_domain_total": 20,
+  "value_objects_total": 2,
+  "modulos_application_total": 11,
+  "interfaces_repositorios_total": 19,
+  "notas": "BLOQUEOS ACTIVOS: (1) NO ejecutar commit sin autorizacion explicita del usuario. (2) METODOLOGIA DOCUMENT-FIRST OBLIGATORIA desde 3.16. (3) BLOQUEANTE CRITICO L001 — JWT de Supabase no incluye claims personalizados; sin esto el sistema no puede autenticarse end-to-end. Implementar Auth Hook en Supabase Dashboard. (4) Credenciales locales Supabase pendientes (supabase start + .env.local). (5) Catálogos sin endpoints (tipos_servicio, categorias, motivos_rechazo, motivos_cancelacion). (6) Decidir net10.0 vs SDK 8.0 LTS. MODELO FISICO CONGELADO. FASE 4: Migraciones SQL 001-010 completadas. Pendiente M-011 (sla_configuraciones + feriados). BACKEND: FASES 6.1-6.6 COMPLETADAS. Frontend 13 páginas integradas con API real. QA Docs: 84 casos de prueba, 9 limitaciones. PROXIMA: Resolver L001 → UAT → FASE 7 (Optimizacion)."
 }

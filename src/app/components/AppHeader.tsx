@@ -12,7 +12,8 @@ import {
 } from '@shared/ui/dropdown-menu'
 import { ROUTES } from '@constants/index'
 import { useAuthStore } from '@store/auth.store'
-import { getUnreadNotifications } from '@mocks/data'
+import { useConteoNotificaciones } from '@features/notifications/hooks/useNotificaciones'
+import { authService } from '@features/auth/services/authService'
 
 interface AppHeaderProps {
   onMenuClick?: () => void
@@ -22,11 +23,13 @@ interface AppHeaderProps {
 
 export function AppHeader({ onMenuClick, title, onCommandOpen }: AppHeaderProps) {
   const navigate = useNavigate()
-  const { user, clearAuth } = useAuthStore()
-  const unreadCount = getUnreadNotifications().length
+  const user = useAuthStore((s) => s.user)
+  const isAdmin = user?.rol === 'admin' || user?.rol === 'superadmin'
+  const { data: conteoData } = useConteoNotificaciones()
+  const unreadCount = conteoData?.noLeidas ?? 0
 
-  const handleLogout = () => {
-    clearAuth()
+  const handleLogout = async () => {
+    await authService.logout()
     navigate(ROUTES.LOGIN)
   }
 
@@ -68,11 +71,16 @@ export function AppHeader({ onMenuClick, title, onCommandOpen }: AppHeaderProps)
           size="icon"
           className="relative hidden lg:flex"
           onClick={() => navigate(ROUTES.NOTIFICATIONS)}
-          aria-label="Notificaciones"
+          aria-label={
+            unreadCount > 0 ? `Notificaciones — ${unreadCount} sin leer` : 'Notificaciones'
+          }
         >
-          <Bell className="h-5 w-5" />
+          <Bell className="h-5 w-5" aria-hidden="true" />
           {unreadCount > 0 && (
-            <Badge className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
+            <Badge
+              aria-hidden="true"
+              className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground"
+            >
               {unreadCount > 99 ? '99+' : unreadCount}
             </Badge>
           )}
@@ -104,10 +112,12 @@ export function AppHeader({ onMenuClick, title, onCommandOpen }: AppHeaderProps)
                 <User className="mr-2 h-4 w-4" />
                 Mi perfil
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate(ROUTES.SETTINGS)}>
-                <Settings className="mr-2 h-4 w-4" />
-                Configuración
-              </DropdownMenuItem>
+              {isAdmin && (
+                <DropdownMenuItem onClick={() => navigate(ROUTES.SETTINGS)}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Configuración
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                 <LogOut className="mr-2 h-4 w-4" />

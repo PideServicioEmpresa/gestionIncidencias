@@ -1,6 +1,39 @@
 import { Skeleton } from '@shared/ui/skeleton'
 import { Card, CardContent, CardHeader } from '@shared/ui/card'
 
+// ── PageSkeleton ─────────────────────────────────────────────────────────────
+// Fallback genérico mientras se carga un chunk lazy de página
+
+export function PageSkeleton() {
+  return (
+    <div className="space-y-4 p-3 lg:p-4">
+      <div className="space-y-1.5">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-3 w-28" />
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i} className="border-border/60">
+            <CardContent className="p-3">
+              <Skeleton className="h-16 w-full" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <Card className="border-border/60">
+        <CardHeader className="px-3 pb-2 pt-3">
+          <Skeleton className="h-3 w-24" />
+        </CardHeader>
+        <CardContent className="space-y-2 p-3 pt-0">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full rounded-md" />
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
 // ── DashboardSkeleton ────────────────────────────────────────────────────────
 // Refleja: 4 KPI cards en grid 2x2, fila de 6 status pills, grid de charts
 

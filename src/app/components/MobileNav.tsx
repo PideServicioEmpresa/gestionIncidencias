@@ -2,7 +2,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, Ticket, Plus, Bell, User } from 'lucide-react'
 import { cn } from '@lib/utils'
 import { ROUTES } from '@constants/index'
-import { getUnreadNotifications } from '@mocks/data'
+import { useNotificationsStore } from '@features/notifications/store/notifications.store'
 
 interface MobileNavItem {
   label: string
@@ -14,7 +14,9 @@ interface MobileNavItem {
 export function MobileNav() {
   const location = useLocation()
   const navigate = useNavigate()
-  const unreadCount = getUnreadNotifications().length
+  const unreadCount = useNotificationsStore(
+    (state) => state.notifications.filter((n) => !n.read).length,
+  )
 
   const navItems: MobileNavItem[] = [
     { label: 'Inicio', to: ROUTES.DASHBOARD, icon: LayoutDashboard },

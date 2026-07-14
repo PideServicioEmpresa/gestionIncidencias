@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   FileBarChart,
   Download,
@@ -6,11 +6,16 @@ import {
   TrendingUp,
   AlertTriangle,
   CheckCircle2,
+  Filter,
+  X,
+  ArrowRight,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@shared/ui/card'
 import { Badge } from '@shared/ui/badge'
+import { Input } from '@shared/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import {
   ResponsiveContainer,
   BarChart,
@@ -23,8 +28,12 @@ import {
   PieChart,
   Pie,
   Cell,
+  AreaChart,
+  Area,
 } from 'recharts'
 
+// TODO: conectar con endpoint de analytics cuando esté disponible.
+//       Los datos de los gráficos son temporales (placeholders de diseño).
 const byType = [
   { tipo: 'Inc. Hardware', cantidad: 5 },
   { tipo: 'Inc. Software', cantidad: 4 },
@@ -45,6 +54,23 @@ const byPriority = [
   { name: 'Media', value: 4, color: 'hsl(var(--priority-media))' },
   { name: 'Alta', value: 5, color: 'hsl(var(--priority-alta))' },
   { name: 'Crítica', value: 4, color: 'hsl(var(--priority-critica))' },
+]
+
+const byStatus = [
+  { name: 'Sin asignar', value: 3, color: 'hsl(var(--ticket-sin-asignar))' },
+  { name: 'Asignado', value: 2, color: 'hsl(var(--ticket-asignado))' },
+  { name: 'En proceso', value: 4, color: 'hsl(var(--ticket-en-proceso))' },
+  { name: 'Pend. validación', value: 2, color: 'hsl(var(--ticket-pendiente))' },
+  { name: 'Cerrado', value: 4, color: 'hsl(var(--ticket-cerrado))' },
+]
+
+const byWeek = [
+  { semana: 'Sem 1', tickets: 3 },
+  { semana: 'Sem 2', tickets: 5 },
+  { semana: 'Sem 3', tickets: 4 },
+  { semana: 'Sem 4', tickets: 7 },
+  { semana: 'Sem 5', tickets: 6 },
+  { semana: 'Sem 6', tickets: 9 },
 ]
 
 const AVAILABLE_REPORTS = [
@@ -77,6 +103,28 @@ const AVAILABLE_REPORTS = [
 
 export function ReportsPage() {
   const [downloading, setDownloading] = useState<string | null>(null)
+  const [filterDesde, setFilterDesde] = useState('')
+  const [filterHasta, setFilterHasta] = useState('')
+  const [filterEmpresa, setFilterEmpresa] = useState('all')
+  const [filterEstado, setFilterEstado] = useState('all')
+
+  const hasFilters = useMemo(
+    () =>
+      filterDesde !== '' || filterHasta !== '' || filterEmpresa !== 'all' || filterEstado !== 'all',
+    [filterDesde, filterHasta, filterEmpresa, filterEstado],
+  )
+
+  function handleApplyFilters() {
+    toast.success('Filtros aplicados')
+  }
+
+  function handleClearFilters() {
+    setFilterDesde('')
+    setFilterHasta('')
+    setFilterEmpresa('all')
+    setFilterEstado('all')
+    toast.info('Filtros eliminados')
+  }
 
   const handleDownload = (reportTitle: string) => {
     if (downloading) return
@@ -100,7 +148,7 @@ export function ReportsPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-base font-semibold tracking-tight">Reportes</h1>
+          <h2 className="text-base font-semibold tracking-tight">Reportes</h2>
           <p className="text-xs text-muted-foreground">
             Análisis y métricas del sistema de tickets.
           </p>
@@ -115,15 +163,105 @@ export function ReportsPage() {
         </Button>
       </div>
 
+      {/* Filters */}
+      <Card>
+        <CardHeader className="px-3 pb-2 pt-3">
+          <div className="flex items-center gap-2">
+            <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+            <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Filtros
+            </CardTitle>
+            {hasFilters && (
+              <button
+                onClick={handleClearFilters}
+                className="ml-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3 w-3" />
+                Limpiar
+              </button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="p-3 pt-0">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-medium text-muted-foreground">Desde</span>
+              <Input
+                type="date"
+                className="h-8 text-xs"
+                value={filterDesde}
+                onChange={(e) => setFilterDesde(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-medium text-muted-foreground">Hasta</span>
+              <Input
+                type="date"
+                className="h-8 text-xs"
+                value={filterHasta}
+                onChange={(e) => setFilterHasta(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-medium text-muted-foreground">Empresa</span>
+              <Select value={filterEmpresa} onValueChange={setFilterEmpresa}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las empresas</SelectItem>
+                  <SelectItem value="s1">Sede Central</SelectItem>
+                  <SelectItem value="s2">Sucursal Norte</SelectItem>
+                  <SelectItem value="s3">Sucursal Sur</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-medium text-muted-foreground">Estado</span>
+              <Select value={filterEstado} onValueChange={setFilterEstado}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los estados</SelectItem>
+                  <SelectItem value="sin_asignar">Sin asignar</SelectItem>
+                  <SelectItem value="asignado">Asignado</SelectItem>
+                  <SelectItem value="en_proceso">En proceso</SelectItem>
+                  <SelectItem value="cerrado">Cerrado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="mt-2 flex justify-end">
+            <Button size="sm" className="h-7 gap-1.5 text-xs" onClick={handleApplyFilters}>
+              <Filter className="h-3 w-3" />
+              Aplicar filtros
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Charts row */}
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Bar chart by sucursal */}
         <Card className="lg:col-span-2">
           <CardHeader className="px-3 pb-2 pt-3">
-            <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Tickets por empresa
-            </CardTitle>
-            <CardDescription>Comparativo resueltos vs. pendientes</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  Tickets por empresa
+                </CardTitle>
+                <CardDescription>Comparativo resueltos vs. pendientes</CardDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Ver todo
+                <ArrowRight className="h-3 w-3" />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="p-3 pt-0">
             <ResponsiveContainer width="100%" height={180}>
@@ -166,10 +304,22 @@ export function ReportsPage() {
         {/* Pie chart by priority */}
         <Card>
           <CardHeader className="px-3 pb-2 pt-3">
-            <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Por prioridad
-            </CardTitle>
-            <CardDescription>Distribución total</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  Por prioridad
+                </CardTitle>
+                <CardDescription>Distribución total</CardDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Ver toda
+                <ArrowRight className="h-3 w-3" />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="flex flex-col items-center p-3 pt-0">
             <ResponsiveContainer width="100%" height={160}>
@@ -215,10 +365,22 @@ export function ReportsPage() {
       {/* Bar chart by type */}
       <Card>
         <CardHeader className="px-3 pb-2 pt-3">
-          <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Tickets por tipo de servicio
-          </CardTitle>
-          <CardDescription>Histograma de categorías más frecuentes</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Tickets por tipo de servicio
+              </CardTitle>
+              <CardDescription>Histograma de categorías más frecuentes</CardDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Ver todo
+              <ArrowRight className="h-3 w-3" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-3 pt-0">
           <ResponsiveContainer width="100%" height={180}>
@@ -253,6 +415,127 @@ export function ReportsPage() {
         </CardContent>
       </Card>
 
+      {/* Segunda fila de gráficos */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Tendencia semanal */}
+        <Card>
+          <CardHeader className="px-3 pb-2 pt-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  Tendencia semanal
+                </CardTitle>
+                <CardDescription>Tickets registrados por semana</CardDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Ver todo
+                <ArrowRight className="h-3 w-3" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-3 pt-0">
+            <ResponsiveContainer width="100%" height={180}>
+              <AreaChart data={byWeek} margin={{ left: -20, right: 8 }}>
+                <defs>
+                  <linearGradient id="colorTickets" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="semana" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    fontSize: 12,
+                    borderRadius: 8,
+                    border: '1px solid hsl(var(--border))',
+                    background: 'hsl(var(--background))',
+                    color: 'hsl(var(--foreground))',
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="tickets"
+                  name="Tickets"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={2}
+                  fill="url(#colorTickets)"
+                  dot={{ r: 3, fill: 'hsl(var(--primary))' }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Por estado */}
+        <Card>
+          <CardHeader className="px-3 pb-2 pt-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  Por estado
+                </CardTitle>
+                <CardDescription>Distribución según estado actual</CardDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Ver toda
+                <ArrowRight className="h-3 w-3" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center p-3 pt-0">
+            <ResponsiveContainer width="100%" height={160}>
+              <PieChart>
+                <Pie
+                  data={byStatus}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={45}
+                  outerRadius={70}
+                  dataKey="value"
+                  paddingAngle={3}
+                >
+                  {byStatus.map((entry, index) => (
+                    <Cell key={index} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    fontSize: 12,
+                    borderRadius: 8,
+                    border: '1px solid hsl(var(--border))',
+                    background: 'hsl(var(--background))',
+                    color: 'hsl(var(--foreground))',
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="grid w-full grid-cols-2 gap-x-4 gap-y-1">
+              {byStatus.map((s) => (
+                <div key={s.name} className="flex items-center gap-1.5">
+                  <div
+                    className="h-2.5 w-2.5 shrink-0 rounded-sm"
+                    style={{ background: s.color }}
+                  />
+                  <span className="truncate text-xs">
+                    {s.name} ({s.value})
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Available reports */}
       <div>
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -283,8 +566,9 @@ export function ReportsPage() {
                   className="h-7 w-7 shrink-0"
                   disabled={downloading === report.title}
                   onClick={() => handleDownload(report.title)}
+                  aria-label={`Descargar ${report.title}`}
                 >
-                  <FileBarChart className="h-3.5 w-3.5" />
+                  <FileBarChart className="h-3.5 w-3.5" aria-hidden="true" />
                 </Button>
               </CardContent>
             </Card>

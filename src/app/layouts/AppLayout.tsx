@@ -53,6 +53,14 @@ export function AppLayout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
+      {/* Skip to main content — criterio WCAG 2.4.1 */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-background focus:p-4 focus:text-foreground focus:ring-2 focus:ring-primary"
+      >
+        Saltar al contenido principal
+      </a>
+
       {/* Desktop sidebar */}
       <div className="hidden lg:flex">
         <AppSidebar />
@@ -74,7 +82,11 @@ export function AppLayout() {
           title={title}
           onCommandOpen={() => setCommandOpen(true)}
         />
-        <main className="flex-1 overflow-y-auto pb-20 pt-4 lg:pb-0 lg:pt-5">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 overflow-y-auto pb-20 pt-4 lg:pb-0 lg:pt-5"
+        >
           <PageBreadcrumb />
           <Outlet />
         </main>

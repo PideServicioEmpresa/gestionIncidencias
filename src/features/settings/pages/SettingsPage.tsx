@@ -8,7 +8,10 @@ import {
   HelpCircle,
   AlertTriangle,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAuthStore } from '@store/auth.store'
+import { configuracionService } from '../services/configuracionService'
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/card'
 import { Switch } from '@shared/ui/switch'
 import { Button } from '@shared/ui/button'
@@ -17,6 +20,7 @@ import { Input } from '@shared/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@shared/ui/tooltip'
 import { ConfirmDialog } from '@shared/components/ConfirmDialog'
 import { FormField } from '@shared/components/FormField'
+import { NotificationPreferences } from '@features/notifications/components/NotificationPreferences'
 import { toast } from 'sonner'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -82,7 +86,32 @@ function DangerRow({
 // ─── Main page ──────────────────────────────────────────────────────────────
 
 export function SettingsPage() {
+  const qc = useQueryClient()
+  const user = useAuthStore((s) => s.user)
+
+  // Carga de parámetros del backend
+  const { data: parametros, error: parametrosError } = useQuery({
+    queryKey: ['configuracion', user?.empresaId],
+    queryFn: () => configuracionService.listar(user?.empresaId),
+    retry: false,
+  })
+
+  useEffect(() => {
+    if (parametrosError) toast.error(parametrosError.message)
+  }, [parametrosError])
+
+  // Mutation para actualizar parámetros
+  const { mutate: actualizarParametro } = useMutation({
+    mutationFn: ({ clave, valor }: { clave: string; valor: string }) =>
+      configuracionService.actualizar(clave, valor, user?.empresaId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['configuracion'] })
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+
   // General
+  const [nombreEmpresa, setNombreEmpresa] = useState('')
   const [zona, setZona] = useState('America/Lima')
   const [modoMantenimiento, setModoMantenimiento] = useState(false)
 
@@ -106,13 +135,45 @@ export function SettingsPage() {
   const [confirmLimpiarLogs, setConfirmLimpiarLogs] = useState(false)
   const [confirmRestablecer, setConfirmRestablecer] = useState(false)
 
+  // Sincronizar estado local desde los parámetros del backend al cargar
+  useEffect(() => {
+    if (!parametros) return
+    const get = (clave: string) => parametros.find((p) => p.clave === clave)?.valor
+    const nombreEmpresaVal = get('NOMBRE_EMPRESA')
+    if (nombreEmpresaVal) setNombreEmpresa(nombreEmpresaVal)
+    const z = get('ZONA_HORARIA')
+    if (z) setZona(z)
+    const mm = get('MODO_MANTENIMIENTO')
+    if (mm !== undefined) setModoMantenimiento(mm === 'true')
+    const st = get('SESSION_TIMEOUT_MIN')
+    if (st) setSessionTimeout(st)
+    const tfa = get('AUTH_DOS_FACTORES')
+    if (tfa !== undefined) setDosFactor(tfa === 'true')
+    const bi = get('BLOQUEO_INTENTOS')
+    if (bi !== undefined) setBloqueoPorIntentos(bi === 'true')
+    const mfs = get('MAX_ADJUNTO_MB')
+    if (mfs) setMaxFileSize(mfs)
+    const aa = get('ASIGNACION_AUTOMATICA')
+    if (aa !== undefined) setAsignacionAutomatica(aa === 'true')
+    const pr = get('PERMITIR_REAPERTURA')
+    if (pr !== undefined) setPermitirReapertura(pr === 'true')
+    const ne = get('NOTIF_EMAIL')
+    if (ne !== undefined) setNotifEmail(ne === 'true')
+    const rd = get('RESUMEN_DIARIO')
+    if (rd !== undefined) setResumenDiario(rd === 'true')
+    const ac = get('ALERTAS_CRITICOS')
+    if (ac !== undefined) setAlertasCriticos(ac === 'true')
+    const rs = get('RECORDATORIOS_SLA')
+    if (rs !== undefined) setRecordatoriosSla(rs === 'true')
+  }, [parametros])
+
   return (
     <div className="px-3 py-3 lg:px-5">
       {/* Header de pagina */}
       <div className="mb-4">
-        <h2 className="text-base font-semibold tracking-tight">Configuracion</h2>
+        <h2 className="text-base font-semibold tracking-tight">Configuración</h2>
         <p className="text-xs text-muted-foreground">
-          Ajusta los parametros del sistema, seguridad, tickets y notificaciones.
+          Ajusta los parámetros del sistema, seguridad, tickets y notificaciones.
         </p>
       </div>
 
@@ -137,7 +198,12 @@ export function SettingsPage() {
                 }
                 required
               >
-                <Input defaultValue="Empresa Demo S.A.C." className="h-9 text-sm" />
+                <Input
+                  value={nombreEmpresa}
+                  onChange={(e) => setNombreEmpresa(e.target.value)}
+                  className="h-9 text-sm"
+                  placeholder="Nombre de la empresa"
+                />
               </FormField>
               <FormField
                 label={
@@ -152,7 +218,6 @@ export function SettingsPage() {
                   value={zona}
                   onValueChange={(v) => {
                     setZona(v)
-                    toast.success('Zona horaria actualizada')
                   }}
                 >
                   <SelectTrigger className="h-9 text-sm">
@@ -178,12 +243,23 @@ export function SettingsPage() {
               checked={modoMantenimiento}
               onCheckedChange={(v) => {
                 setModoMantenimiento(v)
-                toast.success(v ? 'Modo mantenimiento activado' : 'Modo mantenimiento desactivado')
               }}
             />
 
             <div className="flex justify-end pt-1">
-              <Button size="sm" onClick={() => toast.success('Configuracion general guardada')}>
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (nombreEmpresa.trim())
+                    actualizarParametro({ clave: 'NOMBRE_EMPRESA', valor: nombreEmpresa.trim() })
+                  actualizarParametro({ clave: 'ZONA_HORARIA', valor: zona })
+                  actualizarParametro({
+                    clave: 'MODO_MANTENIMIENTO',
+                    valor: String(modoMantenimiento),
+                  })
+                  toast.success('Configuracion general guardada')
+                }}
+              >
                 Guardar cambios
               </Button>
             </div>
@@ -202,7 +278,7 @@ export function SettingsPage() {
             <FormField
               label={
                 <>
-                  Tiempo de sesion (minutos)
+                  Tiempo de sesión (minutos)
                   <FieldTooltip text="Tiempo de inactividad permitido antes de cerrar la sesion automaticamente. Un valor menor aumenta la seguridad, pero puede interrumpir el trabajo en curso." />
                 </>
               }
@@ -212,7 +288,6 @@ export function SettingsPage() {
                 value={sessionTimeout}
                 onValueChange={(v) => {
                   setSessionTimeout(v)
-                  toast.success(`Tiempo de sesion actualizado a ${v} minutos`)
                 }}
               >
                 <SelectTrigger className="h-9 text-sm">
@@ -233,19 +308,14 @@ export function SettingsPage() {
               <ToggleRow
                 label={
                   <>
-                    Autenticacion de dos factores
-                    <FieldTooltip text="Agrega una capa adicional de seguridad al iniciar sesion. Los administradores deberan verificar su identidad con un codigo de un solo uso (OTP) ademas de su contrasena." />
+                    Autenticación de dos factores
+                    <FieldTooltip text="Agrega una capa adicional de seguridad al iniciar sesión. Los administradores deberán verificar su identidad con un código de un solo uso (OTP) además de su contraseña." />
                   </>
                 }
                 description="Requerir 2FA para administradores"
                 checked={dosFactor}
                 onCheckedChange={(v) => {
                   setDosFactor(v)
-                  toast.success(
-                    v
-                      ? 'Autenticacion de dos factores activada'
-                      : 'Autenticacion de dos factores desactivada',
-                  )
                 }}
               />
               <ToggleRow
@@ -259,11 +329,6 @@ export function SettingsPage() {
                 checked={bloqueoPorIntentos}
                 onCheckedChange={(v) => {
                   setBloqueoPorIntentos(v)
-                  toast.success(
-                    v
-                      ? 'Bloqueo por intentos fallidos activado'
-                      : 'Bloqueo por intentos fallidos desactivado',
-                  )
                 }}
               />
             </div>
@@ -271,7 +336,15 @@ export function SettingsPage() {
             <div className="flex justify-end pt-1">
               <Button
                 size="sm"
-                onClick={() => toast.success('Configuracion de seguridad guardada')}
+                onClick={() => {
+                  actualizarParametro({ clave: 'SESSION_TIMEOUT_MIN', valor: sessionTimeout })
+                  actualizarParametro({ clave: 'AUTH_DOS_FACTORES', valor: String(dosFactor) })
+                  actualizarParametro({
+                    clave: 'BLOQUEO_INTENTOS',
+                    valor: String(bloqueoPorIntentos),
+                  })
+                  toast.success('Configuracion de seguridad guardada')
+                }}
               >
                 Guardar cambios
               </Button>
@@ -284,14 +357,14 @@ export function SettingsPage() {
           <CardHeader className="px-3 pb-2 pt-3">
             <CardTitle className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
               <Ticket className="h-3.5 w-3.5 text-blue-500" />
-              Configuracion de tickets
+              Configuración de tickets
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 p-3 pt-0">
             <FormField
               label={
                 <>
-                  Tamano maximo de archivo adjunto (MB)
+                  Tamaño máximo de archivo adjunto (MB)
                   <FieldTooltip text="Limite de tamano por archivo adjunto en un ticket. Afecta a todos los archivos que los usuarios puedan subir (imagenes, PDFs, documentos). Valores mayores consumen mas almacenamiento." />
                 </>
               }
@@ -301,7 +374,6 @@ export function SettingsPage() {
                 value={maxFileSize}
                 onValueChange={(v) => {
                   setMaxFileSize(v)
-                  toast.success(`Tamano maximo de adjunto actualizado a ${v} MB`)
                 }}
               >
                 <SelectTrigger className="h-9 text-sm">
@@ -321,17 +393,14 @@ export function SettingsPage() {
               <ToggleRow
                 label={
                   <>
-                    Asignacion automatica
-                    <FieldTooltip text="El sistema asigna automaticamente los nuevos tickets al trabajador disponible con menor carga de trabajo en la sucursal correspondiente. Si esta desactivado, los tickets quedan sin asignar hasta que un administrador los asigne manualmente." />
+                    Asignación automática
+                    <FieldTooltip text="El sistema asigna automáticamente los nuevos tickets al trabajador disponible con menor carga de trabajo en la sucursal correspondiente. Si está desactivado, los tickets quedan sin asignar hasta que un administrador los asigne manualmente." />
                   </>
                 }
                 description="Asignar al trabajador disponible con menos carga"
                 checked={asignacionAutomatica}
                 onCheckedChange={(v) => {
                   setAsignacionAutomatica(v)
-                  toast.success(
-                    v ? 'Asignacion automatica activada' : 'Asignacion automatica desactivada',
-                  )
                 }}
               />
               <ToggleRow
@@ -341,13 +410,10 @@ export function SettingsPage() {
                     <FieldTooltip text="Permite a los usuarios volver a abrir un ticket cerrado dentro de un plazo de 7 dias desde su cierre, en caso de que el problema no haya quedado resuelto satisfactoriamente." />
                   </>
                 }
-                description="Los usuarios pueden reabrir tickets cerrados dentro de 7 dias"
+                description="Los usuarios pueden reabrir tickets cerrados dentro de 7 días"
                 checked={permitirReapertura}
                 onCheckedChange={(v) => {
                   setPermitirReapertura(v)
-                  toast.success(
-                    v ? 'Reapertura de tickets activada' : 'Reapertura de tickets desactivada',
-                  )
                 }}
               />
             </div>
@@ -360,14 +426,14 @@ export function SettingsPage() {
                   <FieldTooltip text="Define tiempos maximos de resolucion segun la prioridad del ticket (Critica, Alta, Media, Baja). El sistema generara alertas cuando un ticket este proximo a superar su tiempo limite." />
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Alertas de vencimiento segun prioridad
+                  Alertas de vencimiento según prioridad
                 </p>
               </div>
               <Button
                 variant="outline"
                 size="sm"
                 className="shrink-0"
-                onClick={() => toast.info('Configuracion de SLA disponible proximamente')}
+                onClick={() => toast.info('Configuración de SLA disponible próximamente')}
               >
                 Configurar
                 <ChevronRight className="ml-1 h-3.5 w-3.5" />
@@ -375,7 +441,21 @@ export function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-1">
-              <Button size="sm" onClick={() => toast.success('Configuracion de tickets guardada')}>
+              <Button
+                size="sm"
+                onClick={() => {
+                  actualizarParametro({ clave: 'MAX_ADJUNTO_MB', valor: maxFileSize })
+                  actualizarParametro({
+                    clave: 'ASIGNACION_AUTOMATICA',
+                    valor: String(asignacionAutomatica),
+                  })
+                  actualizarParametro({
+                    clave: 'PERMITIR_REAPERTURA',
+                    valor: String(permitirReapertura),
+                  })
+                  toast.success('Configuracion de tickets guardada')
+                }}
+              >
                 Guardar cambios
               </Button>
             </div>
@@ -402,11 +482,6 @@ export function SettingsPage() {
               checked={notifEmail}
               onCheckedChange={(v) => {
                 setNotifEmail(v)
-                toast.success(
-                  v
-                    ? 'Notificaciones por correo activadas'
-                    : 'Notificaciones por correo desactivadas',
-                )
               }}
             />
             <ToggleRow
@@ -420,7 +495,6 @@ export function SettingsPage() {
               checked={resumenDiario}
               onCheckedChange={(v) => {
                 setResumenDiario(v)
-                toast.success(v ? 'Resumen diario activado' : 'Resumen diario desactivado')
               }}
             />
             <ToggleRow
@@ -434,11 +508,6 @@ export function SettingsPage() {
               checked={alertasCriticos}
               onCheckedChange={(v) => {
                 setAlertasCriticos(v)
-                toast.success(
-                  v
-                    ? 'Alertas de tickets criticos activadas'
-                    : 'Alertas de tickets criticos desactivadas',
-                )
               }}
             />
             <ToggleRow
@@ -452,20 +521,39 @@ export function SettingsPage() {
               checked={recordatoriosSla}
               onCheckedChange={(v) => {
                 setRecordatoriosSla(v)
-                toast.success(
-                  v ? 'Recordatorios de SLA activados' : 'Recordatorios de SLA desactivados',
-                )
               }}
             />
 
             <div className="flex justify-end pt-1">
               <Button
                 size="sm"
-                onClick={() => toast.success('Configuracion de notificaciones guardada')}
+                onClick={() => {
+                  actualizarParametro({ clave: 'NOTIF_EMAIL', valor: String(notifEmail) })
+                  actualizarParametro({ clave: 'RESUMEN_DIARIO', valor: String(resumenDiario) })
+                  actualizarParametro({ clave: 'ALERTAS_CRITICOS', valor: String(alertasCriticos) })
+                  actualizarParametro({
+                    clave: 'RECORDATORIOS_SLA',
+                    valor: String(recordatoriosSla),
+                  })
+                  toast.success('Configuracion de notificaciones guardada')
+                }}
               >
                 Guardar cambios
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* ── PREFERENCIAS DE NOTIFICACIONES (ocupa las 2 columnas en desktop) ── */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="px-3 pb-2 pt-3">
+            <CardTitle className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+              <Bell className="h-3.5 w-3.5 text-blue-500" />
+              Preferencias de Notificaciones
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-3 pt-0">
+            <NotificationPreferences />
           </CardContent>
         </Card>
 
@@ -479,16 +567,16 @@ export function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-3 p-3 pt-0">
             <p className="text-xs text-muted-foreground">
-              Estas acciones son permanentes e irreversibles. Procede con precaucion.
+              Estas acciones son permanentes e irreversibles. Procede con precaución.
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <DangerRow
-                label="Limpiar logs de auditoria"
-                description="Elimina registros con mas de 1 ano de antiguedad"
+                label="Limpiar logs de auditoría"
+                description="Elimina registros con más de 1 año de antigüedad"
                 onClick={() => setConfirmLimpiarLogs(true)}
               />
               <DangerRow
-                label="Restablecer configuracion"
+                label="Restablecer configuración"
                 description="Volver a los valores predeterminados del sistema"
                 onClick={() => setConfirmRestablecer(true)}
               />
@@ -501,25 +589,25 @@ export function SettingsPage() {
       <ConfirmDialog
         open={confirmLimpiarLogs}
         onOpenChange={setConfirmLimpiarLogs}
-        title="Limpiar logs de auditoria?"
-        description="Se eliminaran todos los registros de auditoria con mas de 1 ano de antiguedad. Esta accion no se puede deshacer."
+        title="¿Limpiar logs de auditoría?"
+        description="Se eliminarán todos los registros de auditoría con más de 1 año de antigüedad. Esta acción no se puede deshacer."
         confirmLabel="Limpiar logs"
         variant="destructive"
         onConfirm={() => {
           setConfirmLimpiarLogs(false)
-          toast.info('Logs de auditoria eliminados')
+          toast.info('Logs de auditoría eliminados')
         }}
       />
       <ConfirmDialog
         open={confirmRestablecer}
         onOpenChange={setConfirmRestablecer}
-        title="Restablecer configuracion?"
-        description="Se restauraran todos los valores predeterminados del sistema. Esta accion no se puede deshacer."
+        title="¿Restablecer configuración?"
+        description="Se restaurarán todos los valores predeterminados del sistema. Esta acción no se puede deshacer."
         confirmLabel="Restablecer"
         variant="destructive"
         onConfirm={() => {
           setConfirmRestablecer(false)
-          toast.info('Configuracion restablecida')
+          toast.info('Configuración restablecida')
         }}
       />
     </div>

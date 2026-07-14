@@ -1,34 +1,39 @@
-import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ArrowLeft, Edit, History, Check, X } from 'lucide-react'
+import { useState } from 'react'
 import { Button } from '@shared/ui/button'
 import { Badge } from '@shared/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/card'
+import { Skeleton } from '@shared/ui/skeleton'
 import { EmptyState } from '@shared/components/EmptyState'
 import { StatusBadge } from '@shared/components/StatusBadge'
-import { PriorityBadge } from '@shared/components/PriorityBadge'
-import { MOCK_USERS, MOCK_TICKETS } from '@mocks/data'
-import type { MockUser } from '@mocks/data'
-import { userEditPath } from '@constants/index'
-import type { UserRole } from '@types-app/index'
+import { useUsuario, useToggleEstadoUsuario } from '../hooks/useUsuarios'
+import { useTickets } from '@features/tickets/hooks/useTickets'
+import { userEditPath, ROUTES } from '@constants/index'
+import type { UserRole, TicketStatus } from '@types-app/index'
 
-// ── Constantes de presentacion ─────────────────────────────────────────────────
+// ── Constantes de presentación ─────────────────────────────────────────────────
 
 const ROL_COLORS: Record<UserRole, string> = {
   superadmin:
     'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border-transparent',
   admin: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-transparent',
-  worker:
+  supervisor: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400 border-transparent',
+  tecnico:
     'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-transparent',
-  user: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border-transparent',
+  trabajador:
+    'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-transparent',
+  usuario: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border-transparent',
 }
 
 const ROL_LABELS: Record<UserRole, string> = {
   superadmin: 'SuperAdmin',
   admin: 'Administrador',
-  worker: 'Trabajador',
-  user: 'Usuario',
+  supervisor: 'Supervisor',
+  tecnico: 'Técnico',
+  trabajador: 'Trabajador',
+  usuario: 'Usuario',
 }
 
 // ── UserDetailPage ─────────────────────────────────────────────────────────────
@@ -37,11 +42,59 @@ export function UserDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [showHistory, setShowHistory] = useState(false)
-  const [userActivo, setUserActivo] = useState<boolean | null>(null)
 
-  const baseUser = MOCK_USERS.find((u) => u.id === id)
+  const { data: user, isLoading, isError } = useUsuario(id ?? '')
+  const toggleEstado = useToggleEstadoUsuario()
+  const ticketsQuery = useTickets(id ? { tecnicoId: id, tamanoPagina: 10 } : undefined)
 
-  if (!baseUser) {
+  // ── Estados de carga y error ───────────────────────────────────────────────
+
+  if (isLoading) {
+    return (
+      <div className="px-3 py-3 lg:px-5">
+        <div className="mb-4 flex items-center gap-2">
+          <Skeleton className="h-8 w-8 rounded" />
+          <Skeleton className="h-5 w-40" />
+        </div>
+        <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
+          <div className="space-y-4">
+            <Card>
+              <CardContent className="p-3">
+                <div className="flex items-start gap-4">
+                  <Skeleton className="h-16 w-16 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-48" />
+                    <Skeleton className="h-3 w-32" />
+                    <Skeleton className="h-3 w-64" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3">
+                <Skeleton className="h-3 w-32" />
+                <div className="mt-3 space-y-2">
+                  <Skeleton className="h-12 w-full rounded-lg" />
+                  <Skeleton className="h-12 w-full rounded-lg" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="space-y-4">
+            <Card>
+              <CardContent className="space-y-2 p-3">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-full" />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (isError || !user) {
     return (
       <div className="px-3 py-3 lg:px-5">
         <EmptyState
@@ -58,25 +111,23 @@ export function UserDetailPage() {
     )
   }
 
-  // Estado de activo puede ser local (toggle) o el original
-  const user: MockUser = {
-    ...baseUser,
-    activo: userActivo !== null ? userActivo : baseUser.activo,
-  }
-
-  // Ultimos 3 tickets asignados a este usuario
-  const assignedTickets = MOCK_TICKETS.filter((t) => t.assignedTo?.id === user.id).slice(0, 3)
+  // Datos derivados del DTO
+  const partes = user.nombreCompleto.trim().split(' ')
+  const initials = partes
+    .map((p) => p[0] ?? '')
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+  const rol = user.rol.toLowerCase() as UserRole
 
   function handleToggleActivo() {
-    const nuevoEstado = !user.activo
-    setUserActivo(nuevoEstado)
-    toast.success(
-      `Usuario "${user.fullName}" ${nuevoEstado ? 'activado' : 'desactivado'} correctamente`,
-    )
+    if (!user) return
+    toggleEstado.mutate({ id: user.id, activar: !user.activo })
   }
 
   function handleResetPassword() {
-    toast.info('Se enviara un correo de restablecimiento')
+    // TODO: Implementar cuando exista el endpoint de restablecimiento de contraseña
+    toast.info('Funcionalidad en implementación')
   }
 
   return (
@@ -122,18 +173,18 @@ export function UserDetailPage() {
               <div className="flex items-start gap-4">
                 {/* Avatar grande */}
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary/20 text-lg font-semibold text-primary">
-                  {user.initials}
+                  {initials}
                 </div>
 
                 {/* Datos */}
                 <div className="min-w-0 flex-1 space-y-2">
                   <div>
-                    <p className="text-base font-semibold leading-tight">{user.fullName}</p>
-                    <p className="text-xs text-muted-foreground">@{user.usuario}</p>
+                    <p className="text-base font-semibold leading-tight">{user.nombreCompleto}</p>
+                    <p className="text-xs text-muted-foreground">@{user.nombreUsuario}</p>
                   </div>
 
                   <div className="flex flex-wrap gap-1.5">
-                    <Badge className={ROL_COLORS[user.rol]}>{ROL_LABELS[user.rol]}</Badge>
+                    <Badge className={ROL_COLORS[rol]}>{ROL_LABELS[rol]}</Badge>
                     {user.activo ? (
                       <Badge className="border-transparent bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
                         Activo
@@ -158,7 +209,7 @@ export function UserDetailPage() {
                     )}
                     <div className="flex items-center gap-2">
                       <span className="w-20 shrink-0 text-muted-foreground">Usuario</span>
-                      <span className="font-medium">{user.usuario}</span>
+                      <span className="font-medium">{user.nombreUsuario}</span>
                     </div>
                   </div>
                 </div>
@@ -171,30 +222,44 @@ export function UserDetailPage() {
             <CardHeader className="px-3 pb-2 pt-3">
               <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
                 Tickets asignados
+                {ticketsQuery.data && ticketsQuery.data.totalRegistros > 0 && (
+                  <span className="ml-2 font-mono text-[10px] normal-case text-muted-foreground/70">
+                    ({ticketsQuery.data.totalRegistros})
+                  </span>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-3 pt-0">
-              {assignedTickets.length === 0 ? (
+              {ticketsQuery.isLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full rounded-lg" />
+                  <Skeleton className="h-10 w-full rounded-lg" />
+                </div>
+              ) : !ticketsQuery.data || ticketsQuery.data.totalRegistros === 0 ? (
                 <p className="text-xs text-muted-foreground">
                   Este usuario no tiene tickets asignados actualmente.
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {assignedTickets.map((ticket) => (
-                    <div
-                      key={ticket.id}
-                      className="flex flex-col gap-1 rounded-lg border p-3 text-xs sm:flex-row sm:items-center sm:justify-between"
+                  {ticketsQuery.data.items.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => navigate(`${ROUTES.TICKETS}/${t.id}`)}
+                      className="flex w-full items-start gap-2 rounded-lg border px-3 py-2 text-left text-xs transition-colors hover:bg-muted/50"
                     >
-                      <div className="min-w-0">
-                        <p className="font-medium text-muted-foreground">{ticket.code}</p>
-                        <p className="truncate font-semibold">{ticket.title}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">{t.titulo}</p>
+                        <p className="font-mono text-[10px] text-muted-foreground">{t.codigo}</p>
                       </div>
-                      <div className="flex shrink-0 flex-wrap gap-1.5">
-                        <StatusBadge status={ticket.status} />
-                        <PriorityBadge priority={ticket.priority} />
-                      </div>
-                    </div>
+                      <StatusBadge status={t.estado.toLowerCase() as TicketStatus} />
+                    </button>
                   ))}
+                  {ticketsQuery.data.totalRegistros > 10 && (
+                    <p className="text-center text-[10px] text-muted-foreground">
+                      +{ticketsQuery.data.totalRegistros - 10} tickets más
+                    </p>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -213,13 +278,15 @@ export function UserDetailPage() {
                   {[
                     {
                       label: 'Cuenta creada',
-                      date: '01 Ene 2026',
+                      date: user.createdAt
+                        ? new Date(user.createdAt).toLocaleDateString('es-PE')
+                        : '—',
                       desc: 'Usuario registrado en el sistema.',
                     },
                     {
                       label: 'Ultimo acceso',
-                      date: baseUser.lastAccess
-                        ? new Date(baseUser.lastAccess).toLocaleDateString('es-PE')
+                      date: user.ultimoAcceso
+                        ? new Date(user.ultimoAcceso).toLocaleDateString('es-PE')
                         : '—',
                       desc: 'Inicio de sesion exitoso.',
                     },
@@ -257,12 +324,18 @@ export function UserDetailPage() {
             <CardContent className="space-y-2 p-3 pt-0 text-xs">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Empresa</span>
-                <span className="font-medium">{user.sucursal}</span>
+                {/* TODO: Mostrar nombre de empresa cuando el endpoint /empresas/{id} esté disponible */}
+                <span className="font-mono text-[10px] font-medium text-muted-foreground">
+                  {user.empresaId}
+                </span>
               </div>
-              {user.area && (
+              {user.areaId && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Sucursal</span>
-                  <span className="font-medium">{user.area}</span>
+                  {/* TODO: Mostrar nombre de sucursal cuando el endpoint esté disponible */}
+                  <span className="font-mono text-[10px] font-medium text-muted-foreground">
+                    {user.areaId}
+                  </span>
                 </div>
               )}
               <div className="flex justify-between">
@@ -303,7 +376,13 @@ export function UserDetailPage() {
                 Restablecer contrasena
               </Button>
 
-              <Button className="w-full" variant="outline" size="sm" onClick={handleToggleActivo}>
+              <Button
+                className="w-full"
+                variant="outline"
+                size="sm"
+                disabled={toggleEstado.isPending}
+                onClick={handleToggleActivo}
+              >
                 {user.activo ? (
                   <span className="text-destructive">Desactivar usuario</span>
                 ) : (

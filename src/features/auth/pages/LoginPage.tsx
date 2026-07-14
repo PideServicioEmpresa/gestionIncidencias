@@ -11,34 +11,35 @@ import { Card, CardContent } from '@shared/ui/card'
 import { FormField } from '@shared/components/FormField'
 import { Separator } from '@shared/ui/separator'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@shared/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import { ROUTES } from '@constants/index'
-import { useAuthStore } from '@store/auth.store'
-import { MOCK_USERS, MOCK_SUCURSALES, MOCK_AREAS } from '@mocks/data'
-import type { UserRole } from '@types-app/index'
+import { authService } from '../services/authService'
 
 const loginSchema = z.object({
-  correo: z.string().email('Ingresa un correo electronico valido.'),
-  contrasena: z.string().min(1, 'Ingresa tu contrasena.'),
+  correo: z.string().email('Ingresa un correo electrónico válido.'),
+  contrasena: z.string().min(1, 'Ingresa tu contraseña.'),
 })
 type LoginForm = z.infer<typeof loginSchema>
 
+const DEMO_CORREOS = {
+  superadmin: import.meta.env.VITE_DEMO_SUPERADMIN_EMAIL as string | undefined,
+  admin: import.meta.env.VITE_DEMO_ADMIN_EMAIL as string | undefined,
+  trabajador: import.meta.env.VITE_DEMO_TRABAJADOR_EMAIL as string | undefined,
+}
+const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD as string | undefined
+const DEMO_DISPONIBLE = Boolean(DEMO_PASSWORD && DEMO_CORREOS.superadmin)
+
 const DEMO_USERS = [
-  { label: 'Trabajador', correo: 'mlopez@empresa.com', id: 'u3' },
-  { label: 'Administrador', correo: 'jperez@empresa.com', id: 'u2' },
-  { label: 'SuperAdmin', correo: 'gcbarrionuevo@empresa.com', id: 'u1' },
+  { label: 'Trabajador', correo: DEMO_CORREOS.trabajador ?? '' },
+  { label: 'Administrador', correo: DEMO_CORREOS.admin ?? '' },
+  { label: 'SuperAdmin', correo: DEMO_CORREOS.superadmin ?? '' },
 ]
 
 export function LoginPage() {
   const navigate = useNavigate()
-  const setUser = useAuthStore((s) => s.setUser)
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [authError, setAuthError] = useState('')
   const [forgotOpen, setForgotOpen] = useState(false)
-  const [selectedSucursalId, setSelectedSucursalId] = useState<string>('')
-  const [selectedAreaId, setSelectedAreaId] = useState<string>('')
-  const [empresaError, setEmpresaError] = useState('')
-  const [sucursalError, setSucursalError] = useState('')
 
   const {
     register,
@@ -47,66 +48,28 @@ export function LoginPage() {
     formState: { errors },
   } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) })
 
-  const filteredAreas = MOCK_AREAS.filter((a) => a.sucursalId === selectedSucursalId && a.activo)
-
-  const activeSucursales = MOCK_SUCURSALES.filter((s) => s.activo)
-
-  const loginWithUser = (userId: string) => {
-    const mockUser = MOCK_USERS.find((u) => u.id === userId)!
-    setUser({
-      id: mockUser.id,
-      authUserId: mockUser.id,
-      nombre: mockUser.name,
-      apellido: mockUser.apellido,
-      correo: mockUser.correo,
-      usuario: mockUser.usuario,
-      rolId: mockUser.id,
-      rol: mockUser.rol as UserRole,
-      sucursalId: mockUser.sucursalId,
-      areaId: mockUser.areaId,
-      estadoLaboral: 'activo',
-      activo: true,
-    })
-    navigate(ROUTES.DASHBOARD)
-  }
-
-  const onSubmit = (_data: LoginForm) => {
-    let hasExtraError = false
-    if (!selectedSucursalId) {
-      setEmpresaError('Selecciona una empresa.')
-      hasExtraError = true
-    } else {
-      setEmpresaError('')
-    }
-    if (!selectedAreaId) {
-      setSucursalError('Selecciona una sucursal.')
-      hasExtraError = true
-    } else {
-      setSucursalError('')
-    }
-    if (hasExtraError) return
-
+  const doLogin = async (correo: string, contrasena: string) => {
     setLoading(true)
-    setTimeout(() => {
-      const found = MOCK_USERS.find((u) => u.correo === _data.correo)
-      const target = found ?? MOCK_USERS[2]
-      loginWithUser(target.id)
-    }, 800)
+    setAuthError('')
+    try {
+      await authService.login(correo, contrasena)
+      navigate(ROUTES.DASHBOARD, { replace: true })
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : 'Error al iniciar sesión.')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleDemoLogin = (userId: string, correo: string) => {
+  const onSubmit = (data: LoginForm) => {
+    doLogin(data.correo, data.contrasena)
+  }
+
+  const handleDemoLogin = (correo: string) => {
+    if (!DEMO_DISPONIBLE || !DEMO_PASSWORD || !correo) return
     setValue('correo', correo)
-    setValue('contrasena', 'demo1234')
-    setLoading(true)
-    setTimeout(() => {
-      loginWithUser(userId)
-    }, 600)
-  }
-
-  const handleSucursalChange = (value: string) => {
-    setSelectedSucursalId(value)
-    setSelectedAreaId('')
-    setEmpresaError('')
+    setValue('contrasena', DEMO_PASSWORD)
+    doLogin(correo, DEMO_PASSWORD)
   }
 
   return (
@@ -137,7 +100,7 @@ export function LoginPage() {
               />
             </FormField>
 
-            {/* Contraseña — label row tiene enlace adicional, se construye manualmente */}
+            {/* Contraseña */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="contrasena" className="text-xs font-medium">
@@ -181,54 +144,13 @@ export function LoginPage() {
               )}
             </div>
 
-            {/* Empresa */}
-            <FormField label="Empresa" required error={empresaError}>
-              <Select
-                value={selectedSucursalId}
-                onValueChange={handleSucursalChange}
-                disabled={loading}
-              >
-                <SelectTrigger className="h-10 rounded-xl text-sm">
-                  <SelectValue placeholder="Selecciona una empresa" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeSucursales.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
-
-            {/* Sucursal (dependiente de Empresa) */}
-            <FormField label="Sucursal" required error={sucursalError}>
-              <Select
-                value={selectedAreaId}
-                onValueChange={(value) => {
-                  setSelectedAreaId(value)
-                  setSucursalError('')
-                }}
-                disabled={loading || !selectedSucursalId}
-              >
-                <SelectTrigger className="h-10 rounded-xl text-sm">
-                  <SelectValue
-                    placeholder={
-                      selectedSucursalId
-                        ? 'Selecciona una sucursal'
-                        : 'Primero selecciona una empresa'
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredAreas.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
+            {/* Error de autenticación */}
+            {authError && (
+              <p className="flex items-center gap-1.5 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {authError}
+              </p>
+            )}
 
             <div aria-live="polite" aria-atomic="true" className="sr-only">
               {loading ? 'Iniciando sesión, por favor espera.' : ''}
@@ -259,23 +181,31 @@ export function LoginPage() {
           <span className="text-xs text-muted-foreground">Acceso demo</span>
           <Separator className="flex-1" />
         </div>
-        <p className="text-center text-xs text-muted-foreground">
-          Prueba la aplicación con distintos roles
-        </p>
-        <div className="grid grid-cols-3 gap-2">
-          {DEMO_USERS.map((u) => (
-            <Button
-              key={u.id}
-              variant="outline"
-              size="sm"
-              disabled={loading}
-              onClick={() => handleDemoLogin(u.id, u.correo)}
-              className="h-9 rounded-xl text-xs"
-            >
-              {u.label}
-            </Button>
-          ))}
-        </div>
+        {DEMO_DISPONIBLE ? (
+          <>
+            <p className="text-center text-xs text-muted-foreground">
+              Prueba la aplicación con distintos roles
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {DEMO_USERS.map((u) => (
+                <Button
+                  key={u.label}
+                  variant="outline"
+                  size="sm"
+                  disabled={loading || !u.correo}
+                  onClick={() => handleDemoLogin(u.correo)}
+                  className="h-9 rounded-xl text-xs"
+                >
+                  {u.label}
+                </Button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="text-center text-xs text-muted-foreground">
+            Acceso demo no disponible en este entorno.
+          </p>
+        )}
       </div>
 
       {/* Modal: Olvidé mi contraseña */}

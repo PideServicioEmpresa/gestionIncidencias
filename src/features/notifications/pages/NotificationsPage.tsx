@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Bell,
@@ -26,10 +26,40 @@ import {
   DropdownMenuTrigger,
 } from '@shared/ui/dropdown-menu'
 import { EmptyState } from '@shared/components/EmptyState'
-import { MOCK_NOTIFICATIONS } from '@mocks/data'
 import { ticketDetailPath } from '@constants/index'
 import { cn } from '@lib/utils'
-import type { MockNotification } from '@mocks/data'
+import { useNotificaciones, useMarcarLeida, useMarcarTodasLeidas } from '../hooks/useNotificaciones'
+import type { NotificacionDto } from '../services/notificacionService'
+
+// ── Tipo interno de la UI ─────────────────────────────────────────────────────
+
+interface LocalNotification {
+  id: string
+  type: 'ticket_new' | 'ticket_assigned' | 'ticket_status' | 'comment' | 'system'
+  title: string
+  body: string
+  ticketId: string | null
+  ticketCode?: string
+  read: boolean
+  createdAt: string
+}
+
+function mapDtoToLocal(dto: NotificacionDto): LocalNotification {
+  // El backend no provee un campo "tipo de categoría" visual.
+  // TODO: inferir tipo desde un campo adicional cuando el backend lo soporte.
+  return {
+    id: dto.id,
+    type: 'system',
+    title: dto.titulo,
+    body: dto.cuerpo,
+    ticketId: dto.ticketId,
+    ticketCode: undefined,
+    read: dto.esLeida,
+    createdAt: dto.createdAt,
+  }
+}
+
+// ── Configuración visual por tipo ─────────────────────────────────────────────
 
 const TYPE_CONFIG = {
   ticket_new: {
@@ -65,7 +95,7 @@ const TYPE_CONFIG = {
 }
 
 function timeAgo(dateStr: string): string {
-  const now = new Date('2026-06-29T14:00:00')
+  const now = new Date()
   const date = new Date(dateStr)
   const diff = Math.floor((now.getTime() - date.getTime()) / 1000)
   if (diff < 60) return 'Hace un momento'
@@ -81,7 +111,7 @@ function NotificationItem({
   onMarkUnread,
   onDelete,
 }: {
-  notification: MockNotification
+  notification: LocalNotification
   onNavigate: (id: string) => void
   onMarkRead: (id: string) => void
   onMarkUnread: (id: string) => void
@@ -152,19 +182,19 @@ function NotificationItem({
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
               <MoreHorizontal className="h-3.5 w-3.5" />
-              <span className="sr-only">Opciones de notificacion</span>
+              <span className="sr-only">Opciones de notificación</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             {isUnread ? (
               <DropdownMenuItem onClick={() => onMarkRead(notification.id)}>
                 <MailOpen className="mr-2 h-3.5 w-3.5" />
-                Marcar como leida
+                Marcar como leída
               </DropdownMenuItem>
             ) : (
               <DropdownMenuItem onClick={() => onMarkUnread(notification.id)}>
                 <BellRing className="mr-2 h-3.5 w-3.5" />
-                Marcar como no leida
+                Marcar como no leída
               </DropdownMenuItem>
             )}
             {notification.ticketId && (
@@ -192,11 +222,27 @@ type Filter = 'all' | 'unread' | 'read'
 
 export function NotificationsPage() {
   const navigate = useNavigate()
-  const [notifications, setNotifications] = useState<MockNotification[]>(MOCK_NOTIFICATIONS)
   const [filter, setFilter] = useState<Filter>('all')
 
-  // Ref para snapshot previo en undo de markAll
-  const prevNotificationsRef = useRef<MockNotification[]>([])
+  // Estado local para operaciones sin soporte en backend
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
+  const [unreadOverrides, setUnreadOverrides] = useState<Set<string>>(new Set())
+
+  // Datos del backend
+  const { data: queryData, isLoading: isLoadingNotifs } = useNotificaciones({ tamanoPagina: 50 })
+  const { mutate: marcarLeida } = useMarcarLeida()
+  const { mutate: marcarTodasLeidas } = useMarcarTodasLeidas()
+
+  // Combinar datos del backend con estado local
+  const notifications: LocalNotification[] = useMemo(() => {
+    return (queryData?.items ?? [])
+      .filter((dto) => !deletedIds.has(dto.id))
+      .map((dto) => ({
+        ...mapDtoToLocal(dto),
+        // Aplicar override local de "no leída"
+        read: unreadOverrides.has(dto.id) ? false : dto.esLeida,
+      }))
+  }, [queryData, deletedIds, unreadOverrides])
 
   const unreadCount = notifications.filter((n) => !n.read).length
   const readCount = notifications.length - unreadCount
@@ -214,73 +260,63 @@ export function NotificationsPage() {
   }
 
   const handleMarkRead = (id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
+    marcarLeida(id)
+    setUnreadOverrides((prev) => {
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
   }
 
   const handleMarkUnread = (id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: false } : n)))
+    // TODO: sin endpoint de "marcar como no leída" en el backend — solo local
+    setUnreadOverrides((prev) => new Set(prev).add(id))
   }
 
   const handleDelete = (id: string) => {
-    // Guardar estado anterior y el indice original para restauracion
-    const snapshot = notifications.slice()
-    const deletedIndex = notifications.findIndex((n) => n.id === id)
-    const deletedItem = notifications[deletedIndex]
+    // TODO: sin endpoint de eliminación en el backend — solo local
+    const snapshotDeleted = new Set(deletedIds)
+    setDeletedIds((prev) => new Set(prev).add(id))
 
-    // Eliminar inmediatamente
-    setNotifications((prev) => prev.filter((n) => n.id !== id))
-
-    toast('Notificacion eliminada', {
+    toast('Notificación eliminada', {
       duration: 4000,
       action: {
         label: 'Deshacer',
         onClick: () => {
-          // Reinsertar en la posicion original
-          setNotifications((prev) => {
-            if (!deletedItem) return prev
-            const next = prev.slice()
-            const insertAt = Math.min(deletedIndex, next.length)
-            next.splice(insertAt, 0, deletedItem)
-            return next
-          })
-          // Fallback por si snapshot es mas confiable
-          void snapshot
+          setDeletedIds(snapshotDeleted)
         },
       },
     })
   }
 
   const handleMarkAllRead = () => {
-    // Guardar snapshot previo
-    prevNotificationsRef.current = notifications.slice()
+    setUnreadOverrides(new Set())
+    marcarTodasLeidas()
+    // El toast de éxito lo maneja el mutation onSuccess
+  }
 
-    // Aplicar cambio inmediatamente
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+  const handleDeleteAllRead = () => {
+    const readIds = notifications.filter((n) => n.read).map((n) => n.id)
+    const snapshot = new Set(deletedIds)
+    setDeletedIds((prev) => new Set([...prev, ...readIds]))
 
-    toast('Todas marcadas como leidas', {
+    toast('Notificaciones leídas eliminadas', {
       duration: 5000,
       action: {
         label: 'Deshacer',
         onClick: () => {
-          setNotifications(prevNotificationsRef.current)
+          setDeletedIds(snapshot)
         },
       },
     })
   }
 
-  const handleDeleteAllRead = () => {
-    const snapshot = notifications.slice()
-    setNotifications((prev) => prev.filter((n) => !n.read))
-
-    toast('Notificaciones leidas eliminadas', {
-      duration: 5000,
-      action: {
-        label: 'Deshacer',
-        onClick: () => {
-          setNotifications(snapshot)
-        },
-      },
-    })
+  if (isLoadingNotifs) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center p-4">
+        <p className="text-sm text-muted-foreground">Cargando notificaciones...</p>
+      </div>
+    )
   }
 
   return (
@@ -308,7 +344,7 @@ export function NotificationsPage() {
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuItem disabled={unreadCount === 0} onClick={handleMarkAllRead}>
                   <CheckCheck className="mr-2 h-3.5 w-3.5" />
-                  Marcar todas como leidas
+                  Marcar todas como leídas
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -317,7 +353,7 @@ export function NotificationsPage() {
                   onClick={handleDeleteAllRead}
                 >
                   <Trash2 className="mr-2 h-3.5 w-3.5" />
-                  Eliminar todas leidas
+                  Eliminar todas leídas
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -357,7 +393,7 @@ export function NotificationsPage() {
           {notifications.length === 0 ? (
             <EmptyState
               icon={Bell}
-              title="Todo al dia"
+              title="Todo al día"
               description="No tienes notificaciones nuevas por el momento."
             />
           ) : filtered.length === 0 ? (
@@ -434,7 +470,7 @@ export function NotificationsPage() {
                   <DropdownMenuContent align="end" className="w-52">
                     <DropdownMenuItem disabled={unreadCount === 0} onClick={handleMarkAllRead}>
                       <CheckCheck className="mr-2 h-3.5 w-3.5" />
-                      Marcar todas como leidas
+                      Marcar todas como leídas
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
@@ -443,7 +479,7 @@ export function NotificationsPage() {
                       onClick={handleDeleteAllRead}
                     >
                       <Trash2 className="mr-2 h-3.5 w-3.5" />
-                      Eliminar todas leidas
+                      Eliminar todas leídas
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

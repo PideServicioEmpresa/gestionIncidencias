@@ -37,6 +37,10 @@ pnpm-debug.log*
 supabase/.branches/
 supabase/.temp/
 
+# Backend — configuración con secretos reales (nunca commitear)
+backend/src/**/appsettings.Development.json
+backend/src/**/appsettings.*.Local.json
+
 # Editores / SO
 .DS_Store
 Thumbs.db

@@ -1,27 +1,24 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { toast } from 'sonner'
 import { ArrowLeft, List } from 'lucide-react'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/card'
+import { Skeleton } from '@shared/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import { FormField } from '@shared/components/FormField'
-import { MOCK_USERS, MOCK_SUCURSALES, MOCK_AREAS } from '@mocks/data'
-import type { MockArea } from '@mocks/data'
+import { useUsuario, useActualizarPerfil } from '../hooks/useUsuarios'
 import type { UserRole } from '@types-app/index'
 import { userDetailPath, ROUTES } from '@constants/index'
 
 // ── Tipos de formulario ───────────────────────────────────────────────────────
 
 interface UserFormState {
-  name: string
+  nombre: string
   apellido: string
   correo: string
   telefono: string
   rol: UserRole
-  sucursalId: string
-  areaId: string
   estado: 'activo' | 'inactivo'
 }
 
@@ -31,71 +28,97 @@ export function UserEditPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
-  const user = useMemo(() => MOCK_USERS.find((u) => u.id === id), [id])
+  const { data: user, isLoading, isError } = useUsuario(id ?? '')
+  const actualizarPerfil = useActualizarPerfil()
 
-  const initialForm = useMemo<UserFormState>(() => {
-    if (!user) {
-      return {
-        name: '',
-        apellido: '',
-        correo: '',
-        telefono: '',
-        rol: 'user',
-        sucursalId: '',
-        areaId: '',
-        estado: 'activo',
-      }
-    }
-    return {
-      name: user.name,
-      apellido: user.apellido,
-      correo: user.correo,
-      telefono: user.telefono ?? '',
-      rol: user.rol,
-      sucursalId: user.sucursalId,
-      areaId: user.areaId ?? '',
-      estado: user.activo ? 'activo' : 'inactivo',
+  const [form, setForm] = useState<UserFormState>({
+    nombre: '',
+    apellido: '',
+    correo: '',
+    telefono: '',
+    rol: 'usuario',
+    estado: 'activo',
+  })
+  const [errors, setErrors] = useState<Partial<Record<keyof UserFormState, string>>>({})
+
+  // Inicializar formulario cuando los datos del usuario cargan
+  useEffect(() => {
+    if (user) {
+      setForm({
+        nombre: user.nombre,
+        apellido: user.apellido,
+        correo: user.correo,
+        telefono: user.telefono ?? '',
+        rol: user.rol.toLowerCase() as UserRole,
+        estado: user.activo ? 'activo' : 'inactivo',
+      })
     }
   }, [user])
 
-  const [form, setForm] = useState<UserFormState>(initialForm)
-  const [errors, setErrors] = useState<Partial<Record<keyof UserFormState, string>>>({})
-
-  const areasFiltered = useMemo<MockArea[]>(
-    () => MOCK_AREAS.filter((a) => a.sucursalId === form.sucursalId && a.activo),
-    [form.sucursalId],
-  )
-
   function handleChange(field: keyof UserFormState, value: string) {
-    setForm((prev) => ({
-      ...prev,
-      [field]: value,
-      ...(field === 'sucursalId' ? { areaId: '' } : {}),
-    }))
+    setForm((prev) => ({ ...prev, [field]: value }))
     setErrors((prev) => ({ ...prev, [field]: undefined }))
   }
 
   function validate(): boolean {
     const next: Partial<Record<keyof UserFormState, string>> = {}
-    if (!form.name.trim()) next.name = 'Ingresa tu nombre completo.'
-    if (!form.apellido.trim()) next.apellido = 'Ingresa tu apellido completo.'
-    if (!form.correo.trim()) next.correo = 'Ingresa un correo electronico valido.'
+    if (!form.nombre.trim()) next.nombre = 'Ingresa el nombre completo.'
+    if (!form.apellido.trim()) next.apellido = 'Ingresa el apellido completo.'
+    if (!form.correo.trim()) next.correo = 'Ingresa un correo electrónico válido.'
     if (!form.rol) next.rol = 'Selecciona un rol.'
-    if (!form.sucursalId) next.sucursalId = 'Selecciona una empresa.'
     setErrors(next)
     return Object.keys(next).length === 0
   }
 
   function handleSave() {
-    if (!validate()) return
-    const fullName = `${form.name.trim()} ${form.apellido.trim()}`.trim()
-    toast.success(`Usuario "${fullName}" actualizado correctamente`)
-    navigate(userDetailPath(id ?? ''))
+    if (!validate() || !id) return
+    actualizarPerfil.mutate(
+      {
+        id,
+        data: {
+          nombre: form.nombre.trim(),
+          apellido: form.apellido.trim(),
+          telefono: form.telefono.trim() || undefined,
+        },
+      },
+      {
+        onSuccess: () => navigate(userDetailPath(id)),
+      },
+    )
+  }
+
+  // ── Estado de carga ────────────────────────────────────────────────────────
+
+  if (isLoading) {
+    return (
+      <div className="px-3 py-3 lg:px-5">
+        <div className="mb-4 flex items-center gap-2">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-3 w-48" />
+        </div>
+        <Card>
+          <CardContent className="space-y-4 p-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   // ── Usuario no encontrado ──────────────────────────────────────────────────
 
-  if (!user) {
+  if (isError || !user) {
     return (
       <div className="px-3 py-3 lg:px-5">
         <Card>
@@ -121,7 +144,7 @@ export function UserEditPage() {
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-base font-semibold tracking-tight">Editar Usuario</h2>
-          <p className="text-xs text-muted-foreground">{user.fullName}</p>
+          <p className="text-xs text-muted-foreground">{user.nombreCompleto}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => navigate(userDetailPath(id ?? ''))}>
@@ -135,21 +158,22 @@ export function UserEditPage() {
       </div>
 
       {/* Form card */}
-      <Card className="mx-auto max-w-xl">
-        <CardHeader className="px-3 pb-2 pt-3">
+      <Card>
+        <CardHeader className="px-4 pb-2 pt-4">
           <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
             Datos del usuario
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4 p-3 pt-0">
+        <CardContent className="space-y-4 p-4 pt-0">
           {/* Nombre y apellido */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <FormField label="Nombre completo" required error={errors.name}>
+            <FormField label="Nombre completo" required error={errors.nombre}>
               <Input
                 className="h-8 text-xs"
                 placeholder="Nombre"
-                value={form.name}
-                onChange={(e) => handleChange('name', e.target.value)}
+                value={form.nombre}
+                onChange={(e) => handleChange('nombre', e.target.value)}
+                error={!!errors.nombre}
               />
             </FormField>
             <FormField label="Apellido completo" required error={errors.apellido}>
@@ -158,51 +182,59 @@ export function UserEditPage() {
                 placeholder="Apellido"
                 value={form.apellido}
                 onChange={(e) => handleChange('apellido', e.target.value)}
+                error={!!errors.apellido}
               />
             </FormField>
           </div>
 
-          {/* Correo */}
-          <FormField label="Correo electronico" required error={errors.correo}>
-            <Input
-              className="h-8 text-xs"
-              placeholder="correo@empresa.com"
-              type="email"
-              value={form.correo}
-              onChange={(e) => handleChange('correo', e.target.value)}
-            />
-          </FormField>
-
-          {/* Telefono */}
-          <FormField label="Telefono" optional>
-            <Input
-              className="h-8 text-xs"
-              placeholder="+51 999 000 000"
-              value={form.telefono}
-              onChange={(e) => handleChange('telefono', e.target.value)}
-            />
-          </FormField>
+          {/* Correo y teléfono */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FormField label="Correo electrónico" required error={errors.correo}>
+              <Input
+                className="h-8 text-xs"
+                placeholder="correo@empresa.com"
+                type="email"
+                value={form.correo}
+                disabled
+                onChange={(e) => handleChange('correo', e.target.value)}
+                error={!!errors.correo}
+              />
+            </FormField>
+            <FormField label="Teléfono" optional>
+              <Input
+                className="h-8 text-xs"
+                placeholder="+51 999 000 000"
+                value={form.telefono}
+                onChange={(e) => handleChange('telefono', e.target.value)}
+              />
+            </FormField>
+          </div>
 
           {/* Rol y estado */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <FormField label="Rol" required error={errors.rol}>
-              <Select value={form.rol} onValueChange={(v) => handleChange('rol', v)}>
+              {/* TODO: Cambio de rol via PUT /usuarios/{id}/rol — implementar flujo separado */}
+              <Select value={form.rol} onValueChange={(v) => handleChange('rol', v)} disabled>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="Seleccionar rol" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="superadmin">SuperAdmin</SelectItem>
                   <SelectItem value="admin">Administrador</SelectItem>
-                  <SelectItem value="worker">Trabajador</SelectItem>
-                  <SelectItem value="user">Usuario</SelectItem>
+                  <SelectItem value="supervisor">Supervisor</SelectItem>
+                  <SelectItem value="tecnico">Técnico</SelectItem>
+                  <SelectItem value="trabajador">Trabajador</SelectItem>
+                  <SelectItem value="usuario">Usuario</SelectItem>
                 </SelectContent>
               </Select>
             </FormField>
 
             <FormField label="Estado" required>
+              {/* TODO: Cambio de estado via PATCH /usuarios/{id}/activar|desactivar — implementar flujo separado */}
               <Select
                 value={form.estado}
                 onValueChange={(v) => handleChange('estado', v as 'activo' | 'inactivo')}
+                disabled
               >
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="Seleccionar estado" />
@@ -215,53 +247,35 @@ export function UserEditPage() {
             </FormField>
           </div>
 
-          {/* Empresa */}
-          <FormField label="Empresa" required error={errors.sucursalId}>
-            <Select value={form.sucursalId} onValueChange={(v) => handleChange('sucursalId', v)}>
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Seleccionar empresa" />
-              </SelectTrigger>
-              <SelectContent>
-                {MOCK_SUCURSALES.filter((s) => s.activo).map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
+          {/* Empresa y sucursal — sin API aún */}
+          {/* TODO: Conectar selects de empresa/sucursal cuando los endpoints estén disponibles */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FormField label="Empresa" required>
+              <Select disabled>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Sin datos de empresa" />
+                </SelectTrigger>
+                <SelectContent />
+              </Select>
+            </FormField>
 
-          {/* Sucursal (area) */}
-          <FormField label="Sucursal" optional>
-            <Select
-              value={form.areaId}
-              onValueChange={(v) => handleChange('areaId', v)}
-              disabled={!form.sucursalId}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue
-                  placeholder={
-                    form.sucursalId ? 'Selecciona una sucursal.' : 'Primero selecciona una empresa.'
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {areasFiltered.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {a.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
+            <FormField label="Sucursal" optional>
+              <Select disabled>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Sin datos de sucursal" />
+                </SelectTrigger>
+                <SelectContent />
+              </Select>
+            </FormField>
+          </div>
 
           {/* Footer actions */}
           <div className="flex justify-end gap-2 border-t pt-4">
             <Button variant="outline" size="sm" onClick={() => navigate(userDetailPath(id ?? ''))}>
               Cancelar
             </Button>
-            <Button size="sm" onClick={handleSave}>
-              Guardar cambios
+            <Button size="sm" disabled={actualizarPerfil.isPending} onClick={handleSave}>
+              {actualizarPerfil.isPending ? 'Guardando...' : 'Guardar cambios'}
             </Button>
           </div>
         </CardContent>

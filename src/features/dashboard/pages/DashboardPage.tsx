@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Ticket,
@@ -15,24 +15,18 @@ import {
   BarChart3,
   ChevronRight,
 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import { Button } from '@shared/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@shared/ui/card'
 import { StatusBadge } from '@shared/components/StatusBadge'
 import { PriorityBadge } from '@shared/components/PriorityBadge'
 import { useAuthStore } from '@store/auth.store'
-import {
-  MOCK_TICKETS,
-  MOCK_TREND_DATA,
-  getTicketsByUser,
-  MOCK_SUCURSALES,
-  MOCK_AREAS,
-  MOCK_USERS,
-  TICKET_TYPES,
-} from '@mocks/data'
 import { ROUTES, ticketDetailPath } from '@constants/index'
 import { cn } from '@lib/utils'
 import { DashboardSkeleton } from '@shared/components/PageSkeletons'
+import { ticketService, type TicketListItemDto } from '@features/tickets/services/ticketService'
+import type { TicketStatus, TicketPriority } from '@types-app/index'
 import {
   ResponsiveContainer,
   PieChart,
@@ -59,6 +53,57 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from 
 import type { DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, useSortable, arrayMove, rectSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { useDashboardResumen } from '../hooks/useDashboard'
+
+// ── Tipo local para tickets recientes ────────────────────────────────────────
+
+interface DashboardTicket {
+  id: string
+  code: string
+  title: string
+  status: TicketStatus
+  priority: TicketPriority
+  sucursalId: string
+  sucursal: string
+  areaId: string
+  area: string
+  tipo: string
+  assignedTo?: { id: string; fullName: string }
+  createdAt: string
+}
+
+function mapTicket(dto: TicketListItemDto): DashboardTicket {
+  if (!dto)
+    return {
+      id: '',
+      code: '',
+      title: '',
+      status: 'sin_asignar' as TicketStatus,
+      priority: 'baja' as TicketPriority,
+      sucursalId: '',
+      sucursal: '',
+      areaId: '',
+      area: '',
+      tipo: '',
+      createdAt: '',
+    }
+  return {
+    id: dto.id ?? '',
+    code: dto.codigo ?? '',
+    title: dto.titulo ?? '',
+    status: String(dto.estado ?? '').toLowerCase() as TicketStatus,
+    priority: String(dto.prioridadEfectiva ?? '').toLowerCase() as TicketPriority,
+    sucursalId: dto.sucursalId ?? '',
+    sucursal: dto.sucursalNombre ?? '',
+    areaId: dto.areaId ?? '',
+    area: dto.areaNombre ?? '',
+    tipo: dto.tipo ?? '',
+    assignedTo: dto.asignadoANombre
+      ? { id: dto.tecnicoId ?? '', fullName: dto.asignadoANombre }
+      : undefined,
+    createdAt: dto.fechaCreacion ?? dto.id ?? '',
+  }
+}
 
 // ── Constantes de estilo para gráficos ─────────────────────────────────────────
 
@@ -80,6 +125,8 @@ const COLORS = {
   pendiente_validacion: '#f59e0b',
   cerrado: '#22c55e',
   reabierto: '#ef4444',
+  en_espera: '#a855f7',
+  cancelado: '#374151',
   baja: '#22c55e',
   media: '#f59e0b',
   alta: '#f97316',
@@ -88,7 +135,7 @@ const COLORS = {
   success: '#22c55e',
 } as const
 
-const TICKET_TYPE_COLORS = [
+const TIPO_COLORS = [
   '#3b82f6',
   '#f97316',
   '#22c55e',
@@ -98,6 +145,24 @@ const TICKET_TYPE_COLORS = [
   '#ec4899',
   '#06b6d4',
 ]
+
+const ESTADO_COLOR_MAP: Record<string, string> = {
+  SIN_ASIGNAR: COLORS.sin_asignar,
+  ASIGNADO: COLORS.asignado,
+  EN_PROCESO: COLORS.en_proceso,
+  PENDIENTE_VALIDACION: COLORS.pendiente_validacion,
+  CERRADO: COLORS.cerrado,
+  REABIERTO: COLORS.reabierto,
+  EN_ESPERA: COLORS.en_espera,
+  CANCELADO: COLORS.cancelado,
+}
+
+const PRIORIDAD_COLOR_MAP: Record<string, string> = {
+  BAJA: COLORS.baja,
+  MEDIA: COLORS.media,
+  ALTA: COLORS.alta,
+  CRITICA: COLORS.critica,
+}
 
 // ── Widget order ────────────────────────────────────────────────────────────────
 
@@ -236,12 +301,40 @@ function StatCard({ title, value, description, icon: Icon, iconColor, onClick }:
   )
 }
 
+// ── Sparkline mini-chart ────────────────────────────────────────────────────────
+
+function Sparkline({ data, color }: { data: number[]; color: string }) {
+  const points = data.map((v, i) => ({ v, i }))
+  if (points.length === 0) return null
+  return (
+    <div className="hidden items-end justify-end lg:flex">
+      <LineChart width={60} height={24} data={points}>
+        <Line
+          type="monotone"
+          dataKey="v"
+          stroke={color}
+          strokeWidth={2}
+          dot={false}
+          isAnimationActive={false}
+        />
+      </LineChart>
+    </div>
+  )
+}
+
 // ── Worker Dashboard ────────────────────────────────────────────────────────────
 
 function WorkerDashboard() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
-  const myTickets = user ? getTicketsByUser(user.id) : []
+
+  const { data: myTicketsData, isLoading } = useQuery({
+    queryKey: ['dashboard', 'worker-tickets', user?.id],
+    queryFn: () => ticketService.listar({ solicitanteId: user?.id, tamanoPagina: 100 }),
+    enabled: !!user?.id,
+  })
+
+  const myTickets = (myTicketsData?.items ?? []).map(mapTicket)
   const myOpen = myTickets.filter((t) => t.status !== 'cerrado')
   const myInProgress = myTickets.filter((t) => t.status === 'en_proceso')
   const myClosed = myTickets.filter((t) => t.status === 'cerrado')
@@ -251,9 +344,10 @@ function WorkerDashboard() {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 5)
 
+  if (isLoading) return <DashboardSkeleton />
+
   return (
     <div className="space-y-4 p-3 lg:p-4">
-      {/* Saludo */}
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-base font-semibold tracking-tight">Hola, {user?.nombre}</h2>
@@ -267,7 +361,6 @@ function WorkerDashboard() {
         </Button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
           title="Mis tickets abiertos"
@@ -301,7 +394,6 @@ function WorkerDashboard() {
         />
       </div>
 
-      {/* Tickets recientes */}
       <Card>
         <CardHeader className="flex-row items-center justify-between pb-3">
           <div>
@@ -358,38 +450,14 @@ function WorkerDashboard() {
 
 // ── Admin Dashboard ─────────────────────────────────────────────────────────────
 
-// ── Sparkline mini-chart ────────────────────────────────────────────────────────
-
-function Sparkline({ data, color }: { data: number[]; color: string }) {
-  const points = data.map((v, i) => ({ v, i }))
-  return (
-    <div className="hidden items-end justify-end lg:flex">
-      <LineChart width={60} height={24} data={points}>
-        <Line
-          type="monotone"
-          dataKey="v"
-          stroke={color}
-          strokeWidth={2}
-          dot={false}
-          isAnimationActive={false}
-        />
-      </LineChart>
-    </div>
-  )
-}
-
 function AdminDashboard() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.rol === 'admin' || user?.rol === 'superadmin'
   const [widgetOrder, setWidgetOrder] = useState<string[]>(getSavedOrder)
   const [editMode, setEditMode] = useState(false)
-  const [selectedEmpresa, setSelectedEmpresa] = useState<string>(
-    isAdmin ? 'general' : (user?.sucursalId ?? 'general'),
-  )
-  const [selectedSucursal, setSelectedSucursal] = useState<string>(
-    isAdmin ? 'general' : (user?.areaId ?? 'general'),
-  )
+  const [selectedSucursalId, setSelectedSucursalId] = useState<string>('general')
+  const [selectedAreaId, setSelectedAreaId] = useState<string>('general')
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
@@ -403,188 +471,156 @@ function AdminDashboard() {
     sessionStorage.setItem('ps-dashboard-order', JSON.stringify(newOrder))
   }
 
-  // ── Filtros empresa / sucursal ────────────────────────────────────────────────
+  // ── Datos del backend (un único endpoint de analytics) ────────────────────────
 
-  const empresaActiva = selectedEmpresa === 'general' ? null : selectedEmpresa
-  const sucursalActiva = selectedSucursal === 'general' ? null : selectedSucursal
+  const sucursalParam = selectedSucursalId !== 'general' ? selectedSucursalId : undefined
+  const {
+    data: resumen,
+    isLoading,
+    error: resumenError,
+  } = useDashboardResumen(sucursalParam ? { sucursalId: sucursalParam } : undefined)
 
-  // Áreas disponibles para la empresa seleccionada
-  const areasFiltradas =
-    empresaActiva !== null
-      ? MOCK_AREAS.filter((a) => a.sucursalId === empresaActiva && a.activo)
-      : MOCK_AREAS.filter((a) => a.activo)
-
-  // Tickets filtrados según empresa y sucursal (área) activos
-  const filteredTickets = MOCK_TICKETS.filter((t) => {
-    if (empresaActiva !== null && t.sucursalId !== empresaActiva) return false
-    if (sucursalActiva !== null && t.areaId !== sucursalActiva) return false
-    return true
+  // Tickets recientes (lista separada para la tabla inferior)
+  const { data: recientesData } = useQuery({
+    queryKey: ['dashboard', 'recientes', sucursalParam],
+    queryFn: () =>
+      ticketService.listar({
+        tamanoPagina: 10,
+        ...(sucursalParam ? { sucursalId: sucursalParam } : {}),
+      }),
   })
+  const recentTickets = (recientesData?.items ?? []).map(mapTicket)
 
-  // Reset sucursal cuando cambia empresa
-  function handleEmpresaChange(val: string) {
-    setSelectedEmpresa(val)
-    setSelectedSucursal('general')
-  }
+  if (isLoading) return <DashboardSkeleton />
+  if (resumenError || !resumen)
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 py-20 text-center">
+        <p className="text-sm font-medium text-destructive">No se pudo cargar el dashboard.</p>
+        <p className="text-xs text-muted-foreground">
+          {resumenError instanceof Error
+            ? resumenError.message
+            : 'Error al obtener los datos analíticos.'}
+        </p>
+      </div>
+    )
 
-  // ── Cálculo de KPIs ───────────────────────────────────────────────────────────
+  // ── KPIs del backend ──────────────────────────────────────────────────────────
 
-  const totalAbiertos = filteredTickets.filter((t) =>
-    ['sin_asignar', 'asignado', 'en_proceso', 'pendiente_validacion', 'reabierto'].includes(
-      t.status,
-    ),
-  ).length
+  const totalAbiertos = resumen.totalAbiertos
+  const criticos = resumen.criticos
+  const cerradosHoy = resumen.cerradosHoy
+  const tasaResolucion = resumen.tasaResolucionPct
 
-  const criticos = filteredTickets.filter(
-    (t) => t.priority === 'critica' && t.status !== 'cerrado',
-  ).length
+  // Contadores de estado para el mini-row
+  const getEstado = (estado: string) =>
+    resumen.porEstado.find((e) => e.estado === estado)?.total ?? 0
 
-  const cerrados = filteredTickets.filter((t) => t.status === 'cerrado').length
-  const tasaResolucion =
-    filteredTickets.length > 0 ? Math.round((cerrados / filteredTickets.length) * 100) : 0
+  // ── Opciones de filtro derivadas del backend ──────────────────────────────────
 
-  // ── Sparkline trend data (últimos 7 días del MOCK_TREND_DATA) ──────────────────
-
-  const sparkTrend = MOCK_TREND_DATA.slice(-7).map((d) => d.creados)
-  const sparkCriticos = MOCK_TREND_DATA.slice(-7).map((_, i) => Math.max(0, 3 - Math.floor(i / 2)))
-  const sparkCerrados = MOCK_TREND_DATA.slice(-7).map((d) => d.resueltos)
-  const sparkTasa = MOCK_TREND_DATA.slice(-7).map((d) =>
-    Math.round((d.resueltos / Math.max(d.creados, 1)) * 100),
-  )
-
-  // ── Datos para los gráficos ───────────────────────────────────────────────────
-
-  const statusData = [
-    {
-      name: 'Sin asignar',
-      value: filteredTickets.filter((t) => t.status === 'sin_asignar').length,
-      color: COLORS.sin_asignar,
-      status: 'sin_asignar',
-    },
-    {
-      name: 'Asignados',
-      value: filteredTickets.filter((t) => t.status === 'asignado').length,
-      color: COLORS.asignado,
-      status: 'asignado',
-    },
-    {
-      name: 'En proceso',
-      value: filteredTickets.filter((t) => t.status === 'en_proceso').length,
-      color: COLORS.en_proceso,
-      status: 'en_proceso',
-    },
-    {
-      name: 'Pend. validación',
-      value: filteredTickets.filter((t) => t.status === 'pendiente_validacion').length,
-      color: COLORS.pendiente_validacion,
-      status: 'pendiente_validacion',
-    },
-    {
-      name: 'Cerrados',
-      value: filteredTickets.filter((t) => t.status === 'cerrado').length,
-      color: COLORS.cerrado,
-      status: 'cerrado',
-    },
-    {
-      name: 'Reabiertos',
-      value: filteredTickets.filter((t) => t.status === 'reabierto').length,
-      color: COLORS.reabierto,
-      status: 'reabierto',
-    },
-  ]
-
-  const priorityData = [
-    {
-      name: 'Baja',
-      value: filteredTickets.filter((t) => t.priority === 'baja').length,
-      color: COLORS.baja,
-      priority: 'baja',
-    },
-    {
-      name: 'Media',
-      value: filteredTickets.filter((t) => t.priority === 'media').length,
-      color: COLORS.media,
-      priority: 'media',
-    },
-    {
-      name: 'Alta',
-      value: filteredTickets.filter((t) => t.priority === 'alta').length,
-      color: COLORS.alta,
-      priority: 'alta',
-    },
-    {
-      name: 'Crítica',
-      value: filteredTickets.filter((t) => t.priority === 'critica').length,
-      color: COLORS.critica,
-      priority: 'critica',
-    },
-  ]
-
-  const sucursalData = MOCK_SUCURSALES.filter((s) => s.activo).map((s) => ({
-    name: s.name.length > 12 ? s.name.substring(0, 12) + '...' : s.name,
-    fullName: s.name,
-    value: filteredTickets.filter((t) => t.sucursalId === s.id).length,
-    sucursalId: s.id,
+  const sucursalOptions = resumen.porSucursal.map((s) => ({
+    id: s.sucursalId,
+    name: s.sucursalNombre,
   }))
 
-  const uniqueAreas = [...new Set(filteredTickets.map((t) => t.area))]
-  const areasData = uniqueAreas
-    .map((area) => ({
-      name: area.length > 14 ? area.substring(0, 14) + '.' : area,
-      abiertos: filteredTickets.filter((t) => t.area === area && t.status !== 'cerrado').length,
-      cerrados: filteredTickets.filter((t) => t.area === area && t.status === 'cerrado').length,
+  const areaOptions =
+    selectedSucursalId !== 'general'
+      ? resumen.porArea
+          .filter((a) => a.sucursalId === selectedSucursalId)
+          .map((a) => ({ id: a.areaId, name: a.areaNombre }))
+      : []
+
+  function handleSucursalChange(val: string) {
+    setSelectedSucursalId(val)
+    setSelectedAreaId('general')
+  }
+
+  // ── Datos para gráficos — directo del backend ─────────────────────────────────
+
+  const statusData = (resumen.porEstado ?? [])
+    .filter((e) => e != null && e.estado != null)
+    .map((e) => ({
+      name: estadoLabel(e.estado),
+      value: e.total,
+      color: ESTADO_COLOR_MAP[e.estado] ?? '#6b7280',
+      status: String(e.estado).toLowerCase(),
     }))
-    .filter((a) => a.abiertos + a.cerrados > 0)
 
-  const tiposData = TICKET_TYPES.map((type, i) => ({
-    name: type.length > 16 ? type.substring(0, 16) + '.' : type,
-    value: filteredTickets.filter((t) => t.type === type).length,
-    color: TICKET_TYPE_COLORS[i % TICKET_TYPE_COLORS.length],
-  })).filter((t) => t.value > 0)
-
-  const responsableData = MOCK_USERS.filter((u) => u.rol === 'worker' && u.activo)
-    .map((u) => ({
-      name: u.name + ' ' + (u.apellido?.charAt(0) ?? '') + '.',
-      total: filteredTickets.filter((t) => t.assignedTo?.id === u.id).length,
+  const priorityData = (resumen.porPrioridad ?? [])
+    .filter((p) => p != null && p.prioridad != null)
+    .map((p) => ({
+      name: prioridadLabel(p.prioridad),
+      value: p.total,
+      color: PRIORIDAD_COLOR_MAP[p.prioridad] ?? '#6b7280',
+      priority: String(p.prioridad).toLowerCase(),
     }))
-    .filter((r) => r.total > 0)
-    .sort((a, b) => b.total - a.total)
 
+  const sucursalData = resumen.porSucursal.map((s) => ({
+    name:
+      s.sucursalNombre.length > 12 ? s.sucursalNombre.substring(0, 12) + '...' : s.sucursalNombre,
+    fullName: s.sucursalNombre,
+    value: s.total,
+    sucursalId: s.sucursalId,
+  }))
+
+  // Filtro local por área en el gráfico de distribución por área
+  const areaFiltrada =
+    selectedAreaId !== 'general'
+      ? resumen.porArea.filter((a) => a.areaId === selectedAreaId)
+      : resumen.porArea
+
+  const areasData = areaFiltrada.map((a) => ({
+    name: a.areaNombre.length > 14 ? a.areaNombre.substring(0, 14) + '.' : a.areaNombre,
+    abiertos: a.abiertos,
+    cerrados: a.cerrados,
+  }))
+
+  const tiposData = resumen.porTipoServicio.map((t, i) => ({
+    name:
+      t.tipoServicioNombre.length > 16
+        ? t.tipoServicioNombre.substring(0, 16) + '.'
+        : t.tipoServicioNombre,
+    value: t.total,
+    color: TIPO_COLORS[i % TIPO_COLORS.length],
+  }))
+
+  const responsableData = resumen.porTecnico.map((t) => ({
+    name: t.tecnicoNombre.split(' ')[0] ?? t.tecnicoNombre,
+    fullName: t.tecnicoNombre,
+    total: t.total,
+  }))
+
+  // Radar por sucursal (datos del backend)
+  const radarKeys = resumen.porSucursal.slice(0, 4).map((s) => {
+    const parts = s.sucursalNombre.split(' ')
+    return parts.length > 1 ? parts[1] : parts[0]
+  })
+  const radarColors = ['#3b82f6', '#f97316', '#22c55e', '#8b5cf6']
   const radarData = ['Sin asignar', 'En proceso', 'Cerrados', 'Críticos'].map((metric) => {
     const entry: Record<string, string | number> = { metric }
-    MOCK_SUCURSALES.filter((s) => s.activo).forEach((s) => {
-      const tickets = filteredTickets.filter((t) => t.sucursalId === s.id)
-      const parts = s.name.split(' ')
-      const shortName = parts.length > 1 ? parts[1] : parts[0]
-      if (metric === 'Sin asignar')
-        entry[shortName] = tickets.filter((t) => t.status === 'sin_asignar').length
-      if (metric === 'En proceso')
-        entry[shortName] = tickets.filter((t) => t.status === 'en_proceso').length
-      if (metric === 'Cerrados')
-        entry[shortName] = tickets.filter((t) => t.status === 'cerrado').length
-      if (metric === 'Críticos')
-        entry[shortName] = tickets.filter((t) => t.priority === 'critica').length
+    resumen.porSucursal.slice(0, 4).forEach((s, idx) => {
+      const key = radarKeys[idx]
+      const areasSuc = resumen.porArea.filter((a) => a.sucursalId === s.sucursalId)
+      if (metric === 'Sin asignar') entry[key] = getEstado('SIN_ASIGNAR')
+      if (metric === 'En proceso') entry[key] = getEstado('EN_PROCESO')
+      if (metric === 'Cerrados') entry[key] = areasSuc.reduce((acc, a) => acc + a.cerrados, 0)
+      if (metric === 'Críticos') entry[key] = resumen.criticos
     })
     return entry
   })
 
-  const radarKeys = MOCK_SUCURSALES.filter((s) => s.activo).map((s) => {
-    const parts = s.name.split(' ')
-    return parts.length > 1 ? parts[1] : parts[0]
-  })
-  const radarColors = ['#3b82f6', '#f97316', '#22c55e', '#8b5cf6']
+  // ── Datos de tendencias del backend ───────────────────────────────────────────
 
-  const filteredTicketsSorted = filteredTickets
-    .slice()
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  const trendData = resumen.tendencia16Dias
+  const weeklyData = resumen.tendenciaSemanal
 
-  const weeklyData = [0, 1, 2, 3].map((w) => {
-    const week = MOCK_TREND_DATA.slice(w * 4, (w + 1) * 4)
-    return {
-      semana: `Sem ${w + 1}`,
-      creados: week.reduce((s, d) => s + d.creados, 0),
-      resueltos: week.reduce((s, d) => s + d.resueltos, 0),
-    }
+  // ── Sparklines del backend ────────────────────────────────────────────────────
+
+  const sparkTrend = resumen.sparkAbiertos
+  const sparkCriticos = resumen.sparkCriticos
+  const sparkCerrados = resumen.sparkCerrados
+  const sparkTasa = resumen.sparkAbiertos.map((v, i) => {
+    const cerr = resumen.sparkCerrados[i] ?? 0
+    return v + cerr > 0 ? Math.round((cerr / (v + cerr)) * 100) : 0
   })
 
   // ── Definición de widgets ─────────────────────────────────────────────────────
@@ -635,7 +671,7 @@ function AdminDashboard() {
 
     priority: {
       title: 'Por prioridad',
-      description: 'Total de tickets por nivel de prioridad',
+      description: 'Tickets activos por nivel de prioridad',
       colSpan: 1,
       viewAllPath: ROUTES.TICKETS,
       chart: (
@@ -670,7 +706,7 @@ function AdminDashboard() {
       viewAllPath: ROUTES.REPORTS,
       chart: (
         <ResponsiveContainer width="100%" height={200}>
-          <AreaChart data={MOCK_TREND_DATA} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
+          <AreaChart data={trendData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
             <defs>
               <linearGradient id="gradCreados" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.25} />
@@ -830,7 +866,7 @@ function AdminDashboard() {
 
     responsable: {
       title: 'Por responsable',
-      description: 'Tickets asignados por trabajador',
+      description: 'Tickets activos asignados por técnico',
       colSpan: 1,
       viewAllPath: ROUTES.USERS,
       chart: (
@@ -942,7 +978,7 @@ function AdminDashboard() {
     },
     {
       label: 'Cerrados hoy',
-      value: cerrados,
+      value: cerradosHoy,
       icon: CheckCheck,
       color: 'text-green-400',
       bg: 'bg-green-500/15',
@@ -979,34 +1015,36 @@ function AdminDashboard() {
         <div className="flex flex-wrap items-center gap-2">
           {isAdmin && (
             <>
-              {/* Filtro Empresa */}
-              <Select value={selectedEmpresa} onValueChange={handleEmpresaChange}>
-                <SelectTrigger className="h-8 w-auto min-w-[140px] text-xs">
+              {/* Filtro por empresa (sucursal en BD) */}
+              <Select value={selectedSucursalId} onValueChange={handleSucursalChange}>
+                <SelectTrigger className="h-9 w-auto min-w-[140px] text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="general">General (todas)</SelectItem>
-                  {MOCK_SUCURSALES.filter((s) => s.activo).map((s) => (
+                  {sucursalOptions.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {/* Filtro Sucursal (dependiente de empresa) */}
+              {/* Filtro por sucursal (área en BD), activo solo si hay empresa seleccionada */}
               <Select
-                value={selectedSucursal}
-                onValueChange={setSelectedSucursal}
-                disabled={selectedEmpresa === 'general'}
+                value={selectedAreaId}
+                onValueChange={setSelectedAreaId}
+                disabled={selectedSucursalId === 'general'}
               >
-                <SelectTrigger className="h-8 w-auto min-w-[140px] text-xs">
+                <SelectTrigger className="h-9 w-auto min-w-[140px] text-xs">
                   <SelectValue
-                    placeholder={selectedEmpresa === 'general' ? 'Todas las sucursales' : 'Todas'}
+                    placeholder={
+                      selectedSucursalId === 'general' ? 'Todas las sucursales' : 'Todas'
+                    }
                   />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="general">Todas las sucursales</SelectItem>
-                  {areasFiltradas.map((a) => (
+                  {areaOptions.map((a) => (
                     <SelectItem key={a.id} value={a.id}>
                       {a.name}
                     </SelectItem>
@@ -1048,7 +1086,7 @@ function AdminDashboard() {
                 <div className="mt-1.5 flex items-end justify-between">
                   <p className="text-2xl font-semibold tabular-nums">
                     {kpi.value}
-                    {kpi.suffix && (
+                    {'suffix' in kpi && kpi.suffix && (
                       <span className="ml-0.5 text-sm font-normal text-muted-foreground">
                         {kpi.suffix}
                       </span>
@@ -1067,42 +1105,42 @@ function AdminDashboard() {
         {[
           {
             label: 'Sin asignar',
-            value: filteredTickets.filter((t) => t.status === 'sin_asignar').length,
+            value: getEstado('SIN_ASIGNAR'),
             icon: Inbox,
             color: 'text-slate-400',
             status: 'sin_asignar',
           },
           {
             label: 'Asignados',
-            value: filteredTickets.filter((t) => t.status === 'asignado').length,
+            value: getEstado('ASIGNADO'),
             icon: CheckCircle2,
             color: 'text-blue-400',
             status: 'asignado',
           },
           {
             label: 'En proceso',
-            value: filteredTickets.filter((t) => t.status === 'en_proceso').length,
+            value: getEstado('EN_PROCESO'),
             icon: Clock,
             color: 'text-orange-400',
             status: 'en_proceso',
           },
           {
             label: 'Pend. valid.',
-            value: filteredTickets.filter((t) => t.status === 'pendiente_validacion').length,
+            value: getEstado('PENDIENTE_VALIDACION'),
             icon: AlertCircle,
             color: 'text-amber-400',
             status: 'pendiente_validacion',
           },
           {
             label: 'Cerrados',
-            value: filteredTickets.filter((t) => t.status === 'cerrado').length,
+            value: getEstado('CERRADO'),
             icon: CheckCheck,
             color: 'text-green-400',
             status: 'cerrado',
           },
           {
             label: 'Reabiertos',
-            value: filteredTickets.filter((t) => t.status === 'reabierto').length,
+            value: getEstado('REABIERTO'),
             icon: RotateCcw,
             color: 'text-red-400',
             status: 'reabierto',
@@ -1153,7 +1191,7 @@ function AdminDashboard() {
             <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
               Tickets recientes
             </CardTitle>
-            <CardDescription>Últimos 5 tickets del sistema</CardDescription>
+            <CardDescription>Últimos 10 tickets del sistema</CardDescription>
           </div>
           <Button variant="ghost" size="sm" onClick={() => navigate(ROUTES.TICKETS)}>
             Gestionar todos
@@ -1162,7 +1200,7 @@ function AdminDashboard() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y">
-            {filteredTicketsSorted.slice(0, 5).map((ticket) => (
+            {recentTickets.map((ticket) => (
               <button
                 key={ticket.id}
                 className="flex w-full items-start gap-3 px-4 py-2.5 text-left transition-colors hover:bg-muted/50"
@@ -1191,19 +1229,36 @@ function AdminDashboard() {
   )
 }
 
+// ── Helpers de etiquetas ──────────────────────────────────────────────────────
+
+function estadoLabel(estado: string): string {
+  const labels: Record<string, string> = {
+    SIN_ASIGNAR: 'Sin asignar',
+    ASIGNADO: 'Asignados',
+    EN_PROCESO: 'En proceso',
+    PENDIENTE_VALIDACION: 'Pend. validación',
+    CERRADO: 'Cerrados',
+    REABIERTO: 'Reabiertos',
+    EN_ESPERA: 'En espera',
+    CANCELADO: 'Cancelados',
+  }
+  return labels[estado] ?? estado
+}
+
+function prioridadLabel(prioridad: string): string {
+  const labels: Record<string, string> = {
+    BAJA: 'Baja',
+    MEDIA: 'Media',
+    ALTA: 'Alta',
+    CRITICA: 'Crítica',
+  }
+  return labels[prioridad] ?? prioridad
+}
+
 // ── Entry Point ─────────────────────────────────────────────────────────────────
 
 export function DashboardPage() {
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.rol === 'admin' || user?.rol === 'superadmin'
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    const t = setTimeout(() => setIsLoading(false), 600)
-    return () => clearTimeout(t)
-  }, [])
-
-  if (isLoading) return <DashboardSkeleton />
-
   return isAdmin ? <AdminDashboard /> : <WorkerDashboard />
 }

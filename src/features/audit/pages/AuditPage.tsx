@@ -1,12 +1,17 @@
-import { Shield, Search, Download, User, Ticket, Settings, LogIn } from 'lucide-react'
-import { useState } from 'react'
+import { Shield, Search, Download, User, Ticket, Settings, LogIn, SearchX } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
 import { toast } from 'sonner'
+import { useQuery } from '@tanstack/react-query'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@shared/ui/card'
 import { Badge } from '@shared/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import { cn } from '@lib/utils'
+import { EmptyState } from '@shared/components/EmptyState'
+import { auditoriaService, type AuditLogDto } from '../services/auditoriaService'
+
+// ── Tipos locales ─────────────────────────────────────────────────────────────
 
 type AuditAction = 'login' | 'ticket' | 'user' | 'config'
 
@@ -21,108 +26,45 @@ interface AuditEntry {
   result: 'success' | 'error'
 }
 
-const AUDIT_ENTRIES: AuditEntry[] = [
-  {
-    id: 'a1',
-    action: 'Inicio de sesión',
-    type: 'login',
-    user: 'jperez',
-    details: 'Acceso desde Chrome 130 · Windows 11',
-    ip: '192.168.1.105',
-    timestamp: '2026-06-29T13:00:00',
+// ── Mapeo de tabla a tipo de acción ──────────────────────────────────────────
+
+function resolveType(tabla: string, accion: string): AuditAction {
+  const t = tabla.toLowerCase()
+  const a = accion.toLowerCase()
+  if (t.includes('sesion') || t.includes('auth') || a.includes('login') || a.includes('sesion'))
+    return 'login'
+  if (t.includes('ticket')) return 'ticket'
+  if (t.includes('usuario') || t.includes('user')) return 'user'
+  if (t.includes('configuracion') || t.includes('config') || t.includes('parametro'))
+    return 'config'
+  return 'ticket'
+}
+
+function mapToEntry(dto: AuditLogDto): AuditEntry {
+  const type = resolveType(dto.tabla, dto.accion)
+  const details = [dto.valoresNuevos, dto.valoresAnteriores].find((v) => v) ?? dto.tabla
+  return {
+    id: dto.id,
+    action: dto.accion,
+    type,
+    user: dto.usuarioId ? dto.usuarioId.slice(0, 8) + '...' : 'Sistema',
+    details,
+    ip: dto.ipAddress ?? '—',
+    timestamp: dto.createdAt,
     result: 'success',
-  },
-  {
-    id: 'a2',
-    action: 'Ticket asignado',
-    type: 'ticket',
-    user: 'jperez',
-    details: 'PS-0009 asignado a María López',
-    ip: '192.168.1.105',
-    timestamp: '2026-06-29T12:55:00',
-    result: 'success',
-  },
-  {
-    id: 'a3',
-    action: 'Estado de ticket actualizado',
-    type: 'ticket',
-    user: 'mlopez',
-    details: 'PS-0001 cambiado a En Proceso',
-    ip: '192.168.1.112',
-    timestamp: '2026-06-29T10:30:00',
-    result: 'success',
-  },
-  {
-    id: 'a4',
-    action: 'Inicio de sesión fallido',
-    type: 'login',
-    user: 'unknown@empresa.com',
-    details: 'Credenciales incorrectas · 3er intento',
-    ip: '192.168.1.88',
-    timestamp: '2026-06-29T10:00:00',
-    result: 'error',
-  },
-  {
-    id: 'a5',
-    action: 'Usuario desactivado',
-    type: 'user',
-    user: 'gcbarrionuevo',
-    details: 'Luisa Torres (ltorres) desactivada',
-    ip: '192.168.1.100',
-    timestamp: '2026-06-28T17:00:00',
-    result: 'success',
-  },
-  {
-    id: 'a6',
-    action: 'Ticket creado',
-    type: 'ticket',
-    user: 'aramirez',
-    details: 'PS-0013: Escáner no detectado por Windows',
-    ip: '192.168.1.130',
-    timestamp: '2026-06-29T10:00:00',
-    result: 'success',
-  },
-  {
-    id: 'a7',
-    action: 'Configuración de sistema modificada',
-    type: 'config',
-    user: 'gcbarrionuevo',
-    details: 'Tiempo de sesión cambiado de 60 a 120 min',
-    ip: '192.168.1.100',
-    timestamp: '2026-06-28T11:00:00',
-    result: 'success',
-  },
-  {
-    id: 'a8',
-    action: 'Ticket reabierto',
-    type: 'ticket',
-    user: 'cgarcia',
-    details: 'PS-0008 reabierto por recurrencia del problema',
-    ip: '192.168.1.221',
-    timestamp: '2026-06-29T07:00:00',
-    result: 'success',
-  },
-  {
-    id: 'a9',
-    action: 'Inicio de sesión',
-    type: 'login',
-    user: 'mlopez',
-    details: 'Acceso desde Safari · iPhone 15',
-    ip: '192.168.1.201',
-    timestamp: '2026-06-29T08:00:00',
-    result: 'success',
-  },
-  {
-    id: 'a10',
-    action: 'Rol de usuario modificado',
-    type: 'user',
-    user: 'gcbarrionuevo',
-    details: 'Pedro Flores promovido de Usuario a Trabajador',
-    ip: '192.168.1.100',
-    timestamp: '2026-06-27T14:00:00',
-    result: 'success',
-  },
-]
+  }
+}
+
+// ── Mapping de filtro UI → tabla backend ─────────────────────────────────────
+
+const TYPE_TO_TABLA: Record<AuditAction, string> = {
+  login: 'sesiones',
+  ticket: 'tickets',
+  user: 'usuarios',
+  config: 'configuracion',
+}
+
+// ── Configuración visual por tipo ─────────────────────────────────────────────
 
 const TYPE_CONFIG: Record<AuditAction, { icon: typeof Shield; color: string; bg: string }> = {
   login: {
@@ -157,15 +99,44 @@ export function AuditPage() {
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<AuditAction | 'all'>('all')
 
-  const filtered = AUDIT_ENTRIES.filter((e) => {
-    const matchSearch =
-      !search ||
-      e.action.toLowerCase().includes(search.toLowerCase()) ||
-      e.user.toLowerCase().includes(search.toLowerCase()) ||
-      e.details.toLowerCase().includes(search.toLowerCase())
-    const matchType = typeFilter === 'all' || e.type === typeFilter
-    return matchSearch && matchType
+  // Parámetros para el backend
+  const tablaParam = typeFilter !== 'all' ? TYPE_TO_TABLA[typeFilter] : undefined
+
+  const {
+    data: queryData,
+    isLoading,
+    error: auditoriaError,
+  } = useQuery({
+    queryKey: ['auditoria', tablaParam],
+    queryFn: () => auditoriaService.listar({ tabla: tablaParam, tamanoPagina: 50 }),
+    retry: false,
   })
+
+  useEffect(() => {
+    if (auditoriaError) toast.error(auditoriaError.message)
+  }, [auditoriaError])
+
+  // Mapear DTOs a la shape local y aplicar búsqueda de texto
+  const entries: AuditEntry[] = useMemo(() => {
+    return (queryData?.items ?? []).map(mapToEntry)
+  }, [queryData])
+
+  const filtered = useMemo(() => {
+    if (!search) return entries
+    const q = search.toLowerCase()
+    return entries.filter(
+      (e) =>
+        e.action.toLowerCase().includes(q) ||
+        e.user.toLowerCase().includes(q) ||
+        e.details.toLowerCase().includes(q),
+    )
+  }, [entries, search])
+
+  // Estadísticas de resumen basadas en datos cargados
+  const totalEventos = queryData?.totalRegistros ?? entries.length
+  const ingresos = entries.filter((e) => e.type === 'login').length
+  const tickets = entries.filter((e) => e.type === 'ticket').length
+  const errores = entries.filter((e) => e.result === 'error').length
 
   const handleExport = () => {
     const promise = new Promise<void>((resolve) => {
@@ -173,7 +144,7 @@ export function AuditPage() {
     })
     toast.promise(promise, {
       loading: 'Generando export...',
-      success: 'Auditoría exportada como audit-log.xlsx',
+      success: 'Auditoria exportada como audit-log.xlsx',
       error: 'Error al exportar',
     })
   }
@@ -200,10 +171,10 @@ export function AuditPage() {
       {/* Summary */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {[
-          { label: 'Total eventos', value: AUDIT_ENTRIES.length },
-          { label: 'Ingresos', value: AUDIT_ENTRIES.filter((e) => e.type === 'login').length },
-          { label: 'Tickets', value: AUDIT_ENTRIES.filter((e) => e.type === 'ticket').length },
-          { label: 'Errores', value: AUDIT_ENTRIES.filter((e) => e.result === 'error').length },
+          { label: 'Total eventos', value: totalEventos },
+          { label: 'Ingresos', value: ingresos },
+          { label: 'Tickets', value: tickets },
+          { label: 'Errores', value: errores },
         ].map((stat) => (
           <Card key={stat.label}>
             <CardContent className="p-3">
@@ -247,7 +218,11 @@ export function AuditPage() {
           <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
             Log de eventos
           </CardTitle>
-          <CardDescription>Últimas 10 acciones del sistema</CardDescription>
+          <CardDescription>
+            {isLoading
+              ? 'Cargando...'
+              : `${filtered.length} evento${filtered.length !== 1 ? 's' : ''} mostrado${filtered.length !== 1 ? 's' : ''}`}
+          </CardDescription>
         </CardHeader>
         <CardContent className="divide-y p-0">
           {filtered.map((entry) => {
@@ -286,6 +261,14 @@ export function AuditPage() {
               </div>
             )
           })}
+          {!isLoading && filtered.length === 0 && (
+            <EmptyState
+              icon={SearchX}
+              title="Sin resultados"
+              description="No hay registros de auditoría que coincidan con la búsqueda."
+              size="sm"
+            />
+          )}
         </CardContent>
       </Card>
     </div>

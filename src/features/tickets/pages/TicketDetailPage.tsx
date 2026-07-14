@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ChevronLeft,
@@ -15,6 +15,7 @@ import {
   RefreshCw,
   X,
   Settings2,
+  Check,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@shared/ui/button'
@@ -26,6 +27,7 @@ import { StatusBadge } from '@shared/components/StatusBadge'
 import { PriorityBadge } from '@shared/components/PriorityBadge'
 import { ConfirmDialog } from '@shared/components/ConfirmDialog'
 import { EmptyState } from '@shared/components/EmptyState'
+import { TicketListSkeleton } from '@shared/components/PageSkeletons'
 import {
   Dialog,
   DialogContent,
@@ -37,12 +39,43 @@ import {
 } from '@shared/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import { FormField } from '@shared/components/FormField'
-import { getTicketById, MOCK_USERS } from '@mocks/data'
 import { useAuthStore } from '@store/auth.store'
 import { ROUTES } from '@constants/index'
 import { cn } from '@lib/utils'
-import type { MockComment, MockHistoryEntry, MockEvidencia, MockUser } from '@mocks/data'
+import { useTecnicos, useMotivosRechazo, useMotivosCancelacion } from '../hooks/useCatalogos'
 import type { TicketStatus, TicketPriority } from '@types-app/index'
+import type { ComentarioDto, EvidenciaDto, TicketHistorialDto } from '../services/ticketService'
+import {
+  useTicket,
+  useComentarios,
+  useEvidencias,
+  useTicketHistorial,
+  useAsignarTicket,
+  useIniciarProceso,
+  usePausar,
+  useReanudar,
+  useSubmitValidacion,
+  useCerrarTicket,
+  useReabrirTicket,
+  useCancelarTicket,
+  useCrearComentario,
+  useSubirEvidencia,
+} from '../hooks/useTickets'
+
+// ── Normalizadores ────────────────────────────────────────────────────────────
+
+function normalizeEstado(estado: string): TicketStatus {
+  return estado.toLowerCase() as TicketStatus
+}
+
+function normalizePrioridad(prioridad: string): TicketPriority {
+  return prioridad.toLowerCase() as TicketPriority
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -59,40 +92,53 @@ function Avatar({ initials, size = 'sm' }: { initials: string; size?: 'sm' | 'md
   )
 }
 
-function CommentBubble({ comment }: { comment: MockComment }) {
+function CommentBubble({ comment }: { comment: ComentarioDto }) {
   const date = new Date(comment.createdAt).toLocaleString('es-PE', {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
     minute: '2-digit',
   })
+  const displayName = comment.autorNombre ?? comment.autorId.slice(0, 8) + '...'
+  const initials = comment.autorNombre
+    ? comment.autorNombre
+        .split(' ')
+        .map((p) => p[0] ?? '')
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+    : comment.autorId.slice(0, 2).toUpperCase()
   return (
-    <div className={cn('flex gap-3', comment.isInternal && 'opacity-75')}>
-      <Avatar initials={comment.author.initials} size="md" />
+    <div className={cn('flex gap-3', comment.esInterno && 'opacity-75')}>
+      <Avatar initials={initials} size="md" />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold">{comment.author.fullName}</span>
+          <span className="text-sm font-semibold">{displayName}</span>
           <span className="text-xs text-muted-foreground">{date}</span>
-          {comment.isInternal && (
+          {comment.esInterno && (
             <Badge variant="outline" className="gap-1 text-[10px]">
               <Lock className="h-2.5 w-2.5" />
               Interno
             </Badge>
           )}
         </div>
-        <p className="mt-1 whitespace-pre-wrap text-sm text-foreground/90">{comment.text}</p>
+        <p className="mt-1 whitespace-pre-wrap text-sm text-foreground/90">{comment.cuerpo}</p>
       </div>
     </div>
   )
 }
 
-function HistoryEntry({ entry }: { entry: MockHistoryEntry }) {
+function HistoryEntry({ entry }: { entry: TicketHistorialDto }) {
   const date = new Date(entry.createdAt).toLocaleString('es-PE', {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
     minute: '2-digit',
   })
+  const fromStatus = entry.estadoAnterior ? normalizeEstado(entry.estadoAnterior) : undefined
+  const toStatus = entry.estadoNuevo ? normalizeEstado(entry.estadoNuevo) : undefined
+  const actorLabel =
+    entry.actorNombre ?? (entry.actorId ? entry.actorId.slice(0, 8) + '...' : 'Sistema')
   return (
     <div className="flex gap-3">
       <div className="flex flex-col items-center">
@@ -103,55 +149,60 @@ function HistoryEntry({ entry }: { entry: MockHistoryEntry }) {
       </div>
       <div className="min-w-0 pb-3">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold">{entry.action}</span>
-          <span className="text-xs text-muted-foreground">por {entry.author.fullName}</span>
+          <span className="text-xs font-semibold">{entry.tipoEvento}</span>
+          <span className="text-xs text-muted-foreground">por {actorLabel}</span>
           <span className="text-xs text-muted-foreground">{date}</span>
         </div>
-        {entry.fromStatus && entry.toStatus && (
+        {fromStatus && toStatus && (
           <div className="mt-1 flex items-center gap-1.5">
-            <StatusBadge status={entry.fromStatus} />
+            <StatusBadge status={fromStatus} />
             <span className="text-xs text-muted-foreground">→</span>
-            <StatusBadge status={entry.toStatus} />
+            <StatusBadge status={toStatus} />
           </div>
         )}
-        {entry.description && (
-          <p className="mt-0.5 text-xs text-muted-foreground">{entry.description}</p>
+        {entry.comentarioTexto && (
+          <p className="mt-0.5 text-xs text-muted-foreground">{entry.comentarioTexto}</p>
         )}
       </div>
     </div>
   )
 }
 
-function EvidenciaItem({ ev }: { ev: MockEvidencia }) {
-  const Icon = ev.type === 'imagen' ? Image : ev.type === 'pdf' ? FileText : Video
+function EvidenciaItem({ ev }: { ev: EvidenciaDto }) {
+  const isImage = ev.tipoMime.startsWith('image/')
+  const isVideo = ev.tipoMime.startsWith('video/')
+  const Icon = isImage ? Image : isVideo ? Video : FileText
+  const tipoLabel = ev.tipo === 'INICIAL' ? 'Evidencia inicial' : 'Evidencia de cierre'
   return (
-    <div className="flex items-center gap-3 rounded-lg border p-3 text-sm hover:bg-muted/50">
+    <a
+      href={ev.urlAlmacenamiento}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-3 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/50"
+    >
       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
         <Icon className="h-4 w-4 text-muted-foreground" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{ev.name}</p>
+        <p className="truncate font-medium">{ev.nombreOriginal}</p>
         <p className="text-xs text-muted-foreground">
-          {ev.size} · {ev.tipo === 'inicial' ? 'Evidencia inicial' : 'Evidencia de cierre'}
+          {formatFileSize(ev.tamanoBytes)} · {tipoLabel}
         </p>
       </div>
-    </div>
+    </a>
   )
 }
 
-// ── Status labels ─────────────────────────────────────────────────────────────
+// ── Status labels para el modal de cambio de estado ──────────────────────────
 
 const STATUS_OPTIONS: { value: TicketStatus; label: string }[] = [
-  { value: 'sin_asignar', label: 'Sin asignar' },
   { value: 'asignado', label: 'Asignado' },
   { value: 'en_proceso', label: 'En proceso' },
+  { value: 'en_espera', label: 'En espera' },
   { value: 'pendiente_validacion', label: 'Pendiente de validación' },
   { value: 'cerrado', label: 'Cerrado' },
   { value: 'reabierto', label: 'Reabierto' },
 ]
-
-// ── Comment counter (module-level so it survives re-renders within a session) ─
-let _commentCounter = 100
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
@@ -163,31 +214,65 @@ export function TicketDetailPage() {
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.rol === 'admin' || user?.rol === 'superadmin'
 
-  const ticket = getTicketById(id ?? '')
+  // ── Queries — todas antes de cualquier return condicional ─────────────────
+  const ticketQuery = useTicket(id ?? '')
+  const comentariosQuery = useComentarios(id ?? '')
+  const historialQuery = useTicketHistorial(id ?? '')
+  const evidenciasQuery = useEvidencias(id ?? '')
 
-  // ── Local state ──────────────────────────────────────────────────────────────
+  // ── Mutations ─────────────────────────────────────────────────────────────
+  const asignarTicket = useAsignarTicket()
+  const iniciarProceso = useIniciarProceso()
+  const pausar = usePausar()
+  const reanudar = useReanudar()
+  const submitValidacion = useSubmitValidacion()
+  const cerrarTicket = useCerrarTicket()
+  const reabrirTicket = useReabrirTicket()
+  const cancelarTicket = useCancelarTicket()
+  const crearComentario = useCrearComentario()
+  const subirEvidencia = useSubirEvidencia()
+
+  // ── Local state ───────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<ActiveTab>('comments')
   const [comment, setComment] = useState('')
   const [isInternal, setIsInternal] = useState(false)
   const [closeDialog, setCloseDialog] = useState(false)
-
-  const [localStatus, setLocalStatus] = useState<TicketStatus>(ticket?.status ?? 'sin_asignar')
-  const [localPriority] = useState<TicketPriority>(ticket?.priority ?? 'baja')
-  const [localAssignedTo, setLocalAssignedTo] = useState<
-    Pick<MockUser, 'id' | 'fullName' | 'initials'> | undefined
-  >(ticket?.assignedTo)
-  const [localComments, setLocalComments] = useState<MockComment[]>(ticket?.comments ?? [])
-  const [localEvidencias, setLocalEvidencias] = useState<MockEvidencia[]>(ticket?.evidencias ?? [])
-  const [localHistory, setLocalHistory] = useState<MockHistoryEntry[]>(ticket?.history ?? [])
   const [assignModal, setAssignModal] = useState(false)
   const [selectedWorker, setSelectedWorker] = useState('')
   const [changeStatusModal, setChangeStatusModal] = useState(false)
-  const [pendingStatus, setPendingStatus] = useState<TicketStatus>(localStatus)
+  const [pendingStatus, setPendingStatus] = useState<TicketStatus>('sin_asignar')
+  const [reabrirModal, setReopenModal] = useState(false)
+  const [motivoRechazoId, setMotivoRechazoId] = useState('')
+  const [comentarioRechazo, setComentarioRechazo] = useState('')
+  const [cancelarModal, setCancelarModal] = useState(false)
+  const [motivoCancelacionId, setMotivoCancelacionId] = useState('')
 
-  // ── Workers list ─────────────────────────────────────────────────────────────
-  const workers = MOCK_USERS.filter((u) => u.rol === 'worker' && u.activo)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  if (!ticket) {
+  const tecnicosQuery = useTecnicos(user?.empresaId ?? undefined)
+  const workers = tecnicosQuery.data ?? []
+  const motivosRechazoQuery = useMotivosRechazo()
+  const motivosRechazo = motivosRechazoQuery.data ?? []
+  const motivosCancelacionQuery = useMotivosCancelacion()
+  const motivosCancelacion = motivosCancelacionQuery.data ?? []
+
+  // ── Guards (después de todos los hooks) ──────────────────────────────────
+  if (ticketQuery.isLoading) return <TicketListSkeleton />
+
+  if (ticketQuery.error) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center p-6">
+        <EmptyState
+          icon={AlertTriangle}
+          title="Error al cargar el ticket"
+          description={(ticketQuery.error as Error).message}
+          action={<Button onClick={() => navigate(ROUTES.TICKETS)}>Volver a tickets</Button>}
+        />
+      </div>
+    )
+  }
+
+  if (!ticketQuery.data) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center p-6">
         <EmptyState
@@ -200,13 +285,21 @@ export function TicketDetailPage() {
     )
   }
 
+  const ticket = ticketQuery.data
+  const currentStatus = normalizeEstado(ticket.estado)
+  const currentPriority = normalizePrioridad(ticket.prioridadEfectiva)
+
+  const comentarios = comentariosQuery.data ?? []
+  const historial = historialQuery.data ?? []
+  const evidencias = evidenciasQuery.data ?? []
+
   const tabs: { id: ActiveTab; label: string; count: number }[] = [
-    { id: 'comments', label: 'Comentarios', count: localComments.length },
-    { id: 'history', label: 'Historial', count: localHistory.length },
-    { id: 'evidencias', label: 'Evidencias', count: localEvidencias.length },
+    { id: 'comments', label: 'Comentarios', count: comentarios.length },
+    { id: 'history', label: 'Historial', count: historial.length },
+    { id: 'evidencias', label: 'Evidencias', count: evidencias.length },
   ]
 
-  const createdDate = new Date(ticket.createdAt).toLocaleString('es-PE', {
+  const createdDate = new Date(ticket.fechaCreacion).toLocaleString('es-PE', {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
@@ -214,133 +307,114 @@ export function TicketDetailPage() {
     minute: '2-digit',
   })
 
-  const updatedDate = new Date(ticket.updatedAt).toLocaleString('es-PE', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  const updatedDate = ticket.updatedAt
+    ? new Date(ticket.updatedAt).toLocaleString('es-PE', {
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '—'
 
-  // ── Handlers ─────────────────────────────────────────────────────────────────
+  // ── Handlers ─────────────────────────────────────────────────────────────
 
   function handleAssignWorker() {
-    const worker = workers.find((w) => w.id === selectedWorker)
-    if (!worker) return
-    setLocalAssignedTo({ id: worker.id, fullName: worker.fullName, initials: worker.initials })
-    setLocalStatus('asignado')
-    setAssignModal(false)
-    setSelectedWorker('')
-    const authorFullName = user ? `${user.nombre} ${user.apellido ?? ''}`.trim() : 'Sistema'
-    const authorInitials = user ? `${user.nombre.charAt(0)}${user.apellido?.charAt(0) ?? ''}` : 'S'
-    setLocalHistory((prev) => [
-      ...prev,
+    if (!selectedWorker) return
+    asignarTicket.mutate(
+      { ticketId: ticket.id, tecnicoId: selectedWorker },
       {
-        id: 'h-' + String(Date.now()),
-        action: 'Responsable asignado',
-        description: `Asignado a ${worker.fullName}`,
-        author: { id: user?.id ?? 'unknown', fullName: authorFullName, initials: authorInitials },
-        createdAt: new Date().toISOString(),
+        onSuccess: () => {
+          setAssignModal(false)
+          setSelectedWorker('')
+        },
       },
-    ])
-    toast.success(`Ticket asignado a ${worker.fullName}`)
+    )
   }
 
   function handleConfirmStatusChange() {
-    const prevStatus = localStatus
-    setLocalStatus(pendingStatus)
-    setChangeStatusModal(false)
-    const authorFullName = user ? `${user.nombre} ${user.apellido ?? ''}`.trim() : 'Sistema'
-    const authorInitials = user ? `${user.nombre.charAt(0)}${user.apellido?.charAt(0) ?? ''}` : 'S'
-    setLocalHistory((prev) => [
-      ...prev,
-      {
-        id: 'h-' + String(Date.now()),
-        action: 'Estado actualizado',
-        fromStatus: prevStatus,
-        toStatus: pendingStatus,
-        description: '',
-        author: { id: user?.id ?? 'unknown', fullName: authorFullName, initials: authorInitials },
-        createdAt: new Date().toISOString(),
-      },
-    ])
-    toast.success('Estado del ticket actualizado')
+    // Mapea el estado destino a la mutación específica del backend
+    const acciones: Partial<Record<TicketStatus, () => void>> = {
+      en_proceso: () => iniciarProceso.mutate(ticket.id),
+      en_espera: () => pausar.mutate(ticket.id),
+      asignado: () => reanudar.mutate(ticket.id),
+      pendiente_validacion: () => submitValidacion.mutate(ticket.id),
+      cerrado: () => cerrarTicket.mutate({ ticketId: ticket.id }),
+      // TODO: reabrir y cancelar requieren selección de motivo — implementar en próxima iteración
+    }
+    const accion = acciones[pendingStatus]
+    if (accion) {
+      accion()
+      setChangeStatusModal(false)
+    } else {
+      toast.error('Transición de estado no disponible desde esta vista.')
+    }
   }
 
   function handleSendComment() {
     if (!comment.trim()) return
-    _commentCounter += 1
-    const authorInitials = user ? `${user.nombre.charAt(0)}${user.apellido?.charAt(0) ?? ''}` : 'U'
-    const newComment: MockComment = {
-      id: 'c-' + String(_commentCounter),
-      text: comment.trim(),
-      author: {
-        id: user?.id ?? 'unknown',
-        fullName: user ? `${user.nombre} ${user.apellido ?? ''}`.trim() : 'Usuario',
-        initials: authorInitials,
-        rol: user?.rol ?? 'user',
-      },
-      createdAt: new Date().toISOString(),
-      isInternal,
-    }
-    setLocalComments((prev) => [...prev, newComment])
-    setLocalHistory((prev) => [
-      ...prev,
+    crearComentario.mutate(
+      { ticketId: ticket.id, cuerpo: comment.trim(), esInterno: isInternal },
       {
-        id: 'h-' + String(Date.now()),
-        action: 'Comentario agregado',
-        description: comment.trim().slice(0, 80),
-        author: {
-          id: user?.id ?? 'unknown',
-          fullName: user ? `${user.nombre} ${user.apellido ?? ''}`.trim() : 'Usuario',
-          initials: authorInitials,
+        onSuccess: () => {
+          setComment('')
+          setIsInternal(false)
         },
-        createdAt: new Date().toISOString(),
       },
-    ])
-    setComment('')
-    setIsInternal(false)
-    toast.success('Comentario agregado')
+    )
   }
 
-  function handleAttachEvidence() {
-    const simulatedNames = [
-      'captura-evidencia.png',
-      'foto-adjunta.jpg',
-      'documento-soporte.pdf',
-      'video-registro.mp4',
-      'reporte-adicional.pdf',
-    ]
-    const simulatedTypes: MockEvidencia['type'][] = ['imagen', 'imagen', 'pdf', 'video', 'pdf']
-    const idx = localEvidencias.length % simulatedNames.length
-    const newEv: MockEvidencia = {
-      id: 'ev-' + String(Date.now()),
-      name: simulatedNames[idx],
-      type: simulatedTypes[idx],
-      size: `${(Math.random() * 3 + 0.5).toFixed(1)} MB`,
-      tipo:
-        localStatus === 'pendiente_validacion' || localStatus === 'cerrado' ? 'final' : 'inicial',
-    }
-    setLocalEvidencias((prev) => [...prev, newEv])
-    toast.success(`Archivo "${newEv.name}" adjuntado`)
+  function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const archivo = e.target.files?.[0]
+    if (!archivo) return
+    const tipo: 'INICIAL' | 'FINAL' =
+      currentStatus === 'pendiente_validacion' || currentStatus === 'cerrado' ? 'FINAL' : 'INICIAL'
+    subirEvidencia.mutate({ ticketId: ticket.id, archivo, tipo })
+    e.target.value = ''
   }
 
   function handleCloseTicket() {
-    setLocalStatus('cerrado')
-    setCloseDialog(false)
-    toast.success('Ticket cerrado correctamente')
+    cerrarTicket.mutate({ ticketId: ticket.id }, { onSuccess: () => setCloseDialog(false) })
   }
 
   function handleReopenTicket() {
-    setLocalStatus('reabierto')
-    toast.success('Ticket reabierto')
+    setMotivoRechazoId('')
+    setComentarioRechazo('')
+    setReopenModal(true)
   }
 
-  function handleCancelTicket() {
-    toast.info('Ticket cancelado')
-    navigate(ROUTES.TICKETS)
+  function handleConfirmReabrir() {
+    if (!motivoRechazoId) return
+    reabrirTicket.mutate(
+      { ticketId: ticket.id, motivoRechazoId, comentarioRechazo: comentarioRechazo || undefined },
+      {
+        onSuccess: () => {
+          setReopenModal(false)
+          setMotivoRechazoId('')
+          setComentarioRechazo('')
+        },
+      },
+    )
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────────
+  function handleOpenCancelar() {
+    setMotivoCancelacionId('')
+    setCancelarModal(true)
+  }
+
+  function handleConfirmCancelar() {
+    if (!motivoCancelacionId) return
+    cancelarTicket.mutate(
+      { ticketId: ticket.id, motivoCancelacionId },
+      {
+        onSuccess: () => {
+          setCancelarModal(false)
+          setMotivoCancelacionId('')
+        },
+      },
+    )
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -357,8 +431,8 @@ export function TicketDetailPage() {
             <DialogTitle className="text-base font-semibold">Asignar trabajador</DialogTitle>
           </DialogHeader>
           <div className="rounded-lg bg-muted p-3 text-xs">
-            <p className="font-medium">{ticket.title}</p>
-            <p className="text-muted-foreground">{ticket.code}</p>
+            <p className="font-medium">{ticket.titulo}</p>
+            <p className="text-muted-foreground">{ticket.codigo}</p>
           </div>
           <FormField label="Trabajador" required>
             <Select value={selectedWorker} onValueChange={setSelectedWorker}>
@@ -370,12 +444,11 @@ export function TicketDetailPage() {
                   <SelectItem key={w.id} value={w.id}>
                     <div className="flex items-center gap-2">
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-[9px] font-semibold text-primary">
-                        {w.initials}
+                        {(w.nombre[0] + (w.apellido?.[0] ?? '')).toUpperCase()}
                       </span>
-                      <span>{w.fullName}</span>
-                      <Badge variant="outline" className="ml-auto text-[9px]">
-                        {w.sucursal}
-                      </Badge>
+                      <span>
+                        {w.nombre} {w.apellido}
+                      </span>
                     </div>
                   </SelectItem>
                 ))}
@@ -388,8 +461,12 @@ export function TicketDetailPage() {
                 Cancelar
               </Button>
             </DialogClose>
-            <Button size="sm" disabled={!selectedWorker} onClick={handleAssignWorker}>
-              Asignar
+            <Button
+              size="sm"
+              disabled={!selectedWorker || asignarTicket.isPending}
+              onClick={handleAssignWorker}
+            >
+              {asignarTicket.isPending ? 'Asignando...' : 'Asignar'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -397,36 +474,167 @@ export function TicketDetailPage() {
 
       {/* ── Modal: Cambiar estado ── */}
       <Dialog open={changeStatusModal} onOpenChange={setChangeStatusModal}>
-        <DialogContent className="max-w-xs">
+        <DialogContent className="ps-glow-modal max-w-sm">
           <DialogHeader>
-            <DialogTitle>Cambiar estado</DialogTitle>
-            <DialogDescription>Selecciona el nuevo estado para este ticket.</DialogDescription>
+            <DialogTitle className="text-base font-semibold">Cambiar estado</DialogTitle>
+            <DialogDescription className="flex items-center gap-1.5 text-xs">
+              Estado actual:
+              <StatusBadge status={currentStatus} />
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-1 py-1">
-            {STATUS_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setPendingStatus(opt.value)}
-                className={cn(
-                  'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors',
-                  pendingStatus === opt.value
-                    ? 'bg-primary/10 font-semibold text-primary'
-                    : 'hover:bg-muted',
-                )}
-              >
-                <StatusBadge status={opt.value} />
-              </button>
-            ))}
+          <div className="space-y-1.5">
+            {STATUS_OPTIONS.map((opt) => {
+              const isSelected = pendingStatus === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setPendingStatus(opt.value)}
+                  className={cn(
+                    'flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all',
+                    isSelected
+                      ? 'border-primary/30 bg-primary/10'
+                      : 'border-transparent hover:bg-muted',
+                  )}
+                >
+                  <StatusBadge status={opt.value} />
+                  {isSelected && <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-primary" />}
+                </button>
+              )
+            })}
           </div>
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 pt-1">
             <DialogClose asChild>
               <Button variant="outline" size="sm">
                 Cancelar
               </Button>
             </DialogClose>
-            <Button size="sm" onClick={handleConfirmStatusChange}>
-              Confirmar
+            <Button
+              size="sm"
+              onClick={handleConfirmStatusChange}
+              disabled={pendingStatus === currentStatus}
+            >
+              Confirmar cambio
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal: Reabrir ticket ── */}
+      <Dialog
+        open={reabrirModal}
+        onOpenChange={(open) => {
+          setReopenModal(open)
+          if (!open) {
+            setMotivoRechazoId('')
+            setComentarioRechazo('')
+          }
+        }}
+      >
+        <DialogContent className="ps-glow-modal max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">Reabrir ticket</DialogTitle>
+            <DialogDescription className="text-xs">
+              Selecciona el motivo por el que se rechaza el cierre y se reabre el ticket.
+            </DialogDescription>
+          </DialogHeader>
+          <FormField label="Motivo de rechazo" required>
+            <Select
+              value={motivoRechazoId}
+              onValueChange={setMotivoRechazoId}
+              disabled={motivosRechazoQuery.isLoading}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={motivosRechazoQuery.isLoading ? 'Cargando...' : 'Seleccionar motivo'}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {motivosRechazo.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+          <FormField label="Comentario" optional>
+            <Textarea
+              rows={2}
+              placeholder="Describe por qué se reabre el ticket..."
+              className="resize-none text-xs"
+              value={comentarioRechazo}
+              onChange={(e) => setComentarioRechazo(e.target.value)}
+            />
+          </FormField>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" size="sm">
+                Cancelar
+              </Button>
+            </DialogClose>
+            <Button
+              size="sm"
+              disabled={!motivoRechazoId || reabrirTicket.isPending}
+              onClick={handleConfirmReabrir}
+            >
+              {reabrirTicket.isPending ? 'Reabriendo...' : 'Reabrir ticket'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal: Cancelar ticket ── */}
+      <Dialog
+        open={cancelarModal}
+        onOpenChange={(open) => {
+          setCancelarModal(open)
+          if (!open) setMotivoCancelacionId('')
+        }}
+      >
+        <DialogContent className="ps-glow-modal max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">Cancelar ticket</DialogTitle>
+            <DialogDescription className="text-xs">
+              Selecciona el motivo por el que se cancela el ticket. Esta acción retira el ticket del
+              flujo de trabajo.
+            </DialogDescription>
+          </DialogHeader>
+          <FormField label="Motivo de cancelación" required>
+            <Select
+              value={motivoCancelacionId}
+              onValueChange={setMotivoCancelacionId}
+              disabled={motivosCancelacionQuery.isLoading}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    motivosCancelacionQuery.isLoading ? 'Cargando...' : 'Seleccionar motivo'
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {motivosCancelacion.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" size="sm">
+                Volver
+              </Button>
+            </DialogClose>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={!motivoCancelacionId || cancelarTicket.isPending}
+              onClick={handleConfirmCancelar}
+            >
+              {cancelarTicket.isPending ? 'Cancelando...' : 'Confirmar cancelación'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -441,22 +649,21 @@ export function TicketDetailPage() {
             size="icon"
             className="mt-0.5 h-8 w-8 shrink-0"
             onClick={() => navigate(-1)}
+            aria-label="Volver a la lista de tickets"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-mono text-xs font-semibold text-muted-foreground">
-                {ticket.code}
+                {ticket.codigo}
               </span>
-              <PriorityBadge priority={localPriority} />
-              <StatusBadge status={localStatus} />
+              <PriorityBadge priority={currentPriority} />
+              <StatusBadge status={currentStatus} />
             </div>
-            <h2 className="mt-1 text-base font-semibold leading-snug">{ticket.title}</h2>
+            <h2 className="mt-1 text-base font-semibold leading-snug">{ticket.titulo}</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Creado el {createdDate} por{' '}
-              <span className="font-medium">{ticket.createdBy.fullName}</span> · Última
-              actualización: {updatedDate}
+              Creado el {createdDate} · Última actualización: {updatedDate}
             </p>
           </div>
         </div>
@@ -473,18 +680,22 @@ export function TicketDetailPage() {
               </CardHeader>
               <CardContent className="p-3 pt-0">
                 <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90">
-                  {ticket.description}
+                  {ticket.descripcion}
                 </p>
               </CardContent>
             </Card>
 
             {/* Tabs */}
             <Card>
-              {/* Tab bar */}
-              <div className="flex border-b">
+              {/* Tab bar — ARIA tablist para WCAG 4.1.2 */}
+              <div role="tablist" aria-label="Secciones del ticket" className="flex border-b">
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
+                    role="tab"
+                    aria-selected={activeTab === tab.id}
+                    aria-controls={`tabpanel-${tab.id}`}
+                    id={`tab-${tab.id}`}
                     onClick={() => setActiveTab(tab.id)}
                     className={cn(
                       'flex flex-1 items-center justify-center gap-1 px-2 py-2.5 text-xs font-medium transition-colors',
@@ -495,7 +706,11 @@ export function TicketDetailPage() {
                   >
                     {tab.label}
                     {tab.count > 0 && (
-                      <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+                      <Badge
+                        variant="secondary"
+                        aria-hidden="true"
+                        className="h-4 px-1.5 text-[10px]"
+                      >
                         {tab.count}
                       </Badge>
                     )}
@@ -506,8 +721,17 @@ export function TicketDetailPage() {
               <CardContent className="p-3">
                 {/* Comments tab */}
                 {activeTab === 'comments' && (
-                  <div className="space-y-3">
-                    {localComments.length === 0 ? (
+                  <div
+                    role="tabpanel"
+                    id="tabpanel-comments"
+                    aria-labelledby="tab-comments"
+                    className="space-y-3"
+                  >
+                    {comentariosQuery.isLoading ? (
+                      <p className="py-6 text-center text-sm text-muted-foreground">
+                        Cargando comentarios...
+                      </p>
+                    ) : comentarios.length === 0 ? (
                       <div className="py-6 text-center">
                         <MessageSquare className="mx-auto h-8 w-8 text-muted-foreground/40" />
                         <p className="mt-2 text-sm text-muted-foreground">
@@ -516,7 +740,7 @@ export function TicketDetailPage() {
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {localComments.map((c) => (
+                        {comentarios.map((c) => (
                           <CommentBubble key={c.id} comment={c} />
                         ))}
                       </div>
@@ -561,9 +785,13 @@ export function TicketDetailPage() {
                           </button>
                         )}
                         <div className="ml-auto">
-                          <Button size="sm" disabled={!comment.trim()} onClick={handleSendComment}>
+                          <Button
+                            size="sm"
+                            disabled={!comment.trim() || crearComentario.isPending}
+                            onClick={handleSendComment}
+                          >
                             <Send className="mr-1.5 h-3.5 w-3.5" />
-                            Comentar
+                            {crearComentario.isPending ? 'Enviando...' : 'Comentar'}
                           </Button>
                         </div>
                       </div>
@@ -573,21 +801,39 @@ export function TicketDetailPage() {
 
                 {/* History tab */}
                 {activeTab === 'history' && (
-                  <div className="space-y-1">
-                    {localHistory.length === 0 ? (
+                  <div
+                    role="tabpanel"
+                    id="tabpanel-history"
+                    aria-labelledby="tab-history"
+                    className="space-y-1"
+                  >
+                    {historialQuery.isLoading ? (
+                      <p className="py-6 text-center text-sm text-muted-foreground">
+                        Cargando historial...
+                      </p>
+                    ) : historial.length === 0 ? (
                       <div className="py-6 text-center">
                         <p className="text-sm text-muted-foreground">Sin historial aún.</p>
                       </div>
                     ) : (
-                      localHistory.map((entry) => <HistoryEntry key={entry.id} entry={entry} />)
+                      historial.map((entry) => <HistoryEntry key={entry.id} entry={entry} />)
                     )}
                   </div>
                 )}
 
                 {/* Evidencias tab */}
                 {activeTab === 'evidencias' && (
-                  <div className="space-y-2">
-                    {localEvidencias.length === 0 ? (
+                  <div
+                    role="tabpanel"
+                    id="tabpanel-evidencias"
+                    aria-labelledby="tab-evidencias"
+                    className="space-y-2"
+                  >
+                    {evidenciasQuery.isLoading ? (
+                      <p className="py-6 text-center text-sm text-muted-foreground">
+                        Cargando evidencias...
+                      </p>
+                    ) : evidencias.length === 0 ? (
                       <div className="py-6 text-center">
                         <Paperclip className="mx-auto h-8 w-8 text-muted-foreground/40" />
                         <p className="mt-2 text-sm text-muted-foreground">
@@ -595,16 +841,25 @@ export function TicketDetailPage() {
                         </p>
                       </div>
                     ) : (
-                      localEvidencias.map((ev) => <EvidenciaItem key={ev.id} ev={ev} />)
+                      evidencias.map((ev) => <EvidenciaItem key={ev.id} ev={ev} />)
                     )}
+                    {/* Input de archivo oculto */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      className="sr-only"
+                      accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx"
+                      onChange={handleFileSelected}
+                    />
                     <Button
                       variant="outline"
                       size="sm"
                       className="mt-1 w-full"
-                      onClick={handleAttachEvidence}
+                      disabled={subirEvidencia.isPending}
+                      onClick={() => fileInputRef.current?.click()}
                     >
                       <Paperclip className="mr-1.5 h-3.5 w-3.5" />
-                      Adjuntar archivo
+                      {subirEvidencia.isPending ? 'Subiendo...' : 'Adjuntar archivo'}
                     </Button>
                   </div>
                 )}
@@ -623,13 +878,18 @@ export function TicketDetailPage() {
               </CardHeader>
               <CardContent className="space-y-3 p-3 pt-0 text-sm">
                 {[
-                  { label: 'Tipo de Servicio', value: ticket.type },
-                  { label: 'Empresa', value: ticket.sucursal },
-                  { label: 'Sucursal', value: ticket.area },
-                  ...(ticket.location ? [{ label: 'Ubicación', value: ticket.location }] : []),
+                  {
+                    label: 'Tipo de Servicio',
+                    value: ticket.tipoServicioNombre ?? ticket.tipoServicioId,
+                  },
+                  { label: 'Sucursal', value: ticket.sucursalNombre ?? ticket.sucursalId },
+                  { label: 'Área', value: ticket.areaNombre ?? ticket.areaId },
+                  ...(ticket.ubicacion ? [{ label: 'Ubicación', value: ticket.ubicacion }] : []),
                   {
                     label: 'Asignado a',
-                    value: localAssignedTo?.fullName ?? 'Sin asignar',
+                    value:
+                      ticket.tecnicoNombre ??
+                      (ticket.tecnicoId ? ticket.tecnicoId.slice(0, 8) + '...' : 'Sin asignar'),
                   },
                 ].map((row) => (
                   <div key={row.label} className="flex flex-col gap-0.5">
@@ -651,7 +911,7 @@ export function TicketDetailPage() {
               </CardHeader>
               <CardContent className="flex flex-col gap-2 p-3 pt-0">
                 {/* Confirmar y cerrar */}
-                {localStatus === 'pendiente_validacion' && (
+                {currentStatus === 'pendiente_validacion' && (
                   <Button className="w-full" onClick={() => setCloseDialog(true)}>
                     <CheckCircle2 className="mr-2 h-4 w-4" />
                     Confirmar y cerrar
@@ -659,7 +919,7 @@ export function TicketDetailPage() {
                 )}
 
                 {/* Asignar trabajador */}
-                {isAdmin && localStatus === 'sin_asignar' && (
+                {isAdmin && currentStatus === 'sin_asignar' && (
                   <Button className="w-full" onClick={() => setAssignModal(true)}>
                     <UserCheck className="mr-2 h-4 w-4" />
                     Asignar trabajador
@@ -672,7 +932,7 @@ export function TicketDetailPage() {
                     variant="outline"
                     className="w-full"
                     onClick={() => {
-                      setPendingStatus(localStatus)
+                      setPendingStatus(currentStatus)
                       setChangeStatusModal(true)
                     }}
                   >
@@ -682,7 +942,7 @@ export function TicketDetailPage() {
                 )}
 
                 {/* Reabrir ticket */}
-                {localStatus === 'cerrado' && (
+                {currentStatus === 'cerrado' && (
                   <Button variant="outline" className="w-full" onClick={handleReopenTicket}>
                     <RefreshCw className="mr-2 h-4 w-4" />
                     Reabrir ticket
@@ -690,11 +950,11 @@ export function TicketDetailPage() {
                 )}
 
                 {/* Cancelar ticket */}
-                {localStatus !== 'cerrado' && (
+                {currentStatus !== 'cerrado' && currentStatus !== 'cancelado' && (
                   <Button
                     variant="outline"
                     className="w-full text-destructive hover:text-destructive"
-                    onClick={handleCancelTicket}
+                    onClick={handleOpenCancelar}
                   >
                     <X className="mr-2 h-4 w-4" />
                     Cancelar ticket
@@ -710,7 +970,7 @@ export function TicketDetailPage() {
           open={closeDialog}
           onOpenChange={setCloseDialog}
           title="Confirmar cierre de ticket"
-          description={`¿Confirmas que el problema reportado en "${ticket.title}" fue resuelto correctamente? Esta acción cerrará el ticket.`}
+          description={`¿Confirmas que el problema reportado en "${ticket.titulo}" fue resuelto correctamente? Esta acción cerrará el ticket.`}
           confirmLabel="Sí, cerrar ticket"
           variant="default"
           onConfirm={handleCloseTicket}

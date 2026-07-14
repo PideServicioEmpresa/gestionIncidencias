@@ -15,8 +15,8 @@ import {
   Palette,
   Ticket,
   ClipboardList,
-  Building2,
   MapPin,
+  User,
 } from 'lucide-react'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
@@ -25,17 +25,21 @@ import { Switch } from '@shared/ui/switch'
 import { Separator } from '@shared/ui/separator'
 import { Badge } from '@shared/ui/badge'
 import { FormField } from '@shared/components/FormField'
+import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@store/auth.store'
 import { toast } from 'sonner'
 import type { UserRole } from '@types-app/index'
-import { MOCK_TICKETS } from '@/mocks/data'
+import { ticketService } from '@features/tickets/services/ticketService'
+import { usuarioService } from '@features/users/services/usuarioService'
+import { useSucursales } from '@features/tickets/hooks/useCatalogos'
+import { supabase } from '@services/supabase'
 
 // ── Schemas ────────────────────────────────────────────────────────────────────
 
 const profileSchema = z.object({
   nombre: z.string().min(2, 'Mínimo 2 caracteres'),
   apellido: z.string().min(2, 'Mínimo 2 caracteres'),
-  correo: z.string().email('Ingresa un correo electronico valido.'),
+  correo: z.string().optional(),
   telefono: z.string().optional(),
 })
 type ProfileForm = z.infer<typeof profileSchema>
@@ -57,21 +61,26 @@ type PasswordForm = z.infer<typeof passwordSchema>
 const ROL_COLORS: Record<UserRole, string> = {
   superadmin: 'bg-purple-500/20 text-purple-400 border border-purple-500/30',
   admin: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
-  worker: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
-  user: 'bg-gray-500/20 text-gray-300 border border-gray-500/40',
+  supervisor: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30',
+  tecnico: 'bg-orange-500/20 text-orange-400 border border-orange-500/30',
+  trabajador: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+  usuario: 'bg-gray-500/20 text-gray-300 border border-gray-500/40',
 }
 
 const ROL_LABEL: Record<UserRole, string> = {
   superadmin: 'SuperAdministrador',
   admin: 'Administrador',
-  worker: 'Trabajador',
-  user: 'Usuario',
+  supervisor: 'Supervisor',
+  tecnico: 'Técnico',
+  trabajador: 'Trabajador',
+  usuario: 'Usuario',
 }
 
 // ── Componente principal ───────────────────────────────────────────────────────
 
 export function ProfilePage() {
   const user = useAuthStore((s) => s.user)
+  const setUser = useAuthStore((s) => s.setUser)
 
   // ── Estado ─────────────────────────────────────────────────────────────────
   const [savingProfile, setSavingProfile] = useState(false)
@@ -107,7 +116,7 @@ export function ProfilePage() {
       nombre: user?.nombre ?? '',
       apellido: user?.apellido ?? '',
       correo: user?.correo ?? '',
-      telefono: '',
+      telefono: user?.telefono ?? '',
     },
   })
 
@@ -118,43 +127,66 @@ export function ProfilePage() {
     formState: { errors: pwErrors },
   } = useForm<PasswordForm>({ resolver: zodResolver(passwordSchema) })
 
-  // ── Estadísticas calculadas desde mocks ───────────────────────────────────
+  // ── Datos de sucursal para mostrar nombre real ─────────────────────────────
+  const sucursalesQuery = useSucursales(user?.empresaId)
+  const sucursalActual = sucursalesQuery.data?.find((s) => s.id === user?.sucursalId)
+
+  // ── Estadísticas obtenidas desde el backend ───────────────────────────────
   const userId = user?.id ?? ''
-  const ticketsCreados = userId ? MOCK_TICKETS.filter((t) => t.createdBy.id === userId).length : 0
-  const ticketsAsignados = userId
-    ? MOCK_TICKETS.filter((t) => t.assignedTo?.id === userId).length
-    : 0
+
+  const { data: ticketsCreadosData } = useQuery({
+    queryKey: ['profile', 'tickets-creados', userId],
+    queryFn: () => ticketService.listar({ solicitanteId: userId, tamanoPagina: 1 }),
+    enabled: !!userId,
+  })
+
+  const { data: ticketsAsignadosData } = useQuery({
+    queryKey: ['profile', 'tickets-asignados', userId],
+    queryFn: () => ticketService.listar({ tecnicoId: userId, tamanoPagina: 1 }),
+    enabled: !!userId,
+  })
+
+  const ticketsCreados = ticketsCreadosData?.totalRegistros ?? 0
+  const ticketsAsignados = ticketsAsignadosData?.totalRegistros ?? 0
 
   // ── Handlers ───────────────────────────────────────────────────────────────
-  const onSaveProfile = (_data: ProfileForm) => {
+  const onSaveProfile = async (data: ProfileForm) => {
+    if (!user?.id) return
     setSavingProfile(true)
-    setTimeout(() => {
-      setSavingProfile(false)
+    try {
+      await usuarioService.actualizarPerfil(user.id, {
+        nombre: data.nombre,
+        apellido: data.apellido,
+        telefono: data.telefono || undefined,
+      })
+      setUser({ ...user, nombre: data.nombre, apellido: data.apellido })
       setProfileSaved(true)
       toast.success('Datos personales guardados correctamente')
       setTimeout(() => setProfileSaved(false), 3000)
-    }, 1000)
+    } catch (err) {
+      toast.error((err as Error).message || 'Error al guardar el perfil')
+    } finally {
+      setSavingProfile(false)
+    }
   }
 
-  const onSavePw = (data: PasswordForm) => {
-    if (!data.actual || !data.nueva || !data.confirmar) {
-      toast.error('Todos los campos de contraseña son obligatorios')
-      return
-    }
-    if (data.nueva.length < 8) {
-      toast.error('La nueva contraseña debe tener al menos 8 caracteres')
-      return
-    }
-    if (data.nueva !== data.confirmar) {
-      toast.error('La nueva contraseña y la confirmación no coinciden')
-      return
-    }
+  const onSavePw = async (data: PasswordForm) => {
     setSavingPw(true)
-    setTimeout(() => {
-      setSavingPw(false)
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user?.correo ?? '',
+        password: data.actual,
+      })
+      if (signInError) throw new Error('La contraseña actual es incorrecta.')
+      const { error } = await supabase.auth.updateUser({ password: data.nueva })
+      if (error) throw new Error(error.message)
       resetPw()
       toast.success('Contraseña actualizada correctamente')
-    }, 1000)
+    } catch (err) {
+      toast.error((err as Error).message || 'Error al actualizar la contraseña')
+    } finally {
+      setSavingPw(false)
+    }
   }
 
   const handleAvatarClick = () => {
@@ -169,7 +201,9 @@ export function ProfilePage() {
       const result = ev.target?.result
       if (typeof result === 'string') {
         setPhotoPreview(result)
-        toast.success('Foto de perfil actualizada')
+        toast.info(
+          'Vista previa actualizada. La foto se guardará cuando el sistema de almacenamiento esté configurado.',
+        )
       }
     }
     reader.readAsDataURL(file)
@@ -279,26 +313,21 @@ export function ProfilePage() {
                   </Badge>
                 </div>
 
-                {/* Empresa y sucursal como texto compacto */}
+                {/* Sucursal y usuario */}
                 <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                  <span className="flex items-center justify-center gap-1">
-                    <Building2 className="h-3 w-3 shrink-0" />
-                    Sede Central
-                  </span>
-                  <span className="flex items-center justify-center gap-1">
-                    <MapPin className="h-3 w-3 shrink-0" />
-                    Sistemas / TI
-                  </span>
+                  {sucursalActual && (
+                    <span className="flex items-center justify-center gap-1">
+                      <MapPin className="h-3 w-3 shrink-0" />
+                      {sucursalActual.nombre}
+                    </span>
+                  )}
+                  {user?.usuario && (
+                    <span className="flex items-center justify-center gap-1">
+                      <User className="h-3 w-3 shrink-0" />
+                      {user.usuario}
+                    </span>
+                  )}
                 </div>
-
-                {/* Botón cambiar foto */}
-                <button
-                  type="button"
-                  onClick={handleAvatarClick}
-                  className="text-xs text-primary underline-offset-2 hover:underline"
-                >
-                  Cambiar foto
-                </button>
               </div>
 
               <Separator className="my-4" />
@@ -324,6 +353,61 @@ export function ProfilePage() {
                     </span>
                   </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card: Apariencia (debajo del perfil) */}
+          <Card className="mt-4">
+            <CardHeader className="px-3 pb-2 pt-3">
+              <CardTitle className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                <Palette className="h-3.5 w-3.5" />
+                Apariencia
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 p-3 pt-0">
+              {/* Tema actual */}
+              <div className="flex items-center gap-3 rounded-md border border-border/50 bg-muted/30 px-3 py-2">
+                <Moon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium">Tema oscuro</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Predeterminado · único modo disponible
+                  </p>
+                </div>
+                <Badge
+                  variant="outline"
+                  className="ml-auto shrink-0 border-muted-foreground/30 text-[10px] text-muted-foreground"
+                >
+                  Activo
+                </Badge>
+              </div>
+
+              {/* Selector de color de acento */}
+              <div>
+                <p className="mb-2 text-xs font-medium">Color de acento</p>
+                <div className="flex gap-2">
+                  {ACCENT_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      title={opt.label}
+                      onClick={() => {
+                        setAccentColor(opt.id)
+                        toast.success(`Color de acento: ${opt.label}`)
+                      }}
+                      className={`flex h-7 w-7 items-center justify-center rounded-full ring-2 ring-offset-2 ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-primary ${
+                        accentColor === opt.id ? opt.ring : 'ring-transparent hover:ring-border'
+                      }`}
+                    >
+                      <span className={`h-4 w-4 rounded-full ${opt.dot}`} />
+                      <span className="sr-only">{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[10px] text-muted-foreground">
+                  Afecta botones, enlaces e indicadores de estado.
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -353,50 +437,27 @@ export function ProfilePage() {
                   </FormField>
                 </div>
 
-                <FormField
-                  label="Correo electrónico"
-                  required
-                  error={profileErrors.correo?.message}
-                >
-                  <Input
-                    id="correo"
-                    type="email"
-                    className="h-8 text-xs"
-                    {...regProfile('correo')}
-                  />
-                </FormField>
-
-                <FormField label="Teléfono" optional>
-                  <Input
-                    id="telefono"
-                    type="tel"
-                    placeholder="+51 999 000 000"
-                    className="h-8 text-xs"
-                    {...regProfile('telefono')}
-                  />
-                </FormField>
-
-                {/* Info de solo lectura */}
-                <Separator />
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Empresa
-                    </p>
-                    <p className="text-xs font-medium">Sede Central</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Sucursal
-                    </p>
-                    <p className="text-xs font-medium">Sistemas / TI</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Usuario
-                    </p>
-                    <p className="text-xs font-medium">{user?.usuario ?? 'N/A'}</p>
-                  </div>
+                  <FormField label="Correo electrónico">
+                    <Input
+                      id="correo"
+                      type="email"
+                      className="h-8 cursor-not-allowed text-xs opacity-60"
+                      readOnly
+                      tabIndex={-1}
+                      {...regProfile('correo')}
+                    />
+                  </FormField>
+
+                  <FormField label="Teléfono" optional>
+                    <Input
+                      id="telefono"
+                      type="tel"
+                      placeholder="+51 999 000 000"
+                      className="h-8 text-xs"
+                      {...regProfile('telefono')}
+                    />
+                  </FormField>
                 </div>
 
                 <div className="flex justify-end">
@@ -530,61 +591,6 @@ export function ProfilePage() {
                   </Button>
                 </div>
               </form>
-            </CardContent>
-          </Card>
-
-          {/* Card: Apariencia */}
-          <Card>
-            <CardHeader className="px-3 pb-2 pt-3">
-              <CardTitle className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-                <Palette className="h-3.5 w-3.5" />
-                Apariencia
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-3 pt-0">
-              {/* Tema actual */}
-              <div className="flex items-center gap-3 rounded-md border border-border/50 bg-muted/30 px-3 py-2">
-                <Moon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <div className="min-w-0">
-                  <p className="text-xs font-medium">Tema oscuro</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    Predeterminado · único modo disponible
-                  </p>
-                </div>
-                <Badge
-                  variant="outline"
-                  className="ml-auto shrink-0 border-muted-foreground/30 text-[10px] text-muted-foreground"
-                >
-                  Activo
-                </Badge>
-              </div>
-
-              {/* Selector de color de acento */}
-              <div>
-                <p className="mb-2 text-xs font-medium">Color de acento</p>
-                <div className="flex gap-2">
-                  {ACCENT_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      title={opt.label}
-                      onClick={() => {
-                        setAccentColor(opt.id)
-                        toast.success(`Color de acento: ${opt.label}`)
-                      }}
-                      className={`flex h-7 w-7 items-center justify-center rounded-full ring-2 ring-offset-2 ring-offset-background transition-all focus-visible:outline-none ${
-                        accentColor === opt.id ? opt.ring : 'ring-transparent hover:ring-border'
-                      }`}
-                    >
-                      <span className={`h-4 w-4 rounded-full ${opt.dot}`} />
-                      <span className="sr-only">{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
-                <p className="mt-1.5 text-[10px] text-muted-foreground">
-                  Afecta botones, enlaces e indicadores de estado.
-                </p>
-              </div>
             </CardContent>
           </Card>
 

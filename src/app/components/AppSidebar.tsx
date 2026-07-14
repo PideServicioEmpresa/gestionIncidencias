@@ -14,7 +14,7 @@ import { ROUTES } from '@constants/index'
 import { useAuthStore } from '@store/auth.store'
 import { ScrollArea } from '@shared/ui/scroll-area'
 import { Badge } from '@shared/ui/badge'
-import { getUnreadNotifications } from '@mocks/data'
+import { useNotificationsStore } from '@features/notifications/store/notifications.store'
 
 interface NavItem {
   label: string
@@ -84,7 +84,9 @@ export function AppSidebar() {
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.rol === 'admin' || user?.rol === 'superadmin'
   const navItems = isAdmin ? adminNav : workerNav
-  const unreadCount = getUnreadNotifications().length
+  const unreadCount = useNotificationsStore(
+    (state) => state.notifications.filter((n) => !n.read).length,
+  )
 
   return (
     <aside className="bg-sidebar flex h-full w-sidebar flex-col border-r">

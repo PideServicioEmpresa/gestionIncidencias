@@ -38,19 +38,40 @@ import { FormField } from '@shared/components/FormField'
 import { EmptyState } from '@shared/components/EmptyState'
 import { TicketListSkeleton } from '@shared/components/PageSkeletons'
 import { useAuthStore } from '@store/auth.store'
-import { MOCK_TICKETS, MOCK_USERS, MOCK_SUCURSALES, MOCK_AREAS, TICKET_TYPES } from '@mocks/data'
-import type { MockTicket } from '@mocks/data'
 import { ROUTES, ticketDetailPath } from '@constants/index'
+import { useTiposServicio, useSucursales, useAreas, useTecnicos } from '../hooks/useCatalogos'
 import type { TicketStatus, TicketPriority } from '@types-app/index'
+import {
+  useTickets,
+  useAsignarTicket,
+  useCambiarPrioridad,
+  useCambiarArea,
+  useTicketHistorial,
+} from '../hooks/useTickets'
+import type { TicketListItemDto, TicketListParams } from '../services/ticketService'
 
-// ---------------------------------------------------------------------------
-// EditTicketSheet
-// ---------------------------------------------------------------------------
+// ── Normalizadores de valores backend → frontend ──────────────────────────────
+
+function normalizeEstado(estado: string): TicketStatus {
+  return estado.toLowerCase() as TicketStatus
+}
+
+function normalizePrioridad(prioridad: string): TicketPriority {
+  return prioridad.toLowerCase() as TicketPriority
+}
+
+// ── EditTicketSheet ───────────────────────────────────────────────────────────
+
+interface EditTicketSaveParams {
+  ticketId: string
+  nuevaAreaId?: string
+  nuevaPrioridad?: string
+}
 
 interface EditTicketSheetProps {
-  ticket: MockTicket | null
+  ticket: TicketListItemDto | null
   onClose: () => void
-  onSave: (updated: MockTicket, historyEntry: string) => void
+  onSave: (params: EditTicketSaveParams) => void
 }
 
 const PRIORITY_OPTIONS: {
@@ -86,36 +107,41 @@ const PRIORITY_OPTIONS: {
 ]
 
 function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
+  const user = useAuthStore((s) => s.user)
+  const tiposServicioQuery = useTiposServicio(user?.empresaId)
+  const tiposServicio = tiposServicioQuery.data ?? []
+  const sucursalesQuery = useSucursales(user?.empresaId)
+  const sucursales = (sucursalesQuery.data ?? []).filter((s) => s.activa)
+  const areasQuery = useAreas(user?.empresaId)
+  const areas = (areasQuery.data ?? []).filter((a) => a.activa)
+
+  const initialPriority = ticket
+    ? normalizePrioridad(ticket.prioridadEfectiva)
+    : ('media' as TicketPriority)
+
   const [form, setForm] = useState({
-    type: ticket?.type ?? '',
-    title: ticket?.title ?? '',
+    type: ticket?.tipo ?? '',
+    title: ticket?.titulo ?? '',
     sucursalId: ticket?.sucursalId ?? '',
     areaId: ticket?.areaId ?? '',
-    priority: (ticket?.priority ?? 'media') as TicketPriority,
-    description: ticket?.description ?? '',
-    status: (ticket?.status ?? 'sin_asignar') as TicketStatus,
-    assignedTo: ticket?.assignedTo?.id ?? '',
+    priority: initialPriority,
+    description: ticket?.descripcion ?? '',
   })
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({})
 
-  const areasFiltered = useMemo(
-    () => MOCK_AREAS.filter((a) => a.sucursalId === form.sucursalId && a.activo),
-    [form.sucursalId],
-  )
-
-  const sheetWorkers = MOCK_USERS.filter((u) => u.rol === 'worker' && u.activo)
+  // Areas shown in the select — no client-side sucursal filter since
+  // AreaResumenDto does not expose sucursalId
+  const areasFiltered = useMemo(() => areas, [areas])
 
   useEffect(() => {
     if (ticket) {
       setForm({
-        type: ticket.type,
-        title: ticket.title,
+        type: ticket.tipo ?? '',
+        title: ticket.titulo,
         sucursalId: ticket.sucursalId,
         areaId: ticket.areaId,
-        priority: ticket.priority,
-        description: ticket.description,
-        status: ticket.status,
-        assignedTo: ticket.assignedTo?.id ?? '',
+        priority: normalizePrioridad(ticket.prioridadEfectiva),
+        description: ticket.descripcion ?? '',
       })
       setErrors({})
     }
@@ -133,8 +159,6 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
 
   function validate() {
     const next: Partial<Record<string, string>> = {}
-    if (!form.type) next.type = 'Selecciona un tipo de servicio.'
-    if (!form.title.trim()) next.title = 'Ingresa un título.'
     if (!form.sucursalId) next.sucursalId = 'Selecciona una empresa.'
     if (!form.areaId) next.areaId = 'Selecciona una sucursal.'
     return Object.keys(next).length === 0 ? null : next
@@ -148,40 +172,12 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
     }
     if (!ticket) return
 
-    const assignedUser = form.assignedTo
-      ? MOCK_USERS.find((u) => u.id === form.assignedTo)
-      : undefined
+    const params: EditTicketSaveParams = { ticketId: ticket.id }
+    if (form.areaId !== ticket.areaId) params.nuevaAreaId = form.areaId
+    if (form.priority !== normalizePrioridad(ticket.prioridadEfectiva))
+      params.nuevaPrioridad = form.priority.toUpperCase()
 
-    const updated: MockTicket = {
-      ...ticket,
-      type: form.type,
-      title: form.title.trim(),
-      sucursalId: form.sucursalId,
-      sucursal: MOCK_SUCURSALES.find((s) => s.id === form.sucursalId)?.name ?? ticket.sucursal,
-      areaId: form.areaId,
-      area: MOCK_AREAS.find((a) => a.id === form.areaId)?.name ?? ticket.area,
-      priority: form.priority,
-      description: form.description.trim(),
-      status: form.status,
-      assignedTo: assignedUser
-        ? { id: assignedUser.id, fullName: assignedUser.fullName, initials: assignedUser.initials }
-        : ticket.assignedTo,
-      updatedAt: new Date().toISOString(),
-    }
-
-    const parts: string[] = []
-    if (form.type !== ticket.type) parts.push('Tipo de servicio actualizado.')
-    if (form.title.trim() !== ticket.title) parts.push('Título actualizado.')
-    if (form.sucursalId !== ticket.sucursalId) parts.push('Empresa actualizada.')
-    if (form.areaId !== ticket.areaId) parts.push('Sucursal actualizada.')
-    if (form.priority !== ticket.priority) parts.push('Prioridad actualizada.')
-    if (form.description.trim() !== ticket.description) parts.push('Descripción actualizada.')
-    if (form.status !== ticket.status) parts.push('Estado actualizado.')
-
-    const historyEntry =
-      parts.length > 0 ? 'Ticket modificado: ' + parts.join(' ') : 'Ticket modificado.'
-
-    onSave(updated, historyEntry)
+    onSave(params)
     onClose()
   }
 
@@ -194,9 +190,9 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
           {ticket && (
             <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
               <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
-                {ticket.code}
+                {ticket.codigo}
               </span>
-              <span>{ticket.type}</span>
+              <span>{ticket.tipo}</span>
             </p>
           )}
         </SheetHeader>
@@ -209,40 +205,47 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
               Información principal
             </p>
 
-            <FormField label="Tipo de servicio" required error={errors.type}>
-              <Select value={form.type} onValueChange={(v) => handleField('type', v)}>
+            <FormField label="Tipo de servicio">
+              <Select value={form.type} disabled>
                 <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="Selecciona un tipo de servicio" />
+                  <SelectValue placeholder="—" />
                 </SelectTrigger>
                 <SelectContent>
-                  {TICKET_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
+                  {tiposServicio.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.nombre}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </FormField>
 
-            <FormField label="Título" required error={errors.title}>
+            <FormField label="Título">
               <Input
                 className="h-9 text-sm"
                 value={form.title}
-                onChange={(e) => handleField('title', e.target.value)}
+                readOnly
+                disabled
                 placeholder="Título del ticket"
               />
             </FormField>
 
             <div className="grid grid-cols-2 gap-3">
               <FormField label="Empresa" required error={errors.sucursalId}>
-                <Select value={form.sucursalId} onValueChange={(v) => handleField('sucursalId', v)}>
+                <Select
+                  value={form.sucursalId}
+                  onValueChange={(v) => handleField('sucursalId', v)}
+                  disabled={sucursalesQuery.isLoading}
+                >
                   <SelectTrigger className="h-9 text-sm">
-                    <SelectValue placeholder="Selecciona" />
+                    <SelectValue
+                      placeholder={sucursalesQuery.isLoading ? 'Cargando...' : 'Selecciona'}
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    {MOCK_SUCURSALES.filter((s) => s.activo).map((s) => (
+                    {sucursales.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
-                        {s.name}
+                        {s.nombre}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -253,15 +256,23 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
                 <Select
                   value={form.areaId}
                   onValueChange={(v) => handleField('areaId', v)}
-                  disabled={!form.sucursalId}
+                  disabled={!form.sucursalId || areasQuery.isLoading}
                 >
                   <SelectTrigger className="h-9 text-sm">
-                    <SelectValue placeholder={form.sucursalId ? 'Selecciona' : 'Primero empresa'} />
+                    <SelectValue
+                      placeholder={
+                        !form.sucursalId
+                          ? 'Primero empresa'
+                          : areasQuery.isLoading
+                            ? 'Cargando...'
+                            : 'Selecciona'
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {areasFiltered.map((a) => (
                       <SelectItem key={a.id} value={a.id}>
-                        {a.name}
+                        {a.nombre}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -307,39 +318,6 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
                 placeholder="Describe el problema o solicitud"
               />
             </FormField>
-
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="Estado">
-                <Select value={form.status} onValueChange={(v) => handleField('status', v)}>
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sin_asignar">Sin asignar</SelectItem>
-                    <SelectItem value="asignado">Asignado</SelectItem>
-                    <SelectItem value="en_proceso">En proceso</SelectItem>
-                    <SelectItem value="pendiente_validacion">Pend. validación</SelectItem>
-                    <SelectItem value="cerrado">Cerrado</SelectItem>
-                    <SelectItem value="reabierto">Reabierto</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormField>
-
-              <FormField label="Asignado a">
-                <Select value={form.assignedTo} onValueChange={(v) => handleField('assignedTo', v)}>
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue placeholder="Sin asignar" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sheetWorkers.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {u.fullName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
-            </div>
           </div>
         </div>
 
@@ -359,11 +337,7 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
   )
 }
 
-const PAGE_SIZE = 8
-
-function getAssignedBy(ticket: MockTicket) {
-  return ticket.history.find((h) => h.action === 'Ticket asignado')?.author ?? null
-}
+// ── MyTicketsPage ─────────────────────────────────────────────────────────────
 
 export function MyTicketsPage() {
   const navigate = useNavigate()
@@ -371,7 +345,15 @@ export function MyTicketsPage() {
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.rol === 'admin' || user?.rol === 'superadmin'
 
+  // Filtros de UI (estado local)
   const [search, setSearch] = useState('')
+  // debouncedSearch se actualiza 300 ms después de que el usuario deja de escribir,
+  // evitando una request por cada tecla en el input de búsqueda.
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(timer)
+  }, [search])
   const [statusFilter, setStatusFilter] = useState<TicketStatus | 'all'>(() => {
     const s = searchParams.get('status')
     return (s as TicketStatus) ?? 'all'
@@ -384,49 +366,45 @@ export function MyTicketsPage() {
   const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(1)
 
-  // Mutable local ticket state for assign action
-  const [localTickets, setLocalTickets] = useState<MockTicket[]>(() => [...MOCK_TICKETS])
+  // Parámetros para el servidor — se reconstruyen al cambiar filtros.
+  // Usa debouncedSearch (no search) para no lanzar un request por cada tecla.
+  const queryParams = useMemo<TicketListParams>(
+    () => ({
+      pagina: page,
+      tamanoPagina: 20,
+      ...(debouncedSearch ? { busqueda: debouncedSearch } : {}),
+      ...(statusFilter !== 'all' ? { estado: statusFilter.toUpperCase() } : {}),
+      ...(priorityFilter !== 'all' ? { prioridad: priorityFilter.toUpperCase() } : {}),
+      ...(dateFrom ? { fechaDesde: dateFrom } : {}),
+      ...(dateTo ? { fechaHasta: dateTo } : {}),
+    }),
+    [page, debouncedSearch, statusFilter, priorityFilter, dateFrom, dateTo],
+  )
 
-  // Assign modal state
+  const { data, isLoading, error } = useTickets(queryParams)
+  const tickets = data?.items ?? []
+  const totalRegistros = data?.totalRegistros ?? 0
+  const totalPages = data?.totalPaginas ?? 1
+
+  // Mutations
+  const asignarTicket = useAsignarTicket()
+  const cambiarPrioridad = useCambiarPrioridad()
+  const cambiarArea = useCambiarArea()
+
+  // Modal: asignar responsable
   const [assignTicketId, setAssignTicketId] = useState<string | null>(null)
   const [selectedAssignWorker, setSelectedAssignWorker] = useState('')
 
-  // Edit ticket modal state
-  const [editTicket, setEditTicket] = useState<MockTicket | null>(null)
+  // Sheet: modificar ticket
+  const [editTicket, setEditTicket] = useState<TicketListItemDto | null>(null)
 
-  // History dialog state
+  // Dialog: historial
   const [historyTicketId, setHistoryTicketId] = useState<string | null>(null)
+  const historialQuery = useTicketHistorial(historyTicketId ?? '')
 
-  const workers = useMemo(() => MOCK_USERS.filter((u) => u.rol === 'worker' && u.activo), [])
-
-  const filtered = useMemo(() => {
-    const source: MockTicket[] = isAdmin
-      ? localTickets
-      : user
-        ? localTickets.filter((t) => t.createdBy.id === user.id || t.assignedTo?.id === user.id)
-        : []
-
-    return source
-      .filter((t) => {
-        const matchSearch =
-          !search ||
-          t.title.toLowerCase().includes(search.toLowerCase()) ||
-          t.code.toLowerCase().includes(search.toLowerCase()) ||
-          t.area.toLowerCase().includes(search.toLowerCase())
-        const matchStatus = statusFilter === 'all' || t.status === statusFilter
-        const matchPriority = priorityFilter === 'all' || t.priority === priorityFilter
-
-        const ticketDate = new Date(t.createdAt).getTime()
-        const matchFrom = !dateFrom || ticketDate >= new Date(dateFrom).getTime()
-        const matchTo = !dateTo || ticketDate <= new Date(dateTo + 'T23:59:59').getTime()
-
-        return matchSearch && matchStatus && matchPriority && matchFrom && matchTo
-      })
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  }, [isAdmin, user, localTickets, search, statusFilter, priorityFilter, dateFrom, dateTo])
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  // Técnicos para asignación — datos reales del backend
+  const tecnicosQuery = useTecnicos(user?.empresaId)
+  const workers = tecnicosQuery.data ?? []
 
   const handleFilterChange = () => setPage(1)
 
@@ -440,38 +418,34 @@ export function MyTicketsPage() {
   }
 
   const handleAssign = () => {
-    const worker = MOCK_USERS.find((u) => u.id === selectedAssignWorker)
-    if (!worker || !assignTicketId) return
-
-    setLocalTickets((prev) =>
-      prev.map((t) =>
-        t.id === assignTicketId
-          ? {
-              ...t,
-              status: 'asignado' as TicketStatus,
-              assignedTo: { id: worker.id, fullName: worker.fullName, initials: worker.initials },
-              updatedAt: new Date().toISOString(),
-            }
-          : t,
-      ),
+    if (!selectedAssignWorker || !assignTicketId) return
+    asignarTicket.mutate(
+      { ticketId: assignTicketId, tecnicoId: selectedAssignWorker },
+      {
+        onSuccess: () => {
+          setSelectedAssignWorker('')
+          setAssignTicketId(null)
+        },
+      },
     )
-    toast.success(`Ticket asignado a ${worker.fullName}`)
-    setSelectedAssignWorker('')
-    setAssignTicketId(null)
   }
 
-  const assigningTicket = assignTicketId ? localTickets.find((t) => t.id === assignTicketId) : null
-
-  const handleSaveTicket = (updated: MockTicket, _historyEntry: string) => {
-    setLocalTickets((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
-    toast.success('Ticket modificado correctamente')
+  const handleSaveTicket = ({ ticketId, nuevaAreaId, nuevaPrioridad }: EditTicketSaveParams) => {
+    if (!nuevaAreaId && !nuevaPrioridad) {
+      toast.info('Sin cambios para guardar.')
+      return
+    }
+    if (nuevaAreaId) cambiarArea.mutate({ ticketId, nuevaAreaId })
+    if (nuevaPrioridad) cambiarPrioridad.mutate({ ticketId, nuevaPrioridad })
   }
 
-  const [isLoading, setIsLoading] = useState(true)
+  const assigningTicket = assignTicketId ? tickets.find((t) => t.id === assignTicketId) : null
+
   useEffect(() => {
-    const t = setTimeout(() => setIsLoading(false), 600)
-    return () => clearTimeout(t)
-  }, [])
+    if (error) {
+      toast.error((error as Error).message)
+    }
+  }, [error])
 
   if (isLoading) return <TicketListSkeleton />
 
@@ -483,9 +457,9 @@ export function MyTicketsPage() {
           <h2 className="text-base font-semibold tracking-tight">
             {isAdmin ? 'Gestión de tickets' : 'Mis tickets'}
           </h2>
-          <p className="text-xs text-muted-foreground">
-            {filtered.length} ticket{filtered.length !== 1 ? 's' : ''} encontrado
-            {filtered.length !== 1 ? 's' : ''}
+          <p role="status" aria-live="polite" className="text-xs text-muted-foreground">
+            {totalRegistros} ticket{totalRegistros !== 1 ? 's' : ''} encontrado
+            {totalRegistros !== 1 ? 's' : ''}
           </p>
         </div>
         <Button onClick={() => navigate(ROUTES.TICKETS_NEW)}>
@@ -549,9 +523,11 @@ export function MyTicketsPage() {
                 <SelectItem value="sin_asignar">Sin asignar</SelectItem>
                 <SelectItem value="asignado">Asignado</SelectItem>
                 <SelectItem value="en_proceso">En proceso</SelectItem>
+                <SelectItem value="en_espera">En espera</SelectItem>
                 <SelectItem value="pendiente_validacion">Pend. validación</SelectItem>
                 <SelectItem value="cerrado">Cerrado</SelectItem>
                 <SelectItem value="reabierto">Reabierto</SelectItem>
+                <SelectItem value="cancelado">Cancelado</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -620,7 +596,7 @@ export function MyTicketsPage() {
       </div>
 
       {/* Content */}
-      {paginated.length === 0 ? (
+      {tickets.length === 0 ? (
         <EmptyState
           icon={Search}
           title="Sin resultados"
@@ -635,7 +611,7 @@ export function MyTicketsPage() {
         <>
           {/* ── MOBILE: card list ─────────────────────────────────────────── */}
           <div className="grid gap-2 lg:hidden">
-            {paginated.map((ticket) => (
+            {tickets.map((ticket) => (
               <Card
                 key={ticket.id}
                 className="cursor-pointer transition-all hover:border-primary/30 hover:shadow-md"
@@ -646,37 +622,30 @@ export function MyTicketsPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-mono text-xs text-muted-foreground">
-                          {ticket.code}
+                          {ticket.codigo}
                         </span>
-                        <PriorityBadge priority={ticket.priority} showIcon />
+                        <PriorityBadge
+                          priority={normalizePrioridad(ticket.prioridadEfectiva)}
+                          showIcon
+                        />
                       </div>
-                      <p className="mt-1 text-xs font-medium leading-snug">{ticket.title}</p>
+                      <p className="mt-1 text-xs font-medium leading-snug">{ticket.titulo}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        {ticket.sucursal} · {ticket.area}
+                        {ticket.sucursalNombre} · {ticket.areaNombre}
                       </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{ticket.type}</p>
-                      {ticket.assignedTo &&
-                        (() => {
-                          const assignedBy = getAssignedBy(ticket)
-                          return (
-                            <div className="mt-0.5 space-y-0.5">
-                              <p className="text-xs text-muted-foreground">
-                                <span className="font-medium text-foreground/70">Asignado a:</span>{' '}
-                                {ticket.assignedTo.fullName}
-                              </p>
-                              {assignedBy && (
-                                <p className="text-xs text-muted-foreground">
-                                  <span className="font-medium text-foreground/70">Por:</span>{' '}
-                                  {assignedBy.fullName}
-                                </p>
-                              )}
-                            </div>
-                          )
-                        })()}
+                      <p className="mt-0.5 text-xs text-muted-foreground">{ticket.tipo}</p>
+                      {ticket.asignadoANombre && (
+                        <div className="mt-0.5 space-y-0.5">
+                          <p className="text-xs text-muted-foreground">
+                            <span className="font-medium text-foreground/70">Asignado a:</span>{' '}
+                            {ticket.asignadoANombre}
+                          </p>
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-col items-end gap-1.5">
                       <div className="flex items-center gap-1.5">
-                        <StatusBadge status={ticket.status} />
+                        <StatusBadge status={normalizeEstado(ticket.estado)} />
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -684,8 +653,9 @@ export function MyTicketsPage() {
                               size="icon"
                               className="h-7 w-7 shrink-0"
                               onClick={(e) => e.stopPropagation()}
+                              aria-label={`Acciones para ticket ${ticket.codigo}`}
                             >
-                              <MoreVertical className="h-4 w-4" />
+                              <MoreVertical className="h-4 w-4" aria-hidden="true" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" side="bottom">
@@ -761,7 +731,7 @@ export function MyTicketsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginated.map((ticket) => (
+                  {tickets.map((ticket) => (
                     <TableRow
                       key={ticket.id}
                       className="cursor-pointer hover:bg-muted/40"
@@ -769,46 +739,45 @@ export function MyTicketsPage() {
                     >
                       <TableCell className="py-2">
                         <span className="font-mono text-xs text-muted-foreground">
-                          {ticket.code}
+                          {ticket.codigo}
                         </span>
                       </TableCell>
                       <TableCell className="py-2">
-                        <p className="max-w-[220px] truncate text-xs font-medium">{ticket.title}</p>
-                        <p className="text-[10px] text-muted-foreground">{ticket.type}</p>
+                        <p className="max-w-[220px] truncate text-xs font-medium">
+                          {ticket.titulo}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">{ticket.tipo}</p>
                       </TableCell>
                       <TableCell className="py-2">
-                        <p className="text-xs">{ticket.sucursal}</p>
-                        <p className="text-[10px] text-muted-foreground">{ticket.area}</p>
+                        <p className="text-xs">{ticket.sucursalNombre}</p>
+                        <p className="text-[10px] text-muted-foreground">{ticket.areaNombre}</p>
                       </TableCell>
                       <TableCell className="py-2 text-center">
                         <div className="flex justify-center">
-                          <PriorityBadge priority={ticket.priority} />
+                          <PriorityBadge priority={normalizePrioridad(ticket.prioridadEfectiva)} />
                         </div>
                       </TableCell>
                       <TableCell className="py-2 text-center">
                         <div className="flex justify-center">
-                          <StatusBadge status={ticket.status} />
+                          <StatusBadge status={normalizeEstado(ticket.estado)} />
                         </div>
                       </TableCell>
                       <TableCell className="py-2 text-center">
-                        {ticket.assignedTo ? (
+                        {ticket.asignadoANombre ? (
                           <div className="flex flex-col items-center gap-0.5">
                             <div className="flex items-center gap-1.5">
                               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-[9px] font-bold text-primary">
-                                {ticket.assignedTo.initials}
+                                {ticket.asignadoANombre
+                                  .split(' ')
+                                  .map((n) => n?.[0] ?? '')
+                                  .join('')
+                                  .slice(0, 2)
+                                  .toUpperCase()}
                               </div>
                               <span className="max-w-24 truncate text-xs">
-                                {ticket.assignedTo.fullName}
+                                {ticket.asignadoANombre}
                               </span>
                             </div>
-                            {(() => {
-                              const assignedBy = getAssignedBy(ticket)
-                              return assignedBy ? (
-                                <p className="text-[10px] text-muted-foreground">
-                                  Por: {assignedBy.fullName}
-                                </p>
-                              ) : null
-                            })()}
                           </div>
                         ) : (
                           <Badge variant="outline" className="text-xs">
@@ -818,7 +787,7 @@ export function MyTicketsPage() {
                       </TableCell>
                       <TableCell className="py-2">
                         <span className="text-xs text-muted-foreground">
-                          {new Date(ticket.createdAt).toLocaleDateString('es-PE', {
+                          {new Date(ticket.fechaCreacion).toLocaleDateString('es-PE', {
                             day: '2-digit',
                             month: '2-digit',
                             year: '2-digit',
@@ -833,8 +802,9 @@ export function MyTicketsPage() {
                               size="icon"
                               className="h-7 w-7"
                               onClick={(e) => e.stopPropagation()}
+                              aria-label={`Acciones para ticket ${ticket.codigo}`}
                             >
-                              <MoreVertical className="h-4 w-4" />
+                              <MoreVertical className="h-4 w-4" aria-hidden="true" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" side="bottom">
@@ -897,7 +867,7 @@ export function MyTicketsPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
-            Página {page} de {totalPages} · {filtered.length} resultados
+            Página {page} de {totalPages} · {totalRegistros} resultados
           </p>
           <div className="flex items-center gap-1.5">
             <Button
@@ -906,8 +876,9 @@ export function MyTicketsPage() {
               className="h-9 w-9"
               disabled={page === 1}
               onClick={() => setPage((p) => p - 1)}
+              aria-label="Página anterior"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
             </Button>
             <Button
               variant="outline"
@@ -915,8 +886,9 @@ export function MyTicketsPage() {
               className="h-9 w-9"
               disabled={page === totalPages}
               onClick={() => setPage((p) => p + 1)}
+              aria-label="Página siguiente"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
         </div>
@@ -936,76 +908,51 @@ export function MyTicketsPage() {
             <DialogTitle className="text-base font-semibold">Historial de cambios</DialogTitle>
           </DialogHeader>
           {(() => {
-            const t = localTickets.find((tk) => tk.id === historyTicketId)
-            if (!t) return null
-            const entries = [
-              {
-                id: 1,
-                action: 'Ticket creado',
-                detail: `Tipo: ${t.type} · Prioridad: ${t.priority}`,
-                user: t.createdBy.fullName,
-                date: t.createdAt,
-              },
-              ...(t.assignedTo
-                ? [
-                    {
-                      id: 2,
-                      action: 'Responsable asignado',
-                      detail: `Asignado a: ${t.assignedTo.fullName}`,
-                      user: 'Administrador',
-                      date: t.updatedAt,
-                    },
-                  ]
-                : []),
-              ...(t.status !== 'sin_asignar'
-                ? [
-                    {
-                      id: 3,
-                      action: 'Estado actualizado',
-                      detail: `Estado: ${t.status.replace(/_/g, ' ')}`,
-                      user: 'Administrador',
-                      date: t.updatedAt,
-                    },
-                  ]
-                : []),
-              ...(t.priority !== 'baja'
-                ? [
-                    {
-                      id: 4,
-                      action: 'Prioridad ajustada',
-                      detail: `Prioridad: ${t.priority}`,
-                      user: 'Administrador',
-                      date: t.updatedAt,
-                    },
-                  ]
-                : []),
-            ]
+            const t = tickets.find((tk) => tk.id === historyTicketId)
+            const entries = historialQuery.data ?? []
             return (
               <div className="space-y-1">
-                <p className="mb-2 text-xs text-muted-foreground">
-                  {t.code} · {t.title}
-                </p>
-                <div className="max-h-64 divide-y overflow-y-auto rounded-lg border">
-                  {entries.map((entry) => (
-                    <div key={entry.id} className="flex items-start gap-3 px-3 py-2.5">
-                      <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                        <History className="h-3 w-3 text-primary" />
+                {t && (
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    {t.codigo} · {t.titulo}
+                  </p>
+                )}
+                {historialQuery.isLoading ? (
+                  <p className="py-4 text-center text-xs text-muted-foreground">
+                    Cargando historial...
+                  </p>
+                ) : entries.length === 0 ? (
+                  <p className="py-4 text-center text-xs text-muted-foreground">
+                    Sin registros de historial.
+                  </p>
+                ) : (
+                  <div className="max-h-64 divide-y overflow-y-auto rounded-lg border">
+                    {entries.map((entry) => (
+                      <div key={entry.id} className="flex items-start gap-3 px-3 py-2.5">
+                        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                          <History className="h-3 w-3 text-primary" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium">{entry.tipoEvento}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {entry.comentarioTexto ??
+                              (entry.estadoAnterior && entry.estadoNuevo
+                                ? `${entry.estadoAnterior} → ${entry.estadoNuevo}`
+                                : '—')}
+                          </p>
+                          <p className="mt-0.5 text-[10px] text-muted-foreground">
+                            {entry.actorId ? entry.actorId.slice(0, 8) + '...' : 'Sistema'} ·{' '}
+                            {new Date(entry.createdAt).toLocaleDateString('es-PE', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium">{entry.action}</p>
-                        <p className="text-[11px] text-muted-foreground">{entry.detail}</p>
-                        <p className="mt-0.5 text-[10px] text-muted-foreground">
-                          {entry.user} ·{' '}
-                          {new Date(entry.date).toLocaleDateString('es-PE', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )
           })()}
@@ -1028,8 +975,8 @@ export function MyTicketsPage() {
           </DialogHeader>
           {assigningTicket && (
             <div className="rounded-lg bg-muted p-3 text-xs">
-              <p className="font-medium">{assigningTicket.title}</p>
-              <p className="text-muted-foreground">{assigningTicket.code}</p>
+              <p className="font-medium">{assigningTicket.titulo}</p>
+              <p className="text-muted-foreground">{assigningTicket.codigo}</p>
             </div>
           )}
           <FormField label="Trabajador" required>
@@ -1042,12 +989,11 @@ export function MyTicketsPage() {
                   <SelectItem key={w.id} value={w.id}>
                     <div className="flex items-center gap-2">
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-[9px] font-semibold text-primary">
-                        {w.initials}
+                        {(w.nombre?.[0] ?? '') + (w.apellido?.[0] ?? '')}
                       </span>
-                      <span>{w.fullName}</span>
-                      <Badge variant="outline" className="ml-auto text-[9px]">
-                        {w.sucursal}
-                      </Badge>
+                      <span>
+                        {w.nombre} {w.apellido}
+                      </span>
                     </div>
                   </SelectItem>
                 ))}
@@ -1065,8 +1011,12 @@ export function MyTicketsPage() {
             >
               Cancelar
             </Button>
-            <Button size="sm" disabled={!selectedAssignWorker} onClick={handleAssign}>
-              Asignar
+            <Button
+              size="sm"
+              disabled={!selectedAssignWorker || asignarTicket.isPending}
+              onClick={handleAssign}
+            >
+              {asignarTicket.isPending ? 'Asignando...' : 'Asignar'}
             </Button>
           </DialogFooter>
         </DialogContent>

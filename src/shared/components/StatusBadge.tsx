@@ -31,6 +31,15 @@ const STATUS_CONFIG: Record<TicketStatus, StatusConfig> = {
     label: 'Reabierto',
     className: 'bg-ticket-reabierto text-ticket-reabierto-foreground border-transparent',
   },
+  en_espera: {
+    label: 'En Espera',
+    className:
+      'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-transparent',
+  },
+  cancelado: {
+    label: 'Cancelado',
+    className: 'bg-muted text-muted-foreground border-transparent',
+  },
 }
 
 interface StatusBadgeProps {
