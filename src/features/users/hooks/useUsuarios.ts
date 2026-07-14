@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { usuarioService } from '../services/usuarioService'
 import type { UsuarioListParams } from '../services/usuarioService'
+import { toast } from 'sonner'
 
 const USER_KEYS = {
   all: ['usuarios'] as const,
@@ -43,7 +44,7 @@ export function useActualizarPerfil() {
       data,
     }: {
       id: string
-      data: { nombre: string; apellido: string; telefono?: string }
+      data: { nombre: string; apellido: string; telefono?: string; areaId?: string }
     }) => usuarioService.actualizarPerfil(id, data),
     onSuccess: (_data, { id }) => {
       void qc.invalidateQueries({ queryKey: USER_KEYS.detail(id) })
@@ -55,9 +56,38 @@ export function useActualizarPerfil() {
 export function useToggleEstadoUsuario() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => usuarioService.toggleEstado(id),
+    mutationFn: ({ id, activar }: { id: string; activar: boolean }) =>
+      activar ? usuarioService.activar(id) : usuarioService.desactivar(id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: USER_KEYS.all })
+    },
+    onError: () => {
+      toast.error('No se pudo cambiar el estado del usuario.')
+    },
+  })
+}
+
+export function useEliminarUsuario() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => usuarioService.eliminar(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: USER_KEYS.all })
+    },
+    onError: () => {
+      toast.error('No se pudo eliminar el usuario.')
+    },
+  })
+}
+
+export function useRestablecerContrasena() {
+  return useMutation({
+    mutationFn: (correo: string) => usuarioService.restablecerContrasena(correo),
+    onSuccess: () => {
+      toast.success('Se envió el enlace de restablecimiento al correo indicado.')
+    },
+    onError: () => {
+      toast.error('No se pudo enviar el enlace. Verifica el correo e intenta de nuevo.')
     },
   })
 }

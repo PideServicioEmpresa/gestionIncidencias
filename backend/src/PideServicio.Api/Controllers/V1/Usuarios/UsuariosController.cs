@@ -9,6 +9,7 @@ using PideServicio.Application.Features.Usuarios.Commands.CambiarEstadoLaboral;
 using PideServicio.Application.Features.Usuarios.Commands.CambiarRol;
 using PideServicio.Application.Features.Usuarios.Commands.CreateUsuario;
 using PideServicio.Application.Features.Usuarios.Commands.DesactivarUsuario;
+using PideServicio.Application.Features.Usuarios.Commands.EliminarUsuario;
 using PideServicio.Application.Features.Usuarios.Commands.UpdateUsuarioPerfil;
 using PideServicio.Application.Features.Usuarios.DTOs;
 using PideServicio.Application.Features.Usuarios.Queries.GetUsuarioById;
@@ -178,6 +179,21 @@ public sealed class UsuariosController : ApiControllerBase
     public async Task<IActionResult> Desactivar(Guid id, CancellationToken ct)
     {
         var result = await Mediator.Send(new DesactivarUsuarioCommand(id), ct);
+        return HandleResult(result);
+    }
+
+    /// <summary>Elimina lógicamente un usuario del sistema y de Supabase Auth.</summary>
+    /// <remarks>
+    /// Solo Admin y SuperAdmin. Un admin no puede eliminarse a sí mismo.
+    /// El borrado es lógico (deleted_at). El usuario queda eliminado de Supabase Auth.
+    /// </remarks>
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "Autenticado")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> Eliminar(Guid id, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new EliminarUsuarioCommand(id), ct);
         return HandleResult(result);
     }
 }

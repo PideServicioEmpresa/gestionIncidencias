@@ -1,5 +1,6 @@
 import { apiClient } from '@services/apiClient'
 import type { PagedBackendResponse } from '@services/apiClient'
+import { supabase } from '@services/supabase'
 
 export interface UsuarioResumenDto {
   id: string
@@ -16,15 +17,21 @@ export interface UsuarioResumenDto {
 export interface UsuarioDetalleDto {
   id: string
   authId: string
-  correo: string
+  empresaId: string
+  sucursalId: string
+  areaId: string | null
   nombre: string
   apellido: string
+  nombreCompleto: string
+  correo: string
+  nombreUsuario: string
+  telefono: string | null
   rol: string
   estadoLaboral: string
   activo: boolean
-  telefono: string | null
-  sucursalId: string
-  empresaId: string
+  fotoUrl: string | null
+  ultimoAcceso: string | null
+  createdAt: string
 }
 
 export interface UsuarioListParams {
@@ -55,8 +62,29 @@ export const usuarioService = {
     rol: string
   }) => apiClient.post<UsuarioDetalleDto>('/usuarios', body),
 
-  actualizarPerfil: (id: string, body: { nombre: string; apellido: string; telefono?: string }) =>
-    apiClient.put<UsuarioDetalleDto>(`/usuarios/${id}`, body),
+  actualizarPerfil: (
+    id: string,
+    body: { nombre: string; apellido: string; telefono?: string; areaId?: string },
+  ) =>
+    apiClient.put<UsuarioDetalleDto>(`/usuarios/${id}/perfil`, {
+      nombre: body.nombre,
+      apellido: body.apellido,
+      telefono: body.telefono ?? null,
+      areaId: body.areaId ?? null,
+      fotoUrl: null,
+      actualizarFoto: false,
+    }),
 
-  toggleEstado: (id: string) => apiClient.patch(`/usuarios/${id}/toggle-estado`),
+  activar: (id: string) => apiClient.patch(`/usuarios/${id}/activar`),
+
+  desactivar: (id: string) => apiClient.patch(`/usuarios/${id}/desactivar`),
+
+  eliminar: (id: string) => apiClient.delete(`/usuarios/${id}`),
+
+  restablecerContrasena: async (correo: string): Promise<void> => {
+    const { error } = await supabase.auth.resetPasswordForEmail(correo, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    if (error) throw new Error(error.message)
+  },
 }

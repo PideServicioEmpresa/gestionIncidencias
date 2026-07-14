@@ -11,7 +11,6 @@ import {
   Building2,
   MapPin,
 } from 'lucide-react'
-import { toast } from 'sonner'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { Badge } from '@shared/ui/badge'
@@ -26,7 +25,12 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import { ConfirmDialog } from '@shared/components/ConfirmDialog'
 import { UserListSkeleton } from '@shared/components/PageSkeletons'
-import { useUsuarios, useToggleEstadoUsuario } from '../hooks/useUsuarios'
+import {
+  useUsuarios,
+  useToggleEstadoUsuario,
+  useEliminarUsuario,
+  useRestablecerContrasena,
+} from '../hooks/useUsuarios'
 import type { UsuarioResumenDto } from '../services/usuarioService'
 import type { UserRole } from '@types-app/index'
 import {
@@ -217,8 +221,9 @@ export function UsersPage() {
   })
   const allUsers = useMemo(() => (data?.items ?? []).map(mapToDisplayUser), [data])
 
-  // Mutación de activar/desactivar
   const toggleEstado = useToggleEstadoUsuario()
+  const eliminarUsuario = useEliminarUsuario()
+  const restablecerContrasena = useRestablecerContrasena()
 
   // Estados de modales de acciones
   const [deleteTarget, setDeleteTarget] = useState<DisplayUser | null>(null)
@@ -270,9 +275,9 @@ export function UsersPage() {
 
   function handleDelete() {
     if (!deleteTarget) return
-    // TODO: Implementar cuando exista el endpoint DELETE /usuarios/{id} (baja lógica)
-    toast.info('Funcionalidad en implementación')
-    setDeleteTarget(null)
+    eliminarUsuario.mutate(deleteTarget.id, {
+      onSuccess: () => setDeleteTarget(null),
+    })
   }
 
   function handleToggleStatus() {
@@ -285,9 +290,9 @@ export function UsersPage() {
 
   function handleResetPw() {
     if (!resetPwTarget) return
-    // TODO: Implementar cuando exista el endpoint de restablecimiento de contraseña
-    toast.info('Funcionalidad en implementación')
-    setResetPwTarget(null)
+    restablecerContrasena.mutate(resetPwTarget.correo, {
+      onSuccess: () => setResetPwTarget(null),
+    })
   }
 
   function handleToggleEmpresa() {
@@ -626,6 +631,7 @@ export function UsersPage() {
         }
         confirmLabel="Eliminar"
         variant="destructive"
+        loading={eliminarUsuario.isPending}
         onConfirm={handleDelete}
       />
 
@@ -644,6 +650,7 @@ export function UsersPage() {
         }
         confirmLabel={statusTarget?.activo ? 'Desactivar' : 'Activar'}
         variant={statusTarget?.activo ? 'destructive' : 'default'}
+        loading={toggleEstado.isPending}
         onConfirm={handleToggleStatus}
       />
 
@@ -659,6 +666,7 @@ export function UsersPage() {
             : undefined
         }
         confirmLabel="Enviar enlace"
+        loading={restablecerContrasena.isPending}
         onConfirm={handleResetPw}
       />
 

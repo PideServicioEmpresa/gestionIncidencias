@@ -144,6 +144,13 @@ public sealed class Usuario : AggregateRoot
         UpdatedBy = actorId;
     }
 
+    public void Eliminar(Guid actorId)
+    {
+        ValidarNoEliminado();
+        DeletedAt = DateTimeOffset.UtcNow;
+        DeletedBy = actorId;
+    }
+
     public void RegistrarAcceso()
     {
         UltimoAcceso = DateTimeOffset.UtcNow;
