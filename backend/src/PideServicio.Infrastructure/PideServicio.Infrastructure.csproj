@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>PideServicio.Infrastructure</AssemblyName>
+    <RootNamespace>PideServicio.Infrastructure</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Incluye todos los tipos de ASP.NET Core (auth, IHttpContextAccessor, IOptions, etc.) -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="Serilog.Enrichers.Environment" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PideServicio.Application\PideServicio.Application.csproj" />
+    <ProjectReference Include="..\PideServicio.Domain\PideServicio.Domain.csproj" />
+  </ItemGroup>
+</Project>

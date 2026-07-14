@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>PideServicio.Architecture.Tests</AssemblyName>
+    <RootNamespace>PideServicio.Architecture.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PideServicio.Domain\PideServicio.Domain.csproj" />
+    <ProjectReference Include="..\..\src\PideServicio.Application\PideServicio.Application.csproj" />
+    <ProjectReference Include="..\..\src\PideServicio.Infrastructure\PideServicio.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\PideServicio.Persistence\PideServicio.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\PideServicio.Api\PideServicio.Api.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="NetArchTest.Rules" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+  </ItemGroup>
+</Project>

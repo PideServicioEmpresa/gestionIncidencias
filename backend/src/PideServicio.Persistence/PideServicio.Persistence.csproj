@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>PideServicio.Persistence</AssemblyName>
+    <RootNamespace>PideServicio.Persistence</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PideServicio.Application\PideServicio.Application.csproj" />
+    <ProjectReference Include="..\PideServicio.Domain\PideServicio.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Dapper" />
+    <PackageReference Include="Npgsql" />
+  </ItemGroup>
+</Project>

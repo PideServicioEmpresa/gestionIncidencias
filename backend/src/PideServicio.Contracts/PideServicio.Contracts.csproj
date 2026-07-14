@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>PideServicio.Contracts</AssemblyName>
+    <RootNamespace>PideServicio.Contracts</RootNamespace>
+  </PropertyGroup>
+</Project>

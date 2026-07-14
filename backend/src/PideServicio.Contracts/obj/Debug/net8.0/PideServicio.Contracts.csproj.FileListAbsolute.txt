@@ -1,0 +1,12 @@
+D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Contracts\bin\Debug\net8.0\PideServicio.Contracts.deps.json
+D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Contracts\bin\Debug\net8.0\PideServicio.Contracts.dll
+D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Contracts\bin\Debug\net8.0\PideServicio.Contracts.pdb
+D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Contracts\obj\Debug\net8.0\PideServicio.Contracts.GeneratedMSBuildEditorConfig.editorconfig
+D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Contracts\obj\Debug\net8.0\PideServicio.Contracts.AssemblyInfoInputs.cache
+D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Contracts\obj\Debug\net8.0\PideServicio.Contracts.AssemblyInfo.cs
+D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Contracts\obj\Debug\net8.0\PideServicio.Contracts.csproj.CoreCompileInputs.cache
+D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Contracts\obj\Debug\net8.0\PideServicio.Contracts.sourcelink.json
+D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Contracts\obj\Debug\net8.0\PideServicio.Contracts.dll
+D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Contracts\obj\Debug\net8.0\refint\PideServicio.Contracts.dll
+D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Contracts\obj\Debug\net8.0\PideServicio.Contracts.pdb
+D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Contracts\obj\Debug\net8.0\ref\PideServicio.Contracts.dll

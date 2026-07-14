@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "4OXs6VJpijLGzZoNzr5uKlZWBPXLfu3v4yQFWZjvDtg=",
+  "Source": "PideServicio.Api",
+  "BasePath": "/",
+  "Mode": "Root",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

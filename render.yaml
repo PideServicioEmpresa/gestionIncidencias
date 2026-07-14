@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: pideservicio-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: oregon
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_HTTP_PORTS
+        value: "8080"
+      - key: Supabase__Url
+        sync: false
+      - key: Supabase__AnonKey
+        sync: false
+      - key: Supabase__ServiceRoleKey
+        sync: false
+      - key: Supabase__JwtSecret
+        sync: false
+      - key: Database__ConnectionString
+        sync: false
+      - key: Jwt__Audience
+        value: authenticated
+      - key: Storage__UrlBase
+        value: https://rsayrbcnlvpjdnlkzhue.supabase.co/storage/v1
+    healthCheckPath: /ping

@@ -1,0 +1,6 @@
+D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Infrastructure\obj\Debug\net8.0\PideServicio.Infrastructure.csproj.AssemblyReference.cache
+D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Infrastructure\obj\Debug\net8.0\PideServicio.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Infrastructure\obj\Debug\net8.0\PideServicio.Infrastructure.AssemblyInfoInputs.cache
+D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Infrastructure\obj\Debug\net8.0\PideServicio.Infrastructure.AssemblyInfo.cs
+D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Infrastructure\obj\Debug\net8.0\PideServicio.Infrastructure.csproj.CoreCompileInputs.cache
+D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Infrastructure\obj\Debug\net8.0\PideServicio.Infrastructure.sourcelink.json
