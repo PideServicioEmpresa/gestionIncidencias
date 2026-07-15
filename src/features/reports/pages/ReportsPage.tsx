@@ -252,7 +252,7 @@ export function ReportsPage() {
             <div className="flex flex-col gap-1">
               <span className="text-[10px] font-medium text-muted-foreground">Empresa</span>
               <Select value={filterEmpresa} onValueChange={setFilterEmpresa}>
-                <SelectTrigger className="h-9 text-xs">
+                <SelectTrigger className="h-10 text-xs">
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
@@ -266,7 +266,7 @@ export function ReportsPage() {
             <div className="flex flex-col gap-1">
               <span className="text-[10px] font-medium text-muted-foreground">Estado</span>
               <Select value={filterEstado} onValueChange={setFilterEstado}>
-                <SelectTrigger className="h-9 text-xs">
+                <SelectTrigger className="h-10 text-xs">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
