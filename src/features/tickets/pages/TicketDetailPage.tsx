@@ -208,7 +208,7 @@ function EvidenciaItem({ ev }: { ev: EvidenciaDto }) {
 
   return (
     <>
-      <div className="flex items-center gap-3 rounded-lg border p-3 text-sm">
+      <div className="flex items-start gap-3 rounded-lg border p-3 text-sm">
         {/* Thumbnail */}
         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
           {isImage && !thumbError ? (
@@ -223,36 +223,35 @@ function EvidenciaItem({ ev }: { ev: EvidenciaDto }) {
           )}
         </div>
 
-        {/* Info */}
+        {/* Info + acciones apiladas para que no desborden en mobile */}
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-medium">{ev.nombreOriginal}</p>
           <p className="text-xs text-muted-foreground">
             {formatFileSize(ev.tamanoBytes)} · {tipoLabel}
           </p>
-        </div>
-
-        {/* Acciones */}
-        <div className="flex shrink-0 items-center gap-1.5">
-          {canPreview && (
+          <div className="mt-2 flex items-center gap-1.5">
+            {canPreview && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1 px-2 text-xs"
+                onClick={() => setPreviewOpen(true)}
+              >
+                <Eye className="h-3 w-3" />
+                Visualizar
+              </Button>
+            )}
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               className="h-7 gap-1 px-2 text-xs"
-              onClick={() => setPreviewOpen(true)}
+              title="Descargar"
+              onClick={() => descargarEvidencia(ev.urlAlmacenamiento, ev.nombreOriginal)}
             >
-              <Eye className="h-3 w-3" />
-              Visualizar
+              <Download className="h-3 w-3" />
+              Descargar
             </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            title="Descargar"
-            onClick={() => descargarEvidencia(ev.urlAlmacenamiento, ev.nombreOriginal)}
-          >
-            <Download className="h-3.5 w-3.5" />
-          </Button>
+          </div>
         </div>
       </div>
 
@@ -801,7 +800,11 @@ export function TicketDetailPage() {
             {/* Tabs */}
             <Card>
               {/* Tab bar — ARIA tablist para WCAG 4.1.2 */}
-              <div role="tablist" aria-label="Secciones del ticket" className="flex border-b">
+              <div
+                role="tablist"
+                aria-label="Secciones del ticket"
+                className="flex overflow-x-auto border-b [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
@@ -811,7 +814,7 @@ export function TicketDetailPage() {
                     id={`tab-${tab.id}`}
                     onClick={() => setActiveTab(tab.id)}
                     className={cn(
-                      'flex flex-1 items-center justify-center gap-1 px-2 py-2.5 text-xs font-medium transition-colors',
+                      'flex flex-1 shrink-0 items-center justify-center gap-1 whitespace-nowrap px-3 py-2.5 text-xs font-medium transition-colors',
                       activeTab === tab.id
                         ? 'border-b-2 border-primary text-primary'
                         : 'text-muted-foreground hover:text-foreground',
