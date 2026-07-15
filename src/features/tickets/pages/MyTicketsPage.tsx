@@ -21,8 +21,8 @@ import { Card, CardContent } from '@shared/ui/card'
 import { Badge } from '@shared/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import { Textarea } from '@shared/ui/textarea'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@shared/ui/dialog'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@shared/ui/sheet'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@shared/ui/dialog'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@shared/ui/sheet'
 import { cn } from '@lib/utils'
 import {
   DropdownMenu,
@@ -908,63 +908,96 @@ export function MyTicketsPage() {
         onSave={handleSaveTicket}
       />
 
-      {/* History dialog */}
-      <Dialog open={!!historyTicketId} onOpenChange={(open) => !open && setHistoryTicketId(null)}>
-        <DialogContent className="ps-glow-modal max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold">Historial de cambios</DialogTitle>
-          </DialogHeader>
+      {/* History sheet — bottom drawer para mejor UX mobile */}
+      <Sheet open={!!historyTicketId} onOpenChange={(open) => !open && setHistoryTicketId(null)}>
+        <SheetContent side="bottom" className="flex max-h-[85dvh] flex-col rounded-t-2xl p-0">
           {(() => {
             const t = tickets.find((tk) => tk.id === historyTicketId)
             const entries = historialQuery.data ?? []
             return (
-              <div className="space-y-1">
-                {t && (
-                  <p className="mb-2 text-xs text-muted-foreground">
-                    {t.codigo} · {t.titulo}
-                  </p>
-                )}
-                {historialQuery.isLoading ? (
-                  <p className="py-4 text-center text-xs text-muted-foreground">
-                    Cargando historial...
-                  </p>
-                ) : entries.length === 0 ? (
-                  <p className="py-4 text-center text-xs text-muted-foreground">
-                    Sin registros de historial.
-                  </p>
-                ) : (
-                  <div className="max-h-64 divide-y overflow-y-auto rounded-lg border">
-                    {entries.map((entry) => (
-                      <div key={entry.id} className="flex items-start gap-3 px-3 py-2.5">
-                        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                          <History className="h-3 w-3 text-primary" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium">{entry.tipoEvento}</p>
-                          <p className="text-[11px] text-muted-foreground">
-                            {entry.comentarioTexto ??
-                              (entry.estadoAnterior && entry.estadoNuevo
-                                ? `${entry.estadoAnterior} → ${entry.estadoNuevo}`
-                                : '—')}
-                          </p>
-                          <p className="mt-0.5 text-[10px] text-muted-foreground">
-                            {entry.actorId ? entry.actorId.slice(0, 8) + '...' : 'Sistema'} ·{' '}
-                            {new Date(entry.createdAt).toLocaleDateString('es-PE', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
-                            })}
-                          </p>
-                        </div>
+              <>
+                {/* Handle visual */}
+                <div className="flex justify-center pt-3">
+                  <div className="h-1 w-10 rounded-full bg-border" />
+                </div>
+
+                <SheetHeader className="shrink-0 px-5 pb-3 pt-4">
+                  <SheetTitle className="text-base font-semibold">Historial de cambios</SheetTitle>
+                  {t && (
+                    <SheetDescription className="text-xs">
+                      {t.codigo} · {t.titulo}
+                      {entries.length > 0 && (
+                        <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                          {entries.length} {entries.length === 1 ? 'evento' : 'eventos'}
+                        </span>
+                      )}
+                    </SheetDescription>
+                  )}
+                </SheetHeader>
+
+                <div className="relative min-h-0 flex-1 overflow-hidden">
+                  {historialQuery.isLoading ? (
+                    <p className="py-8 text-center text-sm text-muted-foreground">
+                      Cargando historial...
+                    </p>
+                  ) : entries.length === 0 ? (
+                    <div className="flex flex-col items-center gap-2 py-10">
+                      <History className="h-8 w-8 text-muted-foreground/30" />
+                      <p className="text-sm text-muted-foreground">Sin registros de historial.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="h-full overflow-y-auto pb-8">
+                        {entries.map((entry, i) => {
+                          const actor = entry.actorNombre ?? 'Sistema'
+                          const fecha = new Date(entry.createdAt).toLocaleString('es-PE', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                          const detalle =
+                            entry.comentarioTexto ??
+                            (entry.estadoAnterior && entry.estadoNuevo
+                              ? `${entry.estadoAnterior} → ${entry.estadoNuevo}`
+                              : null)
+                          return (
+                            <div
+                              key={entry.id}
+                              className={cn(
+                                'flex items-start gap-3 px-5 py-3.5',
+                                i < entries.length - 1 && 'border-b border-border/50',
+                              )}
+                            >
+                              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                                <History className="h-4 w-4 text-primary" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold leading-tight">
+                                  {entry.tipoEvento.replace(/_/g, ' ')}
+                                </p>
+                                {detalle && (
+                                  <p className="mt-0.5 text-xs text-foreground/70">{detalle}</p>
+                                )}
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {actor} · {fecha}
+                                </p>
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                      {/* Gradiente inferior para indicar que hay más contenido */}
+                      <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-card to-transparent" />
+                    </>
+                  )}
+                </div>
+              </>
             )
           })()}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       {/* Assign modal */}
       <Dialog
@@ -976,26 +1009,34 @@ export function MyTicketsPage() {
           }
         }}
       >
-        <DialogContent className="ps-glow-modal max-w-md">
-          <DialogHeader>
+        <DialogContent className="ps-glow-modal w-[calc(100%-2rem)] max-w-sm gap-4 rounded-2xl p-5">
+          <DialogHeader className="pb-0">
             <DialogTitle className="text-base font-semibold">Asignar trabajador</DialogTitle>
           </DialogHeader>
+
           {assigningTicket && (
-            <div className="rounded-lg bg-muted p-3 text-xs">
-              <p className="font-medium">{assigningTicket.titulo}</p>
-              <p className="text-muted-foreground">{assigningTicket.codigo}</p>
+            <div className="flex items-start gap-2.5 rounded-xl bg-muted/60 px-3 py-2.5">
+              <UserCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <div className="min-w-0">
+                <p className="truncate text-xs font-medium">{assigningTicket.titulo}</p>
+                <p className="text-[11px] text-muted-foreground">{assigningTicket.codigo}</p>
+              </div>
             </div>
           )}
-          <FormField label="Trabajador" required>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium">
+              Trabajador <span className="text-destructive">*</span>
+            </label>
             <Select value={selectedAssignWorker} onValueChange={setSelectedAssignWorker}>
-              <SelectTrigger>
+              <SelectTrigger className="h-11">
                 <SelectValue placeholder="Selecciona un trabajador" />
               </SelectTrigger>
               <SelectContent>
                 {workers.map((w) => (
                   <SelectItem key={w.id} value={w.id}>
                     <div className="flex items-center gap-2">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-[9px] font-semibold text-primary">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-[10px] font-semibold text-primary">
                         {w.nombreCompleto
                           .split(' ')
                           .map((p) => p[0] ?? '')
@@ -1003,17 +1044,18 @@ export function MyTicketsPage() {
                           .slice(0, 2)
                           .toUpperCase()}
                       </span>
-                      <span>{w.nombreCompleto}</span>
+                      <span className="text-sm">{w.nombreCompleto}</span>
                     </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </FormField>
-          <DialogFooter>
+          </div>
+
+          <div className="flex gap-2 pt-1">
             <Button
               variant="outline"
-              size="sm"
+              className="h-11 flex-1"
               onClick={() => {
                 setAssignTicketId(null)
                 setSelectedAssignWorker('')
@@ -1022,13 +1064,13 @@ export function MyTicketsPage() {
               Cancelar
             </Button>
             <Button
-              size="sm"
+              className="h-11 flex-1"
               disabled={!selectedAssignWorker || asignarTicket.isPending}
               onClick={handleAssign}
             >
               {asignarTicket.isPending ? 'Asignando...' : 'Asignar'}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
