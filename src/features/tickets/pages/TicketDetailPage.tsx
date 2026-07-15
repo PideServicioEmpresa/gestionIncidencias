@@ -170,6 +170,32 @@ function HistoryEntry({ entry }: { entry: TicketHistorialDto }) {
   )
 }
 
+// El backend guarda rutas relativas en urlAlmacenamiento (ej: "tickets/{id}/{guid}-file.jpg").
+// La URL pública de Supabase Storage se construye aquí en el frontend.
+function getEvidenciaUrl(ruta: string): string {
+  const base = import.meta.env.VITE_SUPABASE_URL as string
+  return `${base}/storage/v1/object/public/tickets-evidence/${ruta}`
+}
+
+async function descargarEvidencia(ruta: string, nombreOriginal: string) {
+  try {
+    const url = getEvidenciaUrl(ruta)
+    const resp = await fetch(url)
+    if (!resp.ok) throw new Error('Error al descargar')
+    const blob = await resp.blob()
+    const objectUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = objectUrl
+    a.download = nombreOriginal
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+  } catch {
+    toast.error('No se pudo descargar el archivo')
+  }
+}
+
 function EvidenciaItem({ ev }: { ev: EvidenciaDto }) {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [thumbError, setThumbError] = useState(false)
@@ -178,6 +204,7 @@ function EvidenciaItem({ ev }: { ev: EvidenciaDto }) {
   const Icon = isImage ? Image : isVideo ? Video : FileText
   const tipoLabel = ev.tipo === 'INICIAL' ? 'Evidencia inicial' : 'Evidencia de cierre'
   const canPreview = isImage || isVideo
+  const publicUrl = getEvidenciaUrl(ev.urlAlmacenamiento)
 
   return (
     <>
@@ -186,7 +213,7 @@ function EvidenciaItem({ ev }: { ev: EvidenciaDto }) {
         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
           {isImage && !thumbError ? (
             <img
-              src={ev.urlAlmacenamiento}
+              src={publicUrl}
               alt={ev.nombreOriginal}
               className="h-full w-full object-cover"
               onError={() => setThumbError(true)}
@@ -217,24 +244,22 @@ function EvidenciaItem({ ev }: { ev: EvidenciaDto }) {
               Visualizar
             </Button>
           )}
-          <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
-            <a
-              href={ev.urlAlmacenamiento}
-              download={ev.nombreOriginal}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Descargar"
-            >
-              <Download className="h-3.5 w-3.5" />
-            </a>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            title="Descargar"
+            onClick={() => descargarEvidencia(ev.urlAlmacenamiento, ev.nombreOriginal)}
+          >
+            <Download className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
 
       {/* Modal de previsualización */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-3xl p-0">
-          <DialogHeader className="px-4 pb-2 pt-4">
+        <DialogContent className="flex max-h-[95dvh] w-[95vw] max-w-3xl flex-col p-0">
+          <DialogHeader className="shrink-0 px-4 pb-2 pt-4">
             <DialogTitle className="truncate pr-6 text-sm font-medium">
               {ev.nombreOriginal}
             </DialogTitle>
@@ -243,34 +268,32 @@ function EvidenciaItem({ ev }: { ev: EvidenciaDto }) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex min-h-[200px] items-center justify-center overflow-hidden bg-black/80 px-4">
+          <div className="flex min-h-[200px] flex-1 items-center justify-center overflow-auto bg-black/80">
             {isImage ? (
               <img
-                src={ev.urlAlmacenamiento}
+                src={publicUrl}
                 alt={ev.nombreOriginal}
-                className="max-h-[70vh] w-auto max-w-full object-contain"
+                className="max-h-[75dvh] w-auto max-w-full object-contain"
               />
             ) : isVideo ? (
               <video
-                src={ev.urlAlmacenamiento}
+                src={publicUrl}
                 controls
-                className="max-h-[70vh] w-full"
+                playsInline
+                className="max-h-[75dvh] w-full"
                 autoPlay={false}
               />
             ) : null}
           </div>
 
-          <DialogFooter className="px-4 pb-4 pt-2">
-            <Button variant="outline" size="sm" asChild>
-              <a
-                href={ev.urlAlmacenamiento}
-                download={ev.nombreOriginal}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Download className="mr-1.5 h-3.5 w-3.5" />
-                Descargar
-              </a>
+          <DialogFooter className="shrink-0 px-4 pb-4 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => descargarEvidencia(ev.urlAlmacenamiento, ev.nombreOriginal)}
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              Descargar
             </Button>
           </DialogFooter>
         </DialogContent>
