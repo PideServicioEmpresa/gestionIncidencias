@@ -24,7 +24,7 @@ export const notificacionService = {
       params as Record<string, string | number | boolean | null | undefined>,
     ),
 
-  marcarLeida: (id: string) => apiClient.patch(`/notificaciones/${id}/leer`),
+  marcarLeida: (id: string) => apiClient.patch(`/notificaciones/${id}/leida`),
 
-  marcarTodasLeidas: () => apiClient.patch('/notificaciones/leer-todas'),
+  marcarTodasLeidas: () => apiClient.patch('/notificaciones/marcar-todas-leidas'),
 }

@@ -62,8 +62,15 @@ public sealed class GetTicketByIdQueryHandler : IQueryHandler<GetTicketByIdQuery
             if (ticket.TecnicoId != actor.Id)
                 return Result.NoPermitido<TicketDetalleDto>("Solo puede ver los tickets asignados a usted.");
         }
+        else if (actor.Rol == RolTipo.TRABAJADOR)
+        {
+            // Trabajador puede ver tickets que creó o que tiene asignados
+            if (ticket.SolicitanteId != actor.Id && ticket.TecnicoId != actor.Id)
+                return Result.NoPermitido<TicketDetalleDto>("No tiene acceso a este ticket.");
+        }
         else
         {
+            // Usuario/otros: solo tickets creados por ellos
             if (ticket.SolicitanteId != actor.Id)
                 return Result.NoPermitido<TicketDetalleDto>("Solo puede ver los tickets creados por usted.");
         }

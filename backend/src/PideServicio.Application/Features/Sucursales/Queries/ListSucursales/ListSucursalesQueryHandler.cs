@@ -34,10 +34,7 @@ public sealed class ListSucursalesQueryHandler : IQueryHandler<ListSucursalesQue
             : await _usuarioRepository.ObtenerPorAuthIdAsync(claims.AuthId, ct);
         if (actorDb is null || !actorDb.Activo) return Result.NoAutorizado<PagedResult<SucursalResumenDto>>();
 
-        if (actorDb.Rol is not (RolTipo.ADMIN or RolTipo.SUPERADMIN))
-            return Result.NoPermitido<PagedResult<SucursalResumenDto>>("No tiene permisos para listar sucursales.");
-
-        // ADMIN solo ve sucursales de su empresa; SuperAdmin puede filtrar por cualquier empresa
+        // SuperAdmin puede filtrar por cualquier empresa; el resto solo ve la suya
         var empresaIdFiltro = actorDb.Rol == RolTipo.SUPERADMIN
             ? request.EmpresaId
             : actorDb.EmpresaId;

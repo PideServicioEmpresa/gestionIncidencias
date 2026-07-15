@@ -26,7 +26,7 @@ export function AppHeader({ onMenuClick, title, onCommandOpen }: AppHeaderProps)
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.rol === 'admin' || user?.rol === 'superadmin'
   const { data: conteoData } = useConteoNotificaciones()
-  const unreadCount = conteoData?.noLeidas ?? 0
+  const unreadCount = conteoData?.sinLeer ?? 0
 
   const handleLogout = async () => {
     await authService.logout()
