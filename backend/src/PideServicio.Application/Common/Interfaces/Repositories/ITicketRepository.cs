@@ -17,12 +17,34 @@ public sealed record TicketConsultaParams(
     string? BusquedaTexto = null
 );
 
+public sealed record TicketListaResumen(
+    Guid Id,
+    string Codigo,
+    string Titulo,
+    string Estado,
+    string PrioridadEfectiva,
+    Guid EmpresaId,
+    Guid SucursalId,
+    string? SucursalNombre,
+    Guid AreaId,
+    string? AreaNombre,
+    Guid TipoServicioId,
+    string? TipoServicioNombre,
+    Guid? CategoriaId,
+    Guid SolicitanteId,
+    string? SolicitanteNombre,
+    Guid? TecnicoId,
+    string? AsignadoANombre,
+    DateTimeOffset FechaCreacion,
+    DateTimeOffset? FechaLimiteResolucion
+);
+
 public interface ITicketRepository
 {
     Task<Ticket?> ObtenerPorIdAsync(Guid id, CancellationToken ct = default);
     Task<Ticket?> ObtenerPorCodigoAsync(string codigo, CancellationToken ct = default);
     Task<string> GenerarCodigoAsync(CancellationToken ct = default);
-    Task<PagedResult<Ticket>> ListarAsync(TicketConsultaParams filtros, int pagina, int tamanoPagina, CancellationToken ct = default);
+    Task<PagedResult<TicketListaResumen>> ListarAsync(TicketConsultaParams filtros, int pagina, int tamanoPagina, CancellationToken ct = default);
     Task<bool> ExisteAsync(Guid id, CancellationToken ct = default);
     Task<bool> ExisteCodigoAsync(string codigo, CancellationToken ct = default);
     Task<Guid> CrearAsync(Ticket ticket, CancellationToken ct = default);

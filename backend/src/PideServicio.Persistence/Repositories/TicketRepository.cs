@@ -165,7 +165,31 @@ public sealed class TicketRepository : ITicketRepository
             new { codigo = codigo.Trim().ToUpperInvariant() });
     }
 
-    public async Task<PagedResult<Ticket>> ListarAsync(
+    private sealed record TicketListaRow
+    {
+        public Guid Id { get; init; }
+        public string Codigo { get; init; } = string.Empty;
+        public string Titulo { get; init; } = string.Empty;
+        public string Estado { get; init; } = string.Empty;
+        public string PrioridadEfectiva { get; init; } = string.Empty;
+        public Guid EmpresaId { get; init; }
+        public Guid SucursalId { get; init; }
+        public string? SucursalNombre { get; init; }
+        public Guid AreaId { get; init; }
+        public string? AreaNombre { get; init; }
+        public Guid TipoServicioId { get; init; }
+        public string? TipoServicioNombre { get; init; }
+        public Guid? CategoriaId { get; init; }
+        public Guid SolicitanteId { get; init; }
+        public string? SolicitanteNombre { get; init; }
+        public Guid? TecnicoId { get; init; }
+        public string? AsignadoANombre { get; init; }
+        public DateTimeOffset FechaCreacion { get; init; }
+        public DateTimeOffset? FechaLimiteResolucion { get; init; }
+        public long TotalCount { get; init; }
+    }
+
+    public async Task<PagedResult<TicketListaResumen>> ListarAsync(
         TicketConsultaParams filtros,
         int pagina,
         int tamanoPagina,
@@ -173,57 +197,57 @@ public sealed class TicketRepository : ITicketRepository
     {
         await using var cn = (NpgsqlConnection)await _db.CrearConexionAsync(ct);
 
-        var conditions = new List<string> { "deleted_at IS NULL" };
+        var conditions = new List<string> { "t.deleted_at IS NULL" };
         var parameters = new DynamicParameters();
 
         if (filtros.EmpresaId.HasValue)
         {
-            conditions.Add("empresa_id = @EmpresaId");
+            conditions.Add("t.empresa_id = @EmpresaId");
             parameters.Add("EmpresaId", filtros.EmpresaId.Value);
         }
         if (filtros.SucursalId.HasValue)
         {
-            conditions.Add("sucursal_id = @SucursalId");
+            conditions.Add("t.sucursal_id = @SucursalId");
             parameters.Add("SucursalId", filtros.SucursalId.Value);
         }
         if (filtros.AreaId.HasValue)
         {
-            conditions.Add("area_id = @AreaId");
+            conditions.Add("t.area_id = @AreaId");
             parameters.Add("AreaId", filtros.AreaId.Value);
         }
         if (filtros.TecnicoId.HasValue)
         {
-            conditions.Add("tecnico_id = @TecnicoId");
+            conditions.Add("t.tecnico_id = @TecnicoId");
             parameters.Add("TecnicoId", filtros.TecnicoId.Value);
         }
         if (filtros.SolicitanteId.HasValue)
         {
-            conditions.Add("solicitante_id = @SolicitanteId");
+            conditions.Add("t.solicitante_id = @SolicitanteId");
             parameters.Add("SolicitanteId", filtros.SolicitanteId.Value);
         }
         if (filtros.Estado.HasValue)
         {
-            conditions.Add("estado = @Estado::ticket_estado_tipo");
+            conditions.Add("t.estado = @Estado::ticket_estado_tipo");
             parameters.Add("Estado", filtros.Estado.Value.ToString());
         }
         if (filtros.Prioridad.HasValue)
         {
-            conditions.Add("prioridad_efectiva = @Prioridad::prioridad_tipo");
+            conditions.Add("t.prioridad_efectiva = @Prioridad::prioridad_tipo");
             parameters.Add("Prioridad", filtros.Prioridad.Value.ToString());
         }
         if (filtros.FechaDesde.HasValue)
         {
-            conditions.Add("fecha_creacion >= @FechaDesde");
+            conditions.Add("t.fecha_creacion >= @FechaDesde");
             parameters.Add("FechaDesde", filtros.FechaDesde.Value);
         }
         if (filtros.FechaHasta.HasValue)
         {
-            conditions.Add("fecha_creacion <= @FechaHasta");
+            conditions.Add("t.fecha_creacion <= @FechaHasta");
             parameters.Add("FechaHasta", filtros.FechaHasta.Value);
         }
         if (!string.IsNullOrWhiteSpace(filtros.BusquedaTexto))
         {
-            conditions.Add("(titulo ILIKE @Busqueda OR descripcion ILIKE @Busqueda OR codigo ILIKE @Busqueda)");
+            conditions.Add("(t.titulo ILIKE @Busqueda OR t.descripcion ILIKE @Busqueda OR t.codigo ILIKE @Busqueda)");
             parameters.Add("Busqueda", $"%{filtros.BusquedaTexto.Trim()}%");
         }
 
@@ -232,20 +256,66 @@ public sealed class TicketRepository : ITicketRepository
         parameters.Add("Limit", tamanoPagina);
 
         var sql = $"""
-            SELECT {SelectCols},
-                   COUNT(*) OVER() AS "TotalCount"
-            FROM tickets
+            SELECT
+                t.id                                                AS "Id",
+                t.codigo                                            AS "Codigo",
+                t.titulo                                            AS "Titulo",
+                t.estado::text                                      AS "Estado",
+                t.prioridad_efectiva::text                          AS "PrioridadEfectiva",
+                t.empresa_id                                        AS "EmpresaId",
+                t.sucursal_id                                       AS "SucursalId",
+                s.nombre                                            AS "SucursalNombre",
+                t.area_id                                           AS "AreaId",
+                a.nombre                                            AS "AreaNombre",
+                t.tipo_servicio_id                                  AS "TipoServicioId",
+                ts.nombre                                           AS "TipoServicioNombre",
+                t.categoria_id                                      AS "CategoriaId",
+                t.solicitante_id                                    AS "SolicitanteId",
+                sol.nombre || ' ' || sol.apellido                   AS "SolicitanteNombre",
+                t.tecnico_id                                        AS "TecnicoId",
+                CASE WHEN tec.id IS NOT NULL
+                     THEN tec.nombre || ' ' || tec.apellido
+                END                                                 AS "AsignadoANombre",
+                t.fecha_creacion                                    AS "FechaCreacion",
+                t.fecha_limite_resolucion                           AS "FechaLimiteResolucion",
+                COUNT(*) OVER()                                     AS "TotalCount"
+            FROM tickets t
+            LEFT JOIN sucursales     s   ON s.id   = t.sucursal_id     AND s.deleted_at   IS NULL
+            LEFT JOIN areas          a   ON a.id   = t.area_id          AND a.deleted_at   IS NULL
+            LEFT JOIN tipos_servicio ts  ON ts.id  = t.tipo_servicio_id AND ts.deleted_at  IS NULL
+            LEFT JOIN usuarios       sol ON sol.id = t.solicitante_id   AND sol.deleted_at IS NULL
+            LEFT JOIN usuarios       tec ON tec.id = t.tecnico_id       AND tec.deleted_at IS NULL
             WHERE {where}
-            ORDER BY fecha_creacion DESC
+            ORDER BY t.fecha_creacion DESC
             LIMIT @Limit OFFSET @Offset
             """;
 
-        var rows = (await cn.QueryAsync<TicketRow>(sql, parameters)).AsList();
+        var rows = (await cn.QueryAsync<TicketListaRow>(sql, parameters)).AsList();
         var total = rows.Count > 0 ? (int)rows[0].TotalCount : 0;
 
-        return new PagedResult<Ticket>
+        return new PagedResult<TicketListaResumen>
         {
-            Items = rows.ConvertAll(MapearEntidad),
+            Items = rows.ConvertAll(r => new TicketListaResumen(
+                Id: r.Id,
+                Codigo: r.Codigo,
+                Titulo: r.Titulo,
+                Estado: r.Estado,
+                PrioridadEfectiva: r.PrioridadEfectiva,
+                EmpresaId: r.EmpresaId,
+                SucursalId: r.SucursalId,
+                SucursalNombre: r.SucursalNombre,
+                AreaId: r.AreaId,
+                AreaNombre: r.AreaNombre,
+                TipoServicioId: r.TipoServicioId,
+                TipoServicioNombre: r.TipoServicioNombre,
+                CategoriaId: r.CategoriaId,
+                SolicitanteId: r.SolicitanteId,
+                SolicitanteNombre: r.SolicitanteNombre,
+                TecnicoId: r.TecnicoId,
+                AsignadoANombre: r.AsignadoANombre,
+                FechaCreacion: r.FechaCreacion,
+                FechaLimiteResolucion: r.FechaLimiteResolucion
+            )),
             Pagina = pagina,
             TamanoPagina = tamanoPagina,
             TotalRegistros = total

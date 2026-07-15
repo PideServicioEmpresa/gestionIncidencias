@@ -1,6 +1,5 @@
 namespace PideServicio.Application.Features.Tickets.Queries.ListTickets;
 
-using Mapster;
 using PideServicio.Application.Common.CQRS;
 using PideServicio.Application.Common.Interfaces;
 using PideServicio.Application.Common.Interfaces.Repositories;
@@ -79,7 +78,28 @@ public sealed class ListTicketsQueryHandler : IQueryHandler<ListTicketsQuery, Pa
 
         var resultado = new PagedResult<TicketResumenDto>
         {
-            Items = paginado.Items.Select(t => t.Adapt<TicketResumenDto>()).ToList(),
+            Items = paginado.Items.Select(t => new TicketResumenDto(
+                Id: t.Id,
+                Codigo: t.Codigo,
+                Titulo: t.Titulo,
+                Estado: t.Estado,
+                PrioridadEfectiva: t.PrioridadEfectiva,
+                EmpresaId: t.EmpresaId,
+                SucursalId: t.SucursalId,
+                SucursalNombre: t.SucursalNombre,
+                AreaId: t.AreaId,
+                AreaNombre: t.AreaNombre,
+                TipoServicioId: t.TipoServicioId,
+                Tipo: t.TipoServicioNombre,
+                TipoServicioNombre: t.TipoServicioNombre,
+                CategoriaId: t.CategoriaId,
+                SolicitanteId: t.SolicitanteId,
+                SolicitanteNombre: t.SolicitanteNombre,
+                TecnicoId: t.TecnicoId,
+                AsignadoANombre: t.AsignadoANombre,
+                FechaCreacion: t.FechaCreacion,
+                FechaLimiteResolucion: t.FechaLimiteResolucion
+            )).ToList(),
             Pagina = paginado.Pagina,
             TamanoPagina = paginado.TamanoPagina,
             TotalRegistros = paginado.TotalRegistros

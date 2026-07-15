@@ -39,7 +39,7 @@ const createTicketSchema = z.object({
     errorMap: () => ({ message: 'Selecciona una prioridad.' }),
   }),
   sucursalId: z.string().min(1, 'Selecciona una sucursal.'),
-  areaId: z.string().optional(),
+  areaId: z.string().min(1, 'Selecciona un área de la lista.'),
   location: z.string().max(200, 'Máximo 200 caracteres').optional(),
   description: z
     .string()
@@ -135,7 +135,7 @@ function AreaCombobox({
         onChange(filtered[0].id)
         setText(filtered[0].nombre)
       }
-      // Si no hay coincidencia, se deja el texto libre (areaId queda vacío, campo es opcional)
+      // Si no hay coincidencia exacta, areaId queda vacío y el schema Zod rechazará el submit
     }, 150)
   }
 
@@ -223,7 +223,7 @@ export function CreateTicketPage() {
         titulo: data.title,
         descripcion: data.description,
         sucursalId: data.sucursalId,
-        ...(data.areaId ? { areaId: data.areaId } : {}),
+        areaId: data.areaId,
         tipoServicioId: data.type,
         categoriaId: data.categoriaId,
         prioridad: data.priority.toUpperCase(),

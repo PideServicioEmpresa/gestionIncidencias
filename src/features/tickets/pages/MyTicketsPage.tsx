@@ -115,14 +115,14 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
   const sucursalesQuery = useSucursales(user?.empresaId)
   const sucursales = (sucursalesQuery.data ?? []).filter((s) => s.activa)
   const areasQuery = useAreas(user?.empresaId)
-  const areas = (areasQuery.data ?? []).filter((a) => a.activa)
+  const areas = (areasQuery.data ?? []).filter((a) => a.activa || a.id === ticket?.areaId)
 
   const initialPriority = ticket
     ? normalizePrioridad(ticket.prioridadEfectiva)
     : ('media' as TicketPriority)
 
   const [form, setForm] = useState({
-    type: ticket?.tipo ?? '',
+    type: ticket?.tipoServicioId ?? '',
     title: ticket?.titulo ?? '',
     sucursalId: ticket?.sucursalId ?? '',
     areaId: ticket?.areaId ?? '',
@@ -138,7 +138,7 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
   useEffect(() => {
     if (ticket) {
       setForm({
-        type: ticket.tipo ?? '',
+        type: ticket.tipoServicioId ?? '',
         title: ticket.titulo,
         sucursalId: ticket.sucursalId,
         areaId: ticket.areaId,
@@ -161,8 +161,8 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
 
   function validate() {
     const next: Partial<Record<string, string>> = {}
-    if (!form.sucursalId) next.sucursalId = 'Selecciona una empresa.'
-    if (!form.areaId) next.areaId = 'Selecciona una sucursal.'
+    if (!form.sucursalId) next.sucursalId = 'Selecciona una sucursal.'
+    if (!form.areaId) next.areaId = 'Selecciona un área.'
     return Object.keys(next).length === 0 ? null : next
   }
 
@@ -233,7 +233,7 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
             </FormField>
 
             <div className="grid grid-cols-2 gap-3">
-              <FormField label="Empresa" required error={errors.sucursalId}>
+              <FormField label="Sucursal" required error={errors.sucursalId}>
                 <Select
                   value={form.sucursalId}
                   onValueChange={(v) => handleField('sucursalId', v)}
@@ -254,7 +254,7 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
                 </Select>
               </FormField>
 
-              <FormField label="Sucursal" required error={errors.areaId}>
+              <FormField label="Área" required error={errors.areaId}>
                 <Select
                   value={form.areaId}
                   onValueChange={(v) => handleField('areaId', v)}
@@ -264,7 +264,7 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
                     <SelectValue
                       placeholder={
                         !form.sucursalId
-                          ? 'Primero empresa'
+                          ? 'Primero sucursal'
                           : areasQuery.isLoading
                             ? 'Cargando...'
                             : 'Selecciona'
