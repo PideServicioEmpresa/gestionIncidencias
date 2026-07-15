@@ -936,6 +936,7 @@ export function MyTicketsPage() {
                   )}
                 </SheetHeader>
 
+                {/* Contenedor relativo — overflow-hidden para que el gradiente quede fijo */}
                 <div className="relative min-h-0 flex-1 overflow-hidden">
                   {historialQuery.isLoading ? (
                     <p className="py-8 text-center text-sm text-muted-foreground">
@@ -948,8 +949,15 @@ export function MyTicketsPage() {
                     </div>
                   ) : (
                     <>
-                      {/* Área scrollable — padding-bottom para que el último ítem no quede bajo el gradiente */}
-                      <div className="h-full overflow-y-auto pb-20">
+                      {/*
+                        absolute inset-0 da dimensiones exactas al scroll en iOS Safari.
+                        h-full dentro de flex no garantiza altura definida en iOS.
+                        overscroll-contain evita que el scroll se propague a la página.
+                      */}
+                      <div
+                        className="absolute inset-0 overflow-y-auto overscroll-contain pb-20"
+                        style={{ WebkitOverflowScrolling: 'touch' }}
+                      >
                         {entries.map((entry, i) => {
                           const actor = entry.actorNombre ?? 'Sistema'
                           const fecha = new Date(entry.createdAt).toLocaleString('es-PE', {
@@ -991,7 +999,7 @@ export function MyTicketsPage() {
                         })}
                       </div>
 
-                      {/* Indicador de scroll: gradiente + flecha */}
+                      {/* Gradiente fijo al fondo + flecha de scroll */}
                       <div className="pointer-events-none absolute bottom-0 left-0 right-0 flex flex-col items-center pb-3 pt-8 [background:linear-gradient(to_top,hsl(var(--background))_40%,transparent)]">
                         <ChevronDown className="h-5 w-5 animate-bounce text-muted-foreground/60" />
                       </div>
