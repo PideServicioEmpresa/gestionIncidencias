@@ -148,6 +148,27 @@
   textarea {
     font-size: 0.8125rem !important;
   }
+
+  /* Normalizar input[type=date] en dark theme y en iOS Safari */
+  input[type='date'],
+  input[type='time'],
+  input[type='datetime-local'] {
+    /* Evitar que iOS Safari aplique estilos que rompen el layout */
+    -webkit-appearance: none;
+    appearance: none;
+    /* Respetar la altura que dicta el componente en mobile */
+    min-height: 2.5rem;
+    color-scheme: dark;
+  }
+
+  /* Icono nativo del selector de fecha — invertido para dark theme */
+  input[type='date']::-webkit-calendar-picker-indicator,
+  input[type='time']::-webkit-calendar-picker-indicator,
+  input[type='datetime-local']::-webkit-calendar-picker-indicator {
+    filter: invert(0.75);
+    opacity: 0.7;
+    cursor: pointer;
+  }
 }
 
 @layer utilities {

@@ -12,6 +12,7 @@ import {
   Pencil,
   Eye,
   History,
+  CalendarDays,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@shared/ui/button'
@@ -558,29 +559,35 @@ export function MyTicketsPage() {
           {/* Desde */}
           <div className="flex flex-col gap-1">
             <span className="text-[10px] font-medium text-muted-foreground">Desde</span>
-            <Input
-              type="date"
-              className="h-8 w-full text-xs lg:w-[132px]"
-              value={dateFrom}
-              onChange={(e) => {
-                setDateFrom(e.target.value)
-                handleFilterChange()
-              }}
-            />
+            <div className="relative">
+              <CalendarDays className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="date"
+                className="h-10 w-full pl-7 text-xs lg:h-8 lg:w-[148px]"
+                value={dateFrom}
+                onChange={(e) => {
+                  setDateFrom(e.target.value)
+                  handleFilterChange()
+                }}
+              />
+            </div>
           </div>
 
           {/* Hasta */}
           <div className="flex flex-col gap-1">
             <span className="text-[10px] font-medium text-muted-foreground">Hasta</span>
-            <Input
-              type="date"
-              className="h-8 w-full text-xs lg:w-[132px]"
-              value={dateTo}
-              onChange={(e) => {
-                setDateTo(e.target.value)
-                handleFilterChange()
-              }}
-            />
+            <div className="relative">
+              <CalendarDays className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="date"
+                className="h-10 w-full pl-7 text-xs lg:h-8 lg:w-[148px]"
+                value={dateTo}
+                onChange={(e) => {
+                  setDateTo(e.target.value)
+                  handleFilterChange()
+                }}
+              />
+            </div>
           </div>
         </div>
 
