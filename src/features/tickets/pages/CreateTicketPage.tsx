@@ -13,6 +13,7 @@ import {
   FileText,
   Paperclip,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { Textarea } from '@shared/ui/textarea'
@@ -102,9 +103,19 @@ function AreaCombobox({
 }: AreaComboboxProps) {
   const [text, setText] = useState('')
   const [open, setOpen] = useState(false)
+  const prevValueRef = useRef(value)
 
   useEffect(() => {
-    setText(areas.find((a) => a.id === value)?.nombre ?? '')
+    const prev = prevValueRef.current
+    prevValueRef.current = value
+    if (value) {
+      // Selección válida: mostrar el nombre del área
+      setText(areas.find((a) => a.id === value)?.nombre ?? '')
+    } else if (prev) {
+      // Se limpió externamente (ej: cambio de sucursal): limpiar también el texto
+      setText('')
+    }
+    // Si value ya era '' antes: preservar el texto que el usuario escribió
   }, [value, areas])
 
   const filtered = text
@@ -222,6 +233,11 @@ export function CreateTicketPage() {
         onSuccess: (ticketCode) => {
           setCreatedCode(ticketCode ?? '')
           setSubmitted(true)
+        },
+        onError: (err: Error) => {
+          toast.error(
+            err.message ?? 'No se pudo crear el ticket. Revisa los campos e intenta de nuevo.',
+          )
         },
       },
     )

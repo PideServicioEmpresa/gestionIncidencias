@@ -383,9 +383,32 @@ export function MyTicketsPage() {
     [page, debouncedSearch, statusFilter, priorityFilter, dateFrom, dateTo],
   )
 
+  // Para roles no-admin: también buscar tickets donde el usuario es el ejecutor asignado
+  const assignedParams = useMemo<TicketListParams>(
+    () => ({
+      tamanoPagina: 100,
+      tecnicoId: user?.id,
+      ...(statusFilter !== 'all' ? { estado: statusFilter.toUpperCase() } : {}),
+      ...(priorityFilter !== 'all' ? { prioridad: priorityFilter.toUpperCase() } : {}),
+      ...(dateFrom ? { fechaDesde: dateFrom } : {}),
+      ...(dateTo ? { fechaHasta: dateTo } : {}),
+    }),
+    [user?.id, statusFilter, priorityFilter, dateFrom, dateTo],
+  )
+
   const { data, isLoading, error } = useTickets(queryParams)
-  const tickets = data?.items ?? []
-  const totalRegistros = data?.totalRegistros ?? 0
+  const { data: assignedData } = useTickets(!isAdmin && !!user?.id ? assignedParams : undefined)
+
+  // Fusionar tickets propios + asignados, sin duplicados
+  const tickets = useMemo(() => {
+    const base = data?.items ?? []
+    if (isAdmin || !assignedData?.items?.length) return base
+    const seen = new Set(base.map((t) => t.id))
+    const extra = assignedData.items.filter((t) => !seen.has(t.id))
+    return [...base, ...extra]
+  }, [data?.items, assignedData?.items, isAdmin])
+
+  const totalRegistros = (data?.totalRegistros ?? 0) + (assignedData?.totalRegistros ?? 0)
   const totalPages = data?.totalPaginas ?? 1
 
   // Mutations
