@@ -35,10 +35,10 @@ export interface AreaResumenDto {
 
 export interface TecnicoResumenDto {
   id: string
-  nombre: string
-  apellido: string
+  nombreCompleto: string
   correo: string
-  sucursalId: string
+  rol: string
+  activo: boolean
 }
 
 export interface MotivoRechazoResumenDto {

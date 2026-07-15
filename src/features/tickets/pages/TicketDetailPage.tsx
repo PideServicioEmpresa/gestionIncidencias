@@ -307,8 +307,8 @@ export function TicketDetailPage() {
     minute: '2-digit',
   })
 
-  const updatedDate = ticket.updatedAt
-    ? new Date(ticket.updatedAt).toLocaleString('es-PE', {
+  const updatedDate = ticket.fechaLimite
+    ? new Date(ticket.fechaLimite).toLocaleString('es-PE', {
         day: '2-digit',
         month: 'short',
         hour: '2-digit',
@@ -444,11 +444,14 @@ export function TicketDetailPage() {
                   <SelectItem key={w.id} value={w.id}>
                     <div className="flex items-center gap-2">
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-[9px] font-semibold text-primary">
-                        {(w.nombre[0] + (w.apellido?.[0] ?? '')).toUpperCase()}
+                        {w.nombreCompleto
+                          .split(' ')
+                          .map((p) => p[0] ?? '')
+                          .join('')
+                          .slice(0, 2)
+                          .toUpperCase()}
                       </span>
-                      <span>
-                        {w.nombre} {w.apellido}
-                      </span>
+                      <span>{w.nombreCompleto}</span>
                     </div>
                   </SelectItem>
                 ))}
@@ -663,7 +666,8 @@ export function TicketDetailPage() {
             </div>
             <h2 className="mt-1 text-base font-semibold leading-snug">{ticket.titulo}</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Creado el {createdDate} · Última actualización: {updatedDate}
+              Creado el {createdDate}
+              {updatedDate !== '—' && ` · Fecha límite: ${updatedDate}`}
             </p>
           </div>
         </div>

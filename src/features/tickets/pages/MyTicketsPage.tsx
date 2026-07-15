@@ -125,7 +125,7 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
     sucursalId: ticket?.sucursalId ?? '',
     areaId: ticket?.areaId ?? '',
     priority: initialPriority,
-    description: ticket?.descripcion ?? '',
+    description: '',
   })
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({})
 
@@ -141,7 +141,7 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
         sucursalId: ticket.sucursalId,
         areaId: ticket.areaId,
         priority: normalizePrioridad(ticket.prioridadEfectiva),
-        description: ticket.descripcion ?? '',
+        description: '',
       })
       setErrors({})
     }
@@ -989,11 +989,14 @@ export function MyTicketsPage() {
                   <SelectItem key={w.id} value={w.id}>
                     <div className="flex items-center gap-2">
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-[9px] font-semibold text-primary">
-                        {(w.nombre?.[0] ?? '') + (w.apellido?.[0] ?? '')}
+                        {w.nombreCompleto
+                          .split(' ')
+                          .map((p) => p[0] ?? '')
+                          .join('')
+                          .slice(0, 2)
+                          .toUpperCase()}
                       </span>
-                      <span>
-                        {w.nombre} {w.apellido}
-                      </span>
+                      <span>{w.nombreCompleto}</span>
                     </div>
                   </SelectItem>
                 ))}
