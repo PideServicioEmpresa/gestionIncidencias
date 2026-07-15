@@ -428,6 +428,9 @@ export function MyTicketsPage() {
           setSelectedAssignWorker('')
           setAssignTicketId(null)
         },
+        onError: (err: Error) => {
+          toast.error(err.message ?? 'No se pudo asignar el ticket. Verifica el estado del ticket.')
+        },
       },
     )
   }
@@ -689,15 +692,19 @@ export function MyTicketsPage() {
                                   <Pencil className="mr-2 h-3.5 w-3.5" />
                                   Modificar ticket
                                 </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setAssignTicketId(ticket.id)
-                                  }}
-                                >
-                                  <UserCheck className="mr-2 h-3.5 w-3.5" />
-                                  Asignar responsable
-                                </DropdownMenuItem>
+                                {['sin_asignar', 'reabierto'].includes(
+                                  ticket.estado.toLowerCase(),
+                                ) && (
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setAssignTicketId(ticket.id)
+                                    }}
+                                  >
+                                    <UserCheck className="mr-2 h-3.5 w-3.5" />
+                                    Asignar responsable
+                                  </DropdownMenuItem>
+                                )}
                               </>
                             )}
                             <DropdownMenuSeparator />
@@ -838,15 +845,19 @@ export function MyTicketsPage() {
                                   <Pencil className="mr-2 h-3.5 w-3.5" />
                                   Modificar ticket
                                 </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setAssignTicketId(ticket.id)
-                                  }}
-                                >
-                                  <UserCheck className="mr-2 h-3.5 w-3.5" />
-                                  Asignar responsable
-                                </DropdownMenuItem>
+                                {['sin_asignar', 'reabierto'].includes(
+                                  ticket.estado.toLowerCase(),
+                                ) && (
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setAssignTicketId(ticket.id)
+                                    }}
+                                  >
+                                    <UserCheck className="mr-2 h-3.5 w-3.5" />
+                                    Asignar responsable
+                                  </DropdownMenuItem>
+                                )}
                               </>
                             )}
                             <DropdownMenuSeparator />
