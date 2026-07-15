@@ -6,6 +6,7 @@ using PideServicio.Application.Common.Interfaces.Repositories;
 using PideServicio.Application.Common.Models;
 using PideServicio.Domain.Entities;
 using PideServicio.Domain.Exceptions;
+using StringComparison = System.StringComparison;
 
 public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketCommand, Guid>
 {
@@ -48,6 +49,26 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
 
         try
         {
+            // Resolver el área: buscar por nombre en la sucursal, crear si no existe
+            var areasExistentes = await _areaRepository.ListarPorSucursalAsync(
+                request.SucursalId, soloActivas: true, ct: cancellationToken);
+
+            var areaEncontrada = areasExistentes.FirstOrDefault(a =>
+                string.Equals(a.Nombre, request.AreaNombre.Trim(), StringComparison.OrdinalIgnoreCase));
+
+            Guid areaId;
+            var areaNombre = request.AreaNombre.Trim();
+            if (areaEncontrada is not null)
+            {
+                areaId = areaEncontrada.Id;
+                areaNombre = areaEncontrada.Nombre;
+            }
+            else
+            {
+                var nuevaArea = Area.Crear(request.SucursalId, areaNombre, creadoPor: actor.Id);
+                areaId = await _areaRepository.CrearAsync(nuevaArea, cancellationToken);
+            }
+
             var codigo = await _ticketRepo.GenerarCodigoAsync(cancellationToken);
 
             var ticket = Ticket.Crear(
@@ -56,7 +77,7 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
                 request.Descripcion,
                 actor.EmpresaId,
                 request.SucursalId,
-                request.AreaId,
+                areaId,
                 request.TipoServicioId,
                 request.CategoriaId,
                 request.Prioridad,
@@ -75,14 +96,6 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
                 null,
                 new { ticket.Estado, ticket.Titulo, ticket.SolicitanteId },
                 cancellationToken);
-
-            // Obtener nombre del área para el email (sin bloquear la respuesta)
-            var areaNombre = "Sin área";
-            if (request.AreaId != Guid.Empty)
-            {
-                var area = await _areaRepository.ObtenerPorIdAsync(request.AreaId, cancellationToken);
-                areaNombre = area?.Nombre ?? areaNombre;
-            }
 
             _ = _emailService.NotificarTicketCreadoAsync(
                 correoSolicitante: actor.Correo.Valor,

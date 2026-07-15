@@ -16,8 +16,9 @@ public sealed class CrearTicketCommandValidator : AbstractValidator<CrearTicketC
         RuleFor(x => x.SucursalId)
             .NotEmpty().WithMessage("La sucursal es requerida.");
 
-        RuleFor(x => x.AreaId)
-            .NotEmpty().WithMessage("El área es requerida.");
+        RuleFor(x => x.AreaNombre)
+            .NotEmpty().WithMessage("El área es requerida.")
+            .MaximumLength(150).WithMessage("El nombre del área no puede exceder 150 caracteres.");
 
         RuleFor(x => x.TipoServicioId)
             .NotEmpty().WithMessage("El tipo de servicio es requerido.");

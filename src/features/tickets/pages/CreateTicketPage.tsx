@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -23,7 +23,7 @@ import { FormField } from '@shared/components/FormField'
 import { useAuthStore } from '@store/auth.store'
 import { ROUTES } from '@constants/index'
 import { useCrearTicket } from '../hooks/useTickets'
-import { useTiposServicio, useSucursales, useAreas, useCategorias } from '../hooks/useCatalogos'
+import { useTiposServicio, useSucursales, useCategorias } from '../hooks/useCatalogos'
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
@@ -39,7 +39,7 @@ const createTicketSchema = z.object({
     errorMap: () => ({ message: 'Selecciona una prioridad.' }),
   }),
   sucursalId: z.string().min(1, 'Selecciona una sucursal.'),
-  areaId: z.string().min(1, 'Selecciona un área de la lista.'),
+  areaNombre: z.string().min(1, 'Ingresa el área.').max(150, 'Máximo 150 caracteres.'),
   location: z.string().max(200, 'Máximo 200 caracteres').optional(),
   description: z
     .string()
@@ -77,107 +77,6 @@ function formatFileSize(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
 }
 
-// ── Combobox de Área ──────────────────────────────────────────────────────────
-
-interface AreaOption {
-  id: string
-  nombre: string
-}
-
-interface AreaComboboxProps {
-  areas: AreaOption[]
-  value: string
-  onChange: (id: string) => void
-  disabled?: boolean
-  placeholder?: string
-  hasError?: boolean
-}
-
-function AreaCombobox({
-  areas,
-  value,
-  onChange,
-  disabled,
-  placeholder,
-  hasError,
-}: AreaComboboxProps) {
-  const [text, setText] = useState('')
-  const [open, setOpen] = useState(false)
-  const prevValueRef = useRef(value)
-
-  useEffect(() => {
-    const prev = prevValueRef.current
-    prevValueRef.current = value
-    if (value) {
-      // Selección válida: mostrar el nombre del área
-      setText(areas.find((a) => a.id === value)?.nombre ?? '')
-    } else if (prev) {
-      // Se limpió externamente (ej: cambio de sucursal): limpiar también el texto
-      setText('')
-    }
-    // Si value ya era '' antes: preservar el texto que el usuario escribió
-  }, [value, areas])
-
-  const filtered = text
-    ? areas.filter((a) => a.nombre.toLowerCase().includes(text.toLowerCase()))
-    : areas
-
-  function handleBlur() {
-    setTimeout(() => {
-      setOpen(false)
-      if (value) return
-      // Auto-confirmar por coincidencia exacta o única opción filtrada
-      const exact = areas.find((a) => a.nombre.toLowerCase() === text.trim().toLowerCase())
-      if (exact) {
-        onChange(exact.id)
-        setText(exact.nombre)
-      } else if (filtered.length === 1) {
-        onChange(filtered[0].id)
-        setText(filtered[0].nombre)
-      }
-      // Si no hay coincidencia exacta, areaId queda vacío y el schema Zod rechazará el submit
-    }, 150)
-  }
-
-  return (
-    <div className="relative">
-      <Input
-        value={text}
-        onChange={(e) => {
-          setText(e.target.value)
-          onChange('')
-          setOpen(true)
-        }}
-        onFocus={() => setOpen(true)}
-        onBlur={handleBlur}
-        disabled={disabled}
-        placeholder={placeholder}
-        className={`h-8 text-xs${hasError ? 'ring-1 ring-destructive/50' : ''}`}
-        autoComplete="off"
-      />
-      {open && filtered.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md">
-          <ul className="max-h-48 overflow-auto py-1">
-            {filtered.map((a) => (
-              <li
-                key={a.id}
-                className="cursor-pointer px-3 py-1.5 text-xs hover:bg-accent"
-                onMouseDown={() => {
-                  onChange(a.id)
-                  setText(a.nombre)
-                  setOpen(false)
-                }}
-              >
-                {a.nombre}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ── Página ────────────────────────────────────────────────────────────────────
 
 export function CreateTicketPage() {
@@ -202,8 +101,6 @@ export function CreateTicketPage() {
     register,
     handleSubmit,
     control,
-    watch,
-    setValue,
     formState: { errors },
   } = useForm<CreateTicketForm>({
     resolver: zodResolver(createTicketSchema),
@@ -213,18 +110,13 @@ export function CreateTicketPage() {
     },
   })
 
-  const watchedSucursal = watch('sucursalId')
-
-  const areasQuery = useAreas(watchedSucursal || undefined)
-  const areas = areasQuery.data ?? []
-
   const onSubmit = (data: CreateTicketForm) => {
     crearTicket.mutate(
       {
         titulo: data.title,
         descripcion: data.description,
         sucursalId: data.sucursalId,
-        areaId: data.areaId,
+        areaNombre: data.areaNombre,
         tipoServicioId: data.type,
         categoriaId: data.categoriaId,
         prioridad: data.priority.toUpperCase(),
@@ -397,7 +289,6 @@ export function CreateTicketPage() {
                     <Select
                       onValueChange={(v) => {
                         field.onChange(v)
-                        setValue('areaId', '')
                       }}
                       value={field.value}
                       disabled={sucursalesQuery.isLoading}
@@ -426,28 +317,12 @@ export function CreateTicketPage() {
               </FormField>
 
               {/* Área */}
-              <FormField label="Área" required error={errors.areaId?.message}>
-                <Controller
-                  control={control}
-                  name="areaId"
-                  render={({ field }) => (
-                    <AreaCombobox
-                      areas={areas}
-                      value={field.value ?? ''}
-                      onChange={field.onChange}
-                      disabled={!watchedSucursal || areasQuery.isLoading || areas.length === 0}
-                      placeholder={
-                        !watchedSucursal
-                          ? 'Primero selecciona una sucursal'
-                          : areasQuery.isLoading
-                            ? 'Cargando áreas...'
-                            : areas.length === 0
-                              ? 'Sin áreas configuradas para esta sucursal'
-                              : 'Escribe para buscar un área...'
-                      }
-                      hasError={!!errors.areaId}
-                    />
-                  )}
+              <FormField label="Área" required error={errors.areaNombre?.message}>
+                <Input
+                  id="areaNombre"
+                  className="h-8 text-xs"
+                  placeholder="Ej: Sistemas, Contabilidad, Recursos Humanos..."
+                  {...register('areaNombre')}
                 />
               </FormField>
 

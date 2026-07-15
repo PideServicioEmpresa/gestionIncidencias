@@ -3785,7 +3785,6 @@
         }
       },
       "warningProperties": {
-        "allWarningsAsErrors": true,
         "warnAsError": ["NU1605"]
       },
       "restoreAuditProperties": {

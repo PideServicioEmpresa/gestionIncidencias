@@ -90,7 +90,7 @@ export const ticketService = {
     titulo: string
     descripcion: string
     sucursalId: string
-    areaId?: string
+    areaNombre: string
     tipoServicioId: string
     categoriaId?: string
     prioridad: string
