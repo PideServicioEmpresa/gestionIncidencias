@@ -118,8 +118,11 @@ export const ticketService = {
   reabrir: (ticketId: string, motivoRechazoId: string, comentarioRechazo?: string) =>
     apiClient.patch(`/tickets/${ticketId}/reabrir`, { motivoRechazoId, comentarioRechazo }),
 
-  cancelar: (ticketId: string, motivoCancelacionId: string) =>
-    apiClient.patch(`/tickets/${ticketId}/cancelar`, { motivoCancelacionId }),
+  cancelar: (ticketId: string, motivoCancelacionId: string, comentario?: string) =>
+    apiClient.patch(`/tickets/${ticketId}/cancelar`, {
+      motivoCancelacionId,
+      ...(comentario ? { comentario } : {}),
+    }),
 
   listarComentarios: (ticketId: string) =>
     apiClient.get<PagedBackendResponse<ComentarioDto>>(`/tickets/${ticketId}/comentarios`, {

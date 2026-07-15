@@ -301,7 +301,7 @@ function EvidenciaItem({ ev }: { ev: EvidenciaDto }) {
   )
 }
 
-// ── Status labels para el modal de cambio de estado ──────────────────────────
+// ── Transiciones válidas por estado (backend enforces state machine) ──────────
 
 const STATUS_OPTIONS: { value: TicketStatus; label: string }[] = [
   { value: 'asignado', label: 'Asignado' },
@@ -311,6 +311,15 @@ const STATUS_OPTIONS: { value: TicketStatus; label: string }[] = [
   { value: 'cerrado', label: 'Cerrado' },
   { value: 'reabierto', label: 'Reabierto' },
 ]
+
+// El backend aplica la máquina de estados — solo mostrar transiciones válidas
+const VALID_NEXT_STATES: Partial<Record<TicketStatus, TicketStatus[]>> = {
+  asignado: ['en_proceso'],
+  en_proceso: ['en_espera', 'pendiente_validacion'],
+  en_espera: ['asignado'],
+  pendiente_validacion: ['cerrado'],
+  reabierto: ['asignado', 'en_proceso'],
+}
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
@@ -353,7 +362,7 @@ export function TicketDetailPage() {
   const [motivoRechazoId, setMotivoRechazoId] = useState('')
   const [comentarioRechazo, setComentarioRechazo] = useState('')
   const [cancelarModal, setCancelarModal] = useState(false)
-  const [motivoCancelacionId, setMotivoCancelacionId] = useState('')
+  const [motivoCancelarTexto, setMotivoCancelarTexto] = useState('')
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -440,14 +449,13 @@ export function TicketDetailPage() {
   }
 
   function handleConfirmStatusChange() {
-    // Mapea el estado destino a la mutación específica del backend
+    const onErr = (err: Error) => toast.error(err.message || 'No se pudo cambiar el estado.')
     const acciones: Partial<Record<TicketStatus, () => void>> = {
-      en_proceso: () => iniciarProceso.mutate(ticket.id),
-      en_espera: () => pausar.mutate(ticket.id),
-      asignado: () => reanudar.mutate(ticket.id),
-      pendiente_validacion: () => submitValidacion.mutate(ticket.id),
-      cerrado: () => cerrarTicket.mutate({ ticketId: ticket.id }),
-      // TODO: reabrir y cancelar requieren selección de motivo — implementar en próxima iteración
+      en_proceso: () => iniciarProceso.mutate(ticket.id, { onError: onErr }),
+      en_espera: () => pausar.mutate(ticket.id, { onError: onErr }),
+      asignado: () => reanudar.mutate(ticket.id, { onError: onErr }),
+      pendiente_validacion: () => submitValidacion.mutate(ticket.id, { onError: onErr }),
+      cerrado: () => cerrarTicket.mutate({ ticketId: ticket.id }, { onError: onErr }),
     }
     const accion = acciones[pendingStatus]
     if (accion) {
@@ -481,7 +489,13 @@ export function TicketDetailPage() {
   }
 
   function handleCloseTicket() {
-    cerrarTicket.mutate({ ticketId: ticket.id }, { onSuccess: () => setCloseDialog(false) })
+    cerrarTicket.mutate(
+      { ticketId: ticket.id },
+      {
+        onSuccess: () => setCloseDialog(false),
+        onError: (err: Error) => toast.error(err.message || 'No se pudo cerrar el ticket.'),
+      },
+    )
   }
 
   function handleReopenTicket() {
@@ -505,18 +519,31 @@ export function TicketDetailPage() {
   }
 
   function handleOpenCancelar() {
-    setMotivoCancelacionId('')
+    setMotivoCancelarTexto('')
     setCancelarModal(true)
   }
 
   function handleConfirmCancelar() {
-    if (!motivoCancelacionId) return
+    if (!motivoCancelarTexto.trim()) return
+    // El backend requiere un ID de catálogo; usamos el motivo "Otro" o el primero disponible
+    const motivoBase = motivosCancelacion.find((m) => m.esOtro) ?? motivosCancelacion[0]
+    if (!motivoBase) {
+      toast.error('No hay motivos de cancelación configurados en el sistema.')
+      return
+    }
     cancelarTicket.mutate(
-      { ticketId: ticket.id, motivoCancelacionId },
+      {
+        ticketId: ticket.id,
+        motivoCancelacionId: motivoBase.id,
+        comentario: motivoCancelarTexto.trim(),
+      },
       {
         onSuccess: () => {
           setCancelarModal(false)
-          setMotivoCancelacionId('')
+          setMotivoCancelarTexto('')
+        },
+        onError: (err: Error) => {
+          toast.error(err.message || 'No se pudo cancelar el ticket.')
         },
       },
     )
@@ -594,7 +621,9 @@ export function TicketDetailPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5">
-            {STATUS_OPTIONS.map((opt) => {
+            {STATUS_OPTIONS.filter((opt) =>
+              (VALID_NEXT_STATES[currentStatus] ?? []).includes(opt.value),
+            ).map((opt) => {
               const isSelected = pendingStatus === opt.value
               return (
                 <button
@@ -613,6 +642,11 @@ export function TicketDetailPage() {
                 </button>
               )
             })}
+            {(VALID_NEXT_STATES[currentStatus] ?? []).length === 0 && (
+              <p className="py-3 text-center text-xs text-muted-foreground">
+                No hay transiciones disponibles desde el estado actual.
+              </p>
+            )}
           </div>
           <DialogFooter className="gap-2 pt-1">
             <DialogClose asChild>
@@ -623,7 +657,10 @@ export function TicketDetailPage() {
             <Button
               size="sm"
               onClick={handleConfirmStatusChange}
-              disabled={pendingStatus === currentStatus}
+              disabled={
+                pendingStatus === currentStatus ||
+                !(VALID_NEXT_STATES[currentStatus] ?? []).includes(pendingStatus)
+              }
             >
               Confirmar cambio
             </Button>
@@ -700,54 +737,41 @@ export function TicketDetailPage() {
         open={cancelarModal}
         onOpenChange={(open) => {
           setCancelarModal(open)
-          if (!open) setMotivoCancelacionId('')
+          if (!open) setMotivoCancelarTexto('')
         }}
       >
-        <DialogContent className="ps-glow-modal max-w-md">
+        <DialogContent className="ps-glow-modal w-[calc(100%-2rem)] max-w-md rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Cancelar ticket</DialogTitle>
             <DialogDescription className="text-xs">
-              Selecciona el motivo por el que se cancela el ticket. Esta acción retira el ticket del
+              Describe el motivo por el que se cancela el ticket. Esta acción retira el ticket del
               flujo de trabajo.
             </DialogDescription>
           </DialogHeader>
           <FormField label="Motivo de cancelación" required>
-            <Select
-              value={motivoCancelacionId}
-              onValueChange={setMotivoCancelacionId}
-              disabled={motivosCancelacionQuery.isLoading}
-            >
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={
-                    motivosCancelacionQuery.isLoading ? 'Cargando...' : 'Seleccionar motivo'
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {motivosCancelacion.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.nombre}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Textarea
+              rows={3}
+              placeholder="Describe el motivo de cancelación..."
+              className="resize-none text-sm"
+              value={motivoCancelarTexto}
+              onChange={(e) => setMotivoCancelarTexto(e.target.value)}
+            />
           </FormField>
-          <DialogFooter>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <DialogClose asChild>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" className="w-full sm:w-auto">
                 Volver
               </Button>
             </DialogClose>
             <Button
               variant="destructive"
-              size="sm"
-              disabled={!motivoCancelacionId || cancelarTicket.isPending}
+              className="w-full sm:w-auto"
+              disabled={!motivoCancelarTexto.trim() || cancelarTicket.isPending}
               onClick={handleConfirmCancelar}
             >
               {cancelarTicket.isPending ? 'Cancelando...' : 'Confirmar cancelación'}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -1042,13 +1066,13 @@ export function TicketDetailPage() {
                   </Button>
                 )}
 
-                {/* Cambiar estado (solo admin) */}
-                {isAdmin && (
+                {/* Cambiar estado (solo admin, solo cuando hay transiciones válidas) */}
+                {isAdmin && (VALID_NEXT_STATES[currentStatus] ?? []).length > 0 && (
                   <Button
                     variant="outline"
                     className="w-full"
                     onClick={() => {
-                      setPendingStatus(currentStatus)
+                      setPendingStatus((VALID_NEXT_STATES[currentStatus] ?? [])[0] ?? currentStatus)
                       setChangeStatusModal(true)
                     }}
                   >

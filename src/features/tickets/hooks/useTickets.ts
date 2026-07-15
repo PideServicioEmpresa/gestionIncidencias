@@ -181,10 +181,12 @@ export function useCancelarTicket() {
     mutationFn: ({
       ticketId,
       motivoCancelacionId,
+      comentario,
     }: {
       ticketId: string
       motivoCancelacionId: string
-    }) => ticketService.cancelar(ticketId, motivoCancelacionId),
+      comentario?: string
+    }) => ticketService.cancelar(ticketId, motivoCancelacionId, comentario),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: TICKET_KEYS.all })
     },

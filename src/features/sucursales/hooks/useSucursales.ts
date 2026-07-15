@@ -36,6 +36,8 @@ export function useCrearSucursal() {
     mutationFn: (dto: CrearSucursalDto) => sucursalService.crear(dto),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: SUCURSAL_KEYS.all })
+      // Invalida también el cache de catálogos usado en CreateTicketPage
+      void qc.invalidateQueries({ queryKey: ['catalogos', 'sucursales'] })
       toast.success('Sucursal creada correctamente.')
     },
     onError: (err: Error) => {
