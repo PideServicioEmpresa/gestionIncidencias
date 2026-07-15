@@ -64,6 +64,17 @@ import {
   useSubirEvidencia,
 } from '../hooks/useTickets'
 
+// ── Constantes ───────────────────────────────────────────────────────────────
+
+const ROL_LABELS: Record<string, string> = {
+  SUPERADMIN: 'Superadmin',
+  ADMIN: 'Admin',
+  SUPERVISOR: 'Supervisor',
+  TECNICO: 'Técnico',
+  TRABAJADOR: 'Trabajador',
+  USUARIO: 'Usuario',
+}
+
 // ── Normalizadores ────────────────────────────────────────────────────────────
 
 function normalizeEstado(estado: string): TicketStatus {
@@ -116,6 +127,11 @@ function CommentBubble({ comment }: { comment: ComentarioDto }) {
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold">{displayName}</span>
+          {comment.autorRol && (
+            <Badge variant="secondary" className="text-[10px] font-normal">
+              {ROL_LABELS[comment.autorRol] ?? comment.autorRol}
+            </Badge>
+          )}
           <span className="text-xs text-muted-foreground">{date}</span>
           {comment.esInterno && (
             <Badge variant="outline" className="gap-1 text-[10px]">

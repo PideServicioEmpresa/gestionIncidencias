@@ -20,6 +20,8 @@ public interface IUsuarioRepository
         int tamanoPagina,
         CancellationToken ct = default);
     Task<IReadOnlyList<Usuario>> ListarTecnicosActivosPorEmpresaAsync(Guid empresaId, CancellationToken ct = default);
+    Task<IReadOnlyList<Usuario>> ListarAdminsActivosPorEmpresaAsync(Guid empresaId, CancellationToken ct = default);
+    Task<IReadOnlyList<Usuario>> ListarSuperAdminsActivosAsync(CancellationToken ct = default);
     Task<bool> ExisteAsync(Guid id, CancellationToken ct = default);
     Task<bool> ExisteCorreoAsync(string correo, Guid empresaId, Guid? excluirId = null, CancellationToken ct = default);
     Task<bool> ExisteNombreUsuarioAsync(string nombreUsuario, Guid? excluirId = null, CancellationToken ct = default);

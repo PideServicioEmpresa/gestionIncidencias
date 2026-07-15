@@ -8,4 +8,5 @@ public sealed record ComentarioDto(
     bool EsInterno,
     DateTimeOffset? EditadoEn,
     DateTimeOffset CreatedAt,
-    string? AutorNombre = null);
+    string? AutorNombre = null,
+    string? AutorRol = null);

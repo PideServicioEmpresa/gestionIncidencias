@@ -36,6 +36,7 @@ export interface ComentarioDto {
   id: string
   autorId: string
   autorNombre: string | null
+  autorRol: string | null
   cuerpo: string
   esInterno: boolean
   createdAt: string

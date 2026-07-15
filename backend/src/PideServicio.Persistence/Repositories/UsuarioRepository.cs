@@ -235,6 +235,40 @@ public sealed class UsuarioRepository : IUsuarioRepository
         return rows.Select(MapearEntidad).ToList().AsReadOnly();
     }
 
+    public async Task<IReadOnlyList<Usuario>> ListarAdminsActivosPorEmpresaAsync(
+        Guid empresaId,
+        CancellationToken ct = default)
+    {
+        await using var cn = (NpgsqlConnection)await _db.CrearConexionAsync(ct);
+        var sql = $"""
+            SELECT {SelectCols}
+            FROM usuarios
+            WHERE empresa_id = @empresaId
+              AND rol IN ('ADMIN'::rol_tipo, 'SUPERVISOR'::rol_tipo)
+              AND activo = true
+              AND deleted_at IS NULL
+            ORDER BY apellido, nombre
+            """;
+        var rows = await cn.QueryAsync<UsuarioRow>(sql, new { empresaId });
+        return rows.Select(MapearEntidad).ToList().AsReadOnly();
+    }
+
+    public async Task<IReadOnlyList<Usuario>> ListarSuperAdminsActivosAsync(
+        CancellationToken ct = default)
+    {
+        await using var cn = (NpgsqlConnection)await _db.CrearConexionAsync(ct);
+        var sql = $"""
+            SELECT {SelectCols}
+            FROM usuarios
+            WHERE rol = 'SUPERADMIN'::rol_tipo
+              AND activo = true
+              AND deleted_at IS NULL
+            ORDER BY apellido, nombre
+            """;
+        var rows = await cn.QueryAsync<UsuarioRow>(sql);
+        return rows.Select(MapearEntidad).ToList().AsReadOnly();
+    }
+
     public async Task<bool> ExisteAsync(Guid id, CancellationToken ct = default)
     {
         await using var cn = (NpgsqlConnection)await _db.CrearConexionAsync(ct);

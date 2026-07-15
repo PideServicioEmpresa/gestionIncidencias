@@ -5,6 +5,7 @@ public sealed record NotificacionDto(
     Guid UsuarioId,
     Guid? TicketId,
     string Canal,
+    string TipoEvento,
     string Titulo,
     string Cuerpo,
     string EstadoEntrega,

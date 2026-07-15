@@ -102,11 +102,7 @@ public sealed class ReabrirTicketCommandHandler : ICommandHandler<ReabrirTicketC
                     "Ticket rechazado",
                     $"El ticket {ticket.Codigo.Valor} ha sido rechazado y está pendiente de reasignación.",
                     tipoEvento: "ticket.rechazado",
-                    datos: new Dictionary<string, string>
-                    {
-                        ["ticketId"] = ticket.Id.ToString(),
-                        ["codigo"] = ticket.Codigo.Valor
-                    },
+                    ticketId: ticket.Id,
                     cancellationToken: cancellationToken);
 
                 // Email al técnico con copia a inmoveg
@@ -126,16 +122,13 @@ public sealed class ReabrirTicketCommandHandler : ICommandHandler<ReabrirTicketC
                 }
             }
 
-            await _notificationService.EnviarAEmpresaAsync(
+            await _notificationService.EnviarAGestoresYSuperAdminsAsync(
                 ticket.EmpresaId,
                 "Ticket reabierto",
-                $"El ticket {ticket.Codigo.Valor} ha sido rechazado por el solicitante y requiere reasignación.",
-                new Dictionary<string, string>
-                {
-                    ["ticketId"] = ticket.Id.ToString(),
-                    ["codigo"] = ticket.Codigo.Valor
-                },
-                cancellationToken);
+                $"El ticket {ticket.Codigo.Valor} ha sido rechazado y requiere reasignación.",
+                tipoEvento: "ticket.rechazado",
+                ticketId: ticket.Id,
+                cancellationToken: cancellationToken);
 
             return Result.Exito();
         }

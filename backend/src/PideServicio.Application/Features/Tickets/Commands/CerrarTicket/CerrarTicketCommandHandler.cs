@@ -88,13 +88,17 @@ public sealed class CerrarTicketCommandHandler : ICommandHandler<CerrarTicketCom
                     "Ticket cerrado",
                     $"El ticket {ticket.Codigo.Valor} ha sido cerrado por el solicitante.",
                     tipoEvento: "ticket.cerrado",
-                    datos: new Dictionary<string, string>
-                    {
-                        ["ticketId"] = ticket.Id.ToString(),
-                        ["codigo"] = ticket.Codigo.Valor
-                    },
+                    ticketId: ticket.Id,
                     cancellationToken: cancellationToken);
             }
+
+            await _notificationService.EnviarAGestoresYSuperAdminsAsync(
+                ticket.EmpresaId,
+                "Ticket cerrado",
+                $"El ticket {ticket.Codigo.Valor} fue cerrado: {ticket.Titulo}",
+                tipoEvento: "ticket.cerrado",
+                ticketId: ticket.Id,
+                cancellationToken: cancellationToken);
 
             // Email al solicitante con copia a inmoveg
             var correoSolicitante = esSolicitante

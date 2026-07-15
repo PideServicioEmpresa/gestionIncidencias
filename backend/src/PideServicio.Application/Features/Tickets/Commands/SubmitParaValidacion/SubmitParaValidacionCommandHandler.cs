@@ -86,11 +86,15 @@ public sealed class SubmitParaValidacionCommandHandler : ICommandHandler<SubmitP
                 "Ticket pendiente de validación",
                 $"El ticket {ticket.Codigo.Valor} está listo para tu validación: {ticket.Titulo}",
                 tipoEvento: "ticket.pendiente_validacion",
-                datos: new Dictionary<string, string>
-                {
-                    ["ticketId"] = ticket.Id.ToString(),
-                    ["codigo"] = ticket.Codigo.Valor
-                },
+                ticketId: ticket.Id,
+                cancellationToken: cancellationToken);
+
+            await _notificationService.EnviarAGestoresYSuperAdminsAsync(
+                ticket.EmpresaId,
+                "Ticket pendiente de validación",
+                $"El ticket {ticket.Codigo.Valor} está listo para validación: {ticket.Titulo}",
+                tipoEvento: "ticket.pendiente_validacion",
+                ticketId: ticket.Id,
                 cancellationToken: cancellationToken);
 
             // Email al solicitante con copia a inmoveg

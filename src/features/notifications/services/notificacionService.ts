@@ -5,7 +5,7 @@ export interface NotificacionDto {
   id: string
   titulo: string
   cuerpo: string
-  tipo: string
+  tipoEvento: string
   ticketId: string | null
   esLeida: boolean
   createdAt: string

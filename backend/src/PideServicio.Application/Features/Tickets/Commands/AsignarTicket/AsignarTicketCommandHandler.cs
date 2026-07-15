@@ -95,11 +95,15 @@ public sealed class AsignarTicketCommandHandler : ICommandHandler<AsignarTicketC
                 "Ticket asignado",
                 $"Se te ha asignado el ticket {ticket.Codigo.Valor}: {ticket.Titulo}",
                 tipoEvento: "ticket.asignado",
-                datos: new Dictionary<string, string>
-                {
-                    ["ticketId"] = ticket.Id.ToString(),
-                    ["codigo"] = ticket.Codigo.Valor
-                },
+                ticketId: ticket.Id,
+                cancellationToken: cancellationToken);
+
+            await _notificationService.EnviarAGestoresYSuperAdminsAsync(
+                ticket.EmpresaId,
+                "Ticket asignado",
+                $"El ticket {ticket.Codigo.Valor} fue asignado: {ticket.Titulo}",
+                tipoEvento: "ticket.asignado",
+                ticketId: ticket.Id,
                 cancellationToken: cancellationToken);
 
             // Email al técnico con copia a inmoveg

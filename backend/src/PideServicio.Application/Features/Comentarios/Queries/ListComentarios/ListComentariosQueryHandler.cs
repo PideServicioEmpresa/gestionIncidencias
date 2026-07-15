@@ -66,12 +66,14 @@ public sealed class ListComentariosQueryHandler
         var autorDict = uniqueIds
             .Zip(autores)
             .Where(x => x.Second is not null)
-            .ToDictionary(x => x.First, x => $"{x.Second!.Nombre} {x.Second!.Apellido}");
+            .ToDictionary(
+                x => x.First,
+                x => (Nombre: $"{x.Second!.Nombre} {x.Second!.Apellido}", Rol: x.Second!.Rol.ToString()));
 
         var dtos = comentarios.Select(c =>
         {
-            autorDict.TryGetValue(c.AutorId, out var nombre);
-            return c.Adapt<ComentarioDto>() with { AutorNombre = nombre };
+            autorDict.TryGetValue(c.AutorId, out var info);
+            return c.Adapt<ComentarioDto>() with { AutorNombre = info.Nombre, AutorRol = info.Rol };
         }).ToList();
 
         return Result.Exito(ListResult<ComentarioDto>.Crear(dtos));

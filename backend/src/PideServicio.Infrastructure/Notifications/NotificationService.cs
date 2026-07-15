@@ -30,7 +30,7 @@ public sealed class NotificationService : INotificationService
         string titulo,
         string cuerpo,
         string tipoEvento = "general",
-        IDictionary<string, string>? datos = null,
+        Guid? ticketId = null,
         CancellationToken cancellationToken = default)
     {
         var destinatario = await _usuarioRepo.ObtenerPorIdAsync(usuarioId, cancellationToken);
@@ -42,6 +42,7 @@ public sealed class NotificationService : INotificationService
             canal: CanalNotificacionTipo.IN_APP,
             titulo: titulo,
             cuerpo: cuerpo,
+            ticketId: ticketId,
             tipoEvento: tipoEvento);
 
         await _notifRepo.CrearAsync(notificacion, cancellationToken);
@@ -51,14 +52,33 @@ public sealed class NotificationService : INotificationService
         Guid empresaId,
         string titulo,
         string cuerpo,
-        IDictionary<string, string>? datos = null,
+        string tipoEvento = "general",
+        Guid? ticketId = null,
         CancellationToken cancellationToken = default)
     {
-        // Obtiene técnicos activos de la empresa y crea una notificación IN_APP por cada uno.
-        // TODO FASE 6.5+: Extender con administradores y roles adicionales según configuración.
         var tecnicos = await _usuarioRepo.ListarTecnicosActivosPorEmpresaAsync(empresaId, cancellationToken);
+        var tareas = tecnicos.Select(t => EnviarAsync(t.Id, titulo, cuerpo, tipoEvento, ticketId, cancellationToken));
+        await Task.WhenAll(tareas);
+    }
 
-        var tareas = tecnicos.Select(t => EnviarAsync(t.Id, titulo, cuerpo, datos: datos, cancellationToken: cancellationToken));
+    public async Task EnviarAGestoresYSuperAdminsAsync(
+        Guid empresaId,
+        string titulo,
+        string cuerpo,
+        string tipoEvento = "general",
+        Guid? ticketId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var adminsTask = _usuarioRepo.ListarAdminsActivosPorEmpresaAsync(empresaId, cancellationToken);
+        var superAdminsTask = _usuarioRepo.ListarSuperAdminsActivosAsync(cancellationToken);
+        await Task.WhenAll(adminsTask, superAdminsTask);
+
+        var destinatarios = adminsTask.Result
+            .Concat(superAdminsTask.Result)
+            .DistinctBy(u => u.Id)
+            .ToList();
+
+        var tareas = destinatarios.Select(u => EnviarAsync(u.Id, titulo, cuerpo, tipoEvento, ticketId, cancellationToken));
         await Task.WhenAll(tareas);
     }
 }

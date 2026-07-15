@@ -44,12 +44,24 @@ interface LocalNotification {
   createdAt: string
 }
 
+function inferirTipo(tipoEvento: string): LocalNotification['type'] {
+  if (tipoEvento === 'ticket.nuevo') return 'ticket_new'
+  if (tipoEvento === 'ticket.asignado' || tipoEvento === 'ticket.reasignado')
+    return 'ticket_assigned'
+  if (
+    tipoEvento === 'ticket.pendiente_validacion' ||
+    tipoEvento === 'ticket.cerrado' ||
+    tipoEvento === 'ticket.rechazado'
+  )
+    return 'ticket_status'
+  if (tipoEvento === 'ticket.comentario') return 'comment'
+  return 'system'
+}
+
 function mapDtoToLocal(dto: NotificacionDto): LocalNotification {
-  // El backend no provee un campo "tipo de categoría" visual.
-  // TODO: inferir tipo desde un campo adicional cuando el backend lo soporte.
   return {
     id: dto.id,
-    type: 'system',
+    type: inferirTipo(dto.tipoEvento ?? ''),
     title: dto.titulo,
     body: dto.cuerpo,
     ticketId: dto.ticketId,

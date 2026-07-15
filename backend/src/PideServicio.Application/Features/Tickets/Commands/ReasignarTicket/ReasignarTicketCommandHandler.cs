@@ -96,11 +96,15 @@ public sealed class ReasignarTicketCommandHandler : ICommandHandler<ReasignarTic
                 "Ticket reasignado",
                 $"Se te ha reasignado el ticket {ticket.Codigo.Valor}: {ticket.Titulo}",
                 tipoEvento: "ticket.reasignado",
-                datos: new Dictionary<string, string>
-                {
-                    ["ticketId"] = ticket.Id.ToString(),
-                    ["codigo"] = ticket.Codigo.Valor
-                },
+                ticketId: ticket.Id,
+                cancellationToken: cancellationToken);
+
+            await _notificationService.EnviarAGestoresYSuperAdminsAsync(
+                ticket.EmpresaId,
+                "Ticket reasignado",
+                $"El ticket {ticket.Codigo.Valor} fue reasignado: {ticket.Titulo}",
+                tipoEvento: "ticket.reasignado",
+                ticketId: ticket.Id,
                 cancellationToken: cancellationToken);
 
             return Result.Exito();

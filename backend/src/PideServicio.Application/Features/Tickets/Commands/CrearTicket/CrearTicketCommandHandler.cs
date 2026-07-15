@@ -13,6 +13,7 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly IAreaRepository _areaRepository;
     private readonly ITicketRepository _ticketRepo;
+    private readonly INotificationService _notificationService;
     private readonly IEmailService _emailService;
     private readonly IAuditService _auditService;
 
@@ -21,6 +22,7 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
         IUsuarioRepository usuarioRepository,
         IAreaRepository areaRepository,
         ITicketRepository ticketRepo,
+        INotificationService notificationService,
         IEmailService emailService,
         IAuditService auditService)
     {
@@ -28,6 +30,7 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
         _usuarioRepository = usuarioRepository;
         _areaRepository = areaRepository;
         _ticketRepo = ticketRepo;
+        _notificationService = notificationService;
         _emailService = emailService;
         _auditService = auditService;
     }
@@ -89,6 +92,14 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
                 area: areaNombre,
                 solicitante: actor.NombreCompleto,
                 cancellationToken: CancellationToken.None);
+
+            await _notificationService.EnviarAGestoresYSuperAdminsAsync(
+                ticket.EmpresaId,
+                "Nuevo ticket creado",
+                $"Se creó el ticket {ticket.Codigo.Valor}: {ticket.Titulo}",
+                tipoEvento: "ticket.nuevo",
+                ticketId: id,
+                cancellationToken: cancellationToken);
 
             return Result.Exito(id);
         }
