@@ -13,6 +13,7 @@ import {
   MoreVertical,
   BellRing,
   Trash2,
+  RefreshCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@shared/ui/button'
@@ -241,7 +242,12 @@ export function NotificationsPage() {
   const [unreadOverrides, setUnreadOverrides] = useState<Set<string>>(new Set())
 
   // Datos del backend
-  const { data: queryData, isLoading: isLoadingNotifs } = useNotificaciones({ tamanoPagina: 50 })
+  const {
+    data: queryData,
+    isLoading: isLoadingNotifs,
+    isFetching,
+    refetch,
+  } = useNotificaciones({ tamanoPagina: 50 })
   const { mutate: marcarLeida } = useMarcarLeida()
   const { mutate: marcarTodasLeidas } = useMarcarTodasLeidas()
 
@@ -346,29 +352,42 @@ export function NotificationsPage() {
               )}
             </div>
             {/* Acciones globales en header */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreVertical className="h-4 w-4" />
-                  <span className="sr-only">Opciones</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuItem disabled={unreadCount === 0} onClick={handleMarkAllRead}>
-                  <CheckCheck className="mr-2 h-3.5 w-3.5" />
-                  Marcar todas como leídas
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  disabled={readCount === 0}
-                  className="text-destructive focus:text-destructive"
-                  onClick={handleDeleteAllRead}
-                >
-                  <Trash2 className="mr-2 h-3.5 w-3.5" />
-                  Eliminar todas leídas
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => refetch()}
+                disabled={isFetching}
+                title="Actualizar"
+              >
+                <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+                <span className="sr-only">Actualizar</span>
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreVertical className="h-4 w-4" />
+                    <span className="sr-only">Opciones</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuItem disabled={unreadCount === 0} onClick={handleMarkAllRead}>
+                    <CheckCheck className="mr-2 h-3.5 w-3.5" />
+                    Marcar todas como leídas
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={readCount === 0}
+                    className="text-destructive focus:text-destructive"
+                    onClick={handleDeleteAllRead}
+                  >
+                    <Trash2 className="mr-2 h-3.5 w-3.5" />
+                    Eliminar todas leídas
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
           {/* Filter tabs */}

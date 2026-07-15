@@ -9,6 +9,7 @@ import {
   Filter,
   X,
   ArrowRight,
+  RefreshCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@shared/ui/button'
@@ -103,6 +104,12 @@ const AVAILABLE_REPORTS = [
 
 export function ReportsPage() {
   const [downloading, setDownloading] = useState<string | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const handleRefresh = () => {
+    setIsRefreshing(true)
+    setTimeout(() => setIsRefreshing(false), 800)
+  }
   const [filterDesde, setFilterDesde] = useState('')
   const [filterHasta, setFilterHasta] = useState('')
   const [filterEmpresa, setFilterEmpresa] = useState('all')
@@ -153,14 +160,27 @@ export function ReportsPage() {
             Análisis y métricas del sistema de tickets.
           </p>
         </div>
-        <Button
-          variant="outline"
-          disabled={downloading !== null}
-          onClick={() => handleDownload('exportar-datos')}
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Exportar datos
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            title="Actualizar"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="sr-only">Actualizar</span>
+          </Button>
+          <Button
+            variant="outline"
+            disabled={downloading !== null}
+            onClick={() => handleDownload('exportar-datos')}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Exportar datos
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}

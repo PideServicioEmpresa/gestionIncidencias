@@ -14,6 +14,7 @@ import {
   Eye,
   History,
   CalendarDays,
+  RefreshCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@shared/ui/button'
@@ -396,8 +397,11 @@ export function MyTicketsPage() {
     [user?.id, statusFilter, priorityFilter, dateFrom, dateTo],
   )
 
-  const { data, isLoading, error } = useTickets(queryParams)
-  const { data: assignedData } = useTickets(!isAdmin && !!user?.id ? assignedParams : undefined)
+  const { data, isLoading, error, isFetching, refetch } = useTickets(queryParams)
+  const { data: assignedData, isFetching: isFetchingAssigned } = useTickets(
+    !isAdmin && !!user?.id ? assignedParams : undefined,
+  )
+  const isRefreshing = isFetching || isFetchingAssigned
 
   // Fusionar tickets propios + asignados, sin duplicados
   const tickets = useMemo(() => {
@@ -490,10 +494,23 @@ export function MyTicketsPage() {
             {totalRegistros !== 1 ? 's' : ''}
           </p>
         </div>
-        <Button onClick={() => navigate(ROUTES.TICKETS_NEW)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo ticket
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => refetch()}
+            disabled={isRefreshing}
+            title="Actualizar"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="sr-only">Actualizar</span>
+          </Button>
+          <Button onClick={() => navigate(ROUTES.TICKETS_NEW)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nuevo ticket
+          </Button>
+        </div>
       </div>
 
       {/* Banner: filtro activo desde el dashboard */}

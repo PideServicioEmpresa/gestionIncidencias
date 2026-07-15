@@ -14,8 +14,9 @@ import {
   GripVertical,
   BarChart3,
   ChevronRight,
+  RefreshCw,
 } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@shared/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@shared/ui/card'
@@ -328,7 +329,12 @@ function WorkerDashboard() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
 
-  const { data: myTicketsData, isLoading } = useQuery({
+  const {
+    data: myTicketsData,
+    isLoading,
+    isFetching: isWorkerFetching,
+    refetch: workerRefetch,
+  } = useQuery({
     queryKey: ['dashboard', 'worker-tickets', user?.id],
     queryFn: () => ticketService.listar({ solicitanteId: user?.id, tamanoPagina: 100 }),
     enabled: !!user?.id,
@@ -355,10 +361,23 @@ function WorkerDashboard() {
             Aquí tienes el resumen de tus tickets de hoy.
           </p>
         </div>
-        <Button onClick={() => navigate(ROUTES.TICKETS_NEW)} className="mt-3 sm:mt-0">
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo ticket
-        </Button>
+        <div className="mt-3 flex items-center gap-2 sm:mt-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => workerRefetch()}
+            disabled={isWorkerFetching}
+            title="Actualizar"
+          >
+            <RefreshCw className={`h-4 w-4 ${isWorkerFetching ? 'animate-spin' : ''}`} />
+            <span className="sr-only">Actualizar</span>
+          </Button>
+          <Button onClick={() => navigate(ROUTES.TICKETS_NEW)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nuevo ticket
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -473,12 +492,18 @@ function AdminDashboard() {
 
   // ── Datos del backend (un único endpoint de analytics) ────────────────────────
 
+  const queryClient = useQueryClient()
   const sucursalParam = selectedSucursalId !== 'general' ? selectedSucursalId : undefined
   const {
     data: resumen,
     isLoading,
+    isFetching: isAdminFetching,
     error: resumenError,
   } = useDashboardResumen(sucursalParam ? { sucursalId: sucursalParam } : undefined)
+
+  const handleAdminRefresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+  }
 
   // Tickets recientes (lista separada para la tabla inferior)
   const { data: recientesData } = useQuery({
@@ -1053,6 +1078,17 @@ function AdminDashboard() {
               </Select>
             </>
           )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleAdminRefresh}
+            disabled={isAdminFetching}
+            title="Actualizar"
+          >
+            <RefreshCw className={`h-4 w-4 ${isAdminFetching ? 'animate-spin' : ''}`} />
+            <span className="sr-only">Actualizar</span>
+          </Button>
           <Button
             variant={editMode ? 'default' : 'outline'}
             size="sm"
