@@ -6,7 +6,17 @@ public sealed class NotificationOptions
 
     public bool EmailHabilitado { get; init; } = false;
     public bool PushHabilitado { get; init; } = false;
-    public string? SmtpHost { get; init; }
+
+    // SMTP
+    public string SmtpHost { get; init; } = "smtp.gmail.com";
     public int SmtpPuerto { get; init; } = 587;
-    public string? SmtpUsuario { get; init; }
+    public string SmtpUsuario { get; init; } = string.Empty;
+    public string SmtpContrasena { get; init; } = string.Empty;
+
+    // Remitente
+    public string RemitenteDireccion { get; init; } = string.Empty;
+    public string RemitenteNombre { get; init; } = "Pide Servicio";
+
+    // Correo fijo que recibe copia de todos los eventos (ej: inmoveg)
+    public string CorreoCopia { get; init; } = string.Empty;
 }

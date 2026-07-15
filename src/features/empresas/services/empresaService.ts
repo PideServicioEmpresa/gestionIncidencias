@@ -2,47 +2,48 @@ import { apiClient, type PagedBackendResponse } from '@services/apiClient'
 
 export interface EmpresaResumenDto {
   id: string
-  nombre: string
-  ruc: string
-  correo: string
-  telefono: string | null
-  logoUrl: string | null
-  activo: boolean
-  totalSucursales: number
-  creadoEn: string
+  nombreComercial: string
+  activa: boolean
+  createdAt: string
 }
 
-export interface EmpresaDetalleDto extends EmpresaResumenDto {
-  direccion: string | null
-  descripcion: string | null
-  sitioWeb: string | null
+export interface EmpresaDetalleDto {
+  id: string
+  nombreComercial: string
+  razonSocial: string
+  identificacionFiscal: string
+  logoUrl: string | null
+  colorPrimario: string | null
+  colorSecundario: string | null
+  zonaHoraria: string
+  activa: boolean
+  createdAt: string
 }
 
 export interface EmpresaListParams {
   busqueda?: string
-  activo?: boolean
+  soloActivas?: boolean
   pagina?: number
   tamanoPagina?: number
 }
 
 export interface CrearEmpresaDto {
-  nombre: string
-  ruc: string
-  correo: string
-  telefono?: string
-  direccion?: string
-  descripcion?: string
-  sitioWeb?: string
+  nombreComercial: string
+  razonSocial: string
+  identificacionFiscal: string
+  zonaHoraria: string
+  logoUrl?: string
+  colorPrimario?: string
+  colorSecundario?: string
 }
 
 export interface ActualizarEmpresaDto {
-  nombre: string
-  ruc: string
-  correo: string
-  telefono?: string
-  direccion?: string
-  descripcion?: string
-  sitioWeb?: string
+  nombreComercial: string
+  razonSocial: string
+  zonaHoraria: string
+  logoUrl?: string
+  colorPrimario?: string
+  colorSecundario?: string
 }
 
 type Params = Record<string, string | number | boolean | null | undefined>
@@ -58,6 +59,7 @@ export const empresaService = {
   actualizar: (id: string, dto: ActualizarEmpresaDto) =>
     apiClient.put<EmpresaDetalleDto>(`/empresas/${id}`, dto),
 
-  toggleActivo: (id: string) =>
-    apiClient.put<{ activo: boolean }>(`/empresas/${id}/toggle-activo`, {}),
+  activar: (id: string) => apiClient.patch<void>(`/empresas/${id}/activar`),
+
+  desactivar: (id: string) => apiClient.patch<void>(`/empresas/${id}/desactivar`),
 }

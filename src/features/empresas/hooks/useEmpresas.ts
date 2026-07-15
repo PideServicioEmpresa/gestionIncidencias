@@ -62,7 +62,8 @@ export function useActualizarEmpresa(id: string) {
 export function useToggleEmpresa() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => empresaService.toggleActivo(id),
+    mutationFn: ({ id, activa }: { id: string; activa: boolean }) =>
+      activa ? empresaService.desactivar(id) : empresaService.activar(id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: EMPRESA_KEYS.all })
       toast.success('Estado de empresa actualizado.')

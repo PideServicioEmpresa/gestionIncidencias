@@ -37,7 +37,7 @@ export function SucursalNewPage() {
   const currentUser = useAuthStore((s) => s.user)
   const isSuperAdmin = currentUser?.rol === 'superadmin'
 
-  const { data: empresasData } = useEmpresas({ activo: true, tamanoPagina: 100 })
+  const { data: empresasData } = useEmpresas({ soloActivas: true, tamanoPagina: 100 })
   const empresas = empresasData?.items ?? []
 
   const [form, setForm] = useState<FormState>({
@@ -123,7 +123,7 @@ export function SucursalNewPage() {
                     <SelectContent>
                       {empresas.map((e) => (
                         <SelectItem key={e.id} value={e.id}>
-                          {e.nombre}
+                          {e.nombreComercial}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -16,6 +16,7 @@ public sealed class ReabrirTicketCommandHandler : ICommandHandler<ReabrirTicketC
     private readonly ITicketHistorialRepository _historialRepo;
     private readonly IMotivoRechazoRepository _motivoRechazoRepo;
     private readonly INotificationService _notificationService;
+    private readonly IEmailService _emailService;
     private readonly IAuditService _auditService;
 
     public ReabrirTicketCommandHandler(
@@ -25,6 +26,7 @@ public sealed class ReabrirTicketCommandHandler : ICommandHandler<ReabrirTicketC
         ITicketHistorialRepository historialRepo,
         IMotivoRechazoRepository motivoRechazoRepo,
         INotificationService notificationService,
+        IEmailService emailService,
         IAuditService auditService)
     {
         _currentUser = currentUser;
@@ -33,6 +35,7 @@ public sealed class ReabrirTicketCommandHandler : ICommandHandler<ReabrirTicketC
         _historialRepo = historialRepo;
         _motivoRechazoRepo = motivoRechazoRepo;
         _notificationService = notificationService;
+        _emailService = emailService;
         _auditService = auditService;
     }
 
@@ -105,6 +108,22 @@ public sealed class ReabrirTicketCommandHandler : ICommandHandler<ReabrirTicketC
                         ["codigo"] = ticket.Codigo.Valor
                     },
                     cancellationToken: cancellationToken);
+
+                // Email al técnico con copia a inmoveg
+                var tecnico = await _usuarioRepository.ObtenerPorIdAsync(tecnicoAnteriorId.Value, cancellationToken);
+                if (tecnico is not null)
+                {
+                    var motivo = !string.IsNullOrWhiteSpace(request.ComentarioRechazo)
+                        ? request.ComentarioRechazo
+                        : "El solicitante rechazó la atención";
+
+                    _ = _emailService.NotificarTicketReabiertoAsync(
+                        correoTecnico: tecnico.Correo.Valor,
+                        codigo: ticket.Codigo.Valor,
+                        titulo: ticket.Titulo,
+                        motivo: motivo,
+                        cancellationToken: CancellationToken.None);
+                }
             }
 
             await _notificationService.EnviarAEmpresaAsync(

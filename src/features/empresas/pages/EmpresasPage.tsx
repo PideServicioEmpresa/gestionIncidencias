@@ -18,8 +18,6 @@ import { useEmpresas, useToggleEmpresa } from '../hooks/useEmpresas'
 import type { EmpresaResumenDto } from '../services/empresaService'
 import { ROUTES, empresaDetailPath, empresaEditPath } from '@constants/index'
 
-// ── EmpresasPage ──────────────────────────────────────────────────────────────
-
 export function EmpresasPage() {
   const navigate = useNavigate()
   const [busqueda, setBusqueda] = useState('')
@@ -32,7 +30,10 @@ export function EmpresasPage() {
 
   function handleToggle() {
     if (!toggleTarget) return
-    toggleEmpresa.mutate(toggleTarget.id, { onSuccess: () => setToggleTarget(null) })
+    toggleEmpresa.mutate(
+      { id: toggleTarget.id, activa: toggleTarget.activa },
+      { onSuccess: () => setToggleTarget(null) },
+    )
   }
 
   return (
@@ -121,14 +122,14 @@ export function EmpresasPage() {
         onOpenChange={(open) => {
           if (!open) setToggleTarget(null)
         }}
-        title={toggleTarget?.activo ? 'Desactivar empresa' : 'Activar empresa'}
+        title={toggleTarget?.activa ? 'Desactivar empresa' : 'Activar empresa'}
         description={
-          toggleTarget?.activo
-            ? `¿Desactivar "${toggleTarget.nombre}"? Los usuarios de esta empresa no podrán acceder al sistema.`
-            : `¿Activar "${toggleTarget?.nombre}"? Los usuarios de esta empresa podrán volver a acceder.`
+          toggleTarget?.activa
+            ? `¿Desactivar "${toggleTarget.nombreComercial}"? Los usuarios de esta empresa no podrán acceder al sistema.`
+            : `¿Activar "${toggleTarget?.nombreComercial}"? Los usuarios de esta empresa podrán volver a acceder.`
         }
-        confirmLabel={toggleTarget?.activo ? 'Desactivar' : 'Activar'}
-        variant={toggleTarget?.activo ? 'destructive' : 'default'}
+        confirmLabel={toggleTarget?.activa ? 'Desactivar' : 'Activar'}
+        variant={toggleTarget?.activa ? 'destructive' : 'default'}
         loading={toggleEmpresa.isPending}
         onConfirm={handleToggle}
       />
@@ -154,31 +155,30 @@ function EmpresaRow({ empresa, onView, onEdit, onToggle }: EmpresaRowProps) {
           <button
             onClick={onView}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            aria-label={`Ver detalle de ${empresa.nombre}`}
+            aria-label={`Ver detalle de ${empresa.nombreComercial}`}
           >
             <Building2 className="h-5 w-5" />
           </button>
 
           {/* Info principal */}
           <button onClick={onView} className="min-w-0 flex-1 text-left focus-visible:outline-none">
-            <p className="truncate text-sm font-semibold leading-tight">{empresa.nombre}</p>
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              RUC: {empresa.ruc} · {empresa.correo}
+            <p className="truncate text-sm font-semibold leading-tight">
+              {empresa.nombreComercial}
             </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {empresa.totalSucursales} sucursal{empresa.totalSucursales !== 1 ? 'es' : ''}
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              Registrada el {new Date(empresa.createdAt).toLocaleDateString('es-PE')}
             </p>
           </button>
 
           {/* Badge estado */}
           <Badge
             className={
-              empresa.activo
+              empresa.activa
                 ? 'border-transparent bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                 : 'border-transparent bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
             }
           >
-            {empresa.activo ? 'Activa' : 'Inactiva'}
+            {empresa.activa ? 'Activa' : 'Inactiva'}
           </Badge>
 
           {/* Menú */}
@@ -200,10 +200,10 @@ function EmpresaRow({ empresa, onView, onEdit, onToggle }: EmpresaRowProps) {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={onToggle}
-                className={empresa.activo ? 'text-destructive focus:text-destructive' : ''}
+                className={empresa.activa ? 'text-destructive focus:text-destructive' : ''}
               >
                 <Power className="mr-2 h-3.5 w-3.5" />
-                {empresa.activo ? 'Desactivar' : 'Activar'}
+                {empresa.activa ? 'Desactivar' : 'Activar'}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

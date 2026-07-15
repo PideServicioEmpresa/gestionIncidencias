@@ -15,6 +15,7 @@ public sealed class CerrarTicketCommandHandler : ICommandHandler<CerrarTicketCom
     private readonly ITicketRepository _ticketRepo;
     private readonly ITicketHistorialRepository _historialRepo;
     private readonly INotificationService _notificationService;
+    private readonly IEmailService _emailService;
     private readonly IAuditService _auditService;
 
     public CerrarTicketCommandHandler(
@@ -23,6 +24,7 @@ public sealed class CerrarTicketCommandHandler : ICommandHandler<CerrarTicketCom
         ITicketRepository ticketRepo,
         ITicketHistorialRepository historialRepo,
         INotificationService notificationService,
+        IEmailService emailService,
         IAuditService auditService)
     {
         _currentUser = currentUser;
@@ -30,6 +32,7 @@ public sealed class CerrarTicketCommandHandler : ICommandHandler<CerrarTicketCom
         _ticketRepo = ticketRepo;
         _historialRepo = historialRepo;
         _notificationService = notificationService;
+        _emailService = emailService;
         _auditService = auditService;
     }
 
@@ -91,6 +94,21 @@ public sealed class CerrarTicketCommandHandler : ICommandHandler<CerrarTicketCom
                         ["codigo"] = ticket.Codigo.Valor
                     },
                     cancellationToken: cancellationToken);
+            }
+
+            // Email al solicitante con copia a inmoveg
+            var correoSolicitante = esSolicitante
+                ? actor.Correo.Valor
+                : (await _usuarioRepository.ObtenerPorIdAsync(ticket.SolicitanteId, cancellationToken))?.Correo.Valor;
+
+            if (!string.IsNullOrWhiteSpace(correoSolicitante))
+            {
+                _ = _emailService.NotificarTicketCerradoAsync(
+                    correoSolicitante: correoSolicitante,
+                    codigo: ticket.Codigo.Valor,
+                    titulo: ticket.Titulo,
+                    valoracion: ticket.Valoracion?.ToString(),
+                    cancellationToken: CancellationToken.None);
             }
 
             return Result.Exito();

@@ -43,6 +43,7 @@
           }
         },
         "warningProperties": {
+          "allWarningsAsErrors": true,
           "warnAsError": ["NU1605"]
         },
         "restoreAuditProperties": {
@@ -116,6 +117,7 @@
             "Dapper": "2.1.35",
             "FluentValidation": "11.9.0",
             "FluentValidation.DependencyInjectionExtensions": "11.9.0",
+            "MailKit": "4.17.0",
             "Mapster": "7.4.0",
             "Mapster.DependencyInjection": "1.0.1",
             "MediatR": "12.2.0",
@@ -596,6 +598,7 @@
           }
         },
         "warningProperties": {
+          "allWarningsAsErrors": true,
           "warnAsError": ["NU1605"]
         },
         "restoreAuditProperties": {
@@ -669,6 +672,7 @@
             "Dapper": "2.1.35",
             "FluentValidation": "11.9.0",
             "FluentValidation.DependencyInjectionExtensions": "11.9.0",
+            "MailKit": "4.17.0",
             "Mapster": "7.4.0",
             "Mapster.DependencyInjection": "1.0.1",
             "MediatR": "12.2.0",
@@ -999,6 +1003,7 @@
           }
         },
         "warningProperties": {
+          "allWarningsAsErrors": true,
           "warnAsError": ["NU1605"]
         },
         "restoreAuditProperties": {
@@ -1020,6 +1025,7 @@
             "Dapper": "2.1.35",
             "FluentValidation": "11.9.0",
             "FluentValidation.DependencyInjectionExtensions": "11.9.0",
+            "MailKit": "4.17.0",
             "Mapster": "7.4.0",
             "Mapster.DependencyInjection": "1.0.1",
             "MediatR": "12.2.0",
@@ -1350,6 +1356,7 @@
           }
         },
         "warningProperties": {
+          "allWarningsAsErrors": true,
           "warnAsError": ["NU1605"]
         },
         "restoreAuditProperties": {
@@ -1371,6 +1378,7 @@
             "Dapper": "2.1.35",
             "FluentValidation": "11.9.0",
             "FluentValidation.DependencyInjectionExtensions": "11.9.0",
+            "MailKit": "4.17.0",
             "Mapster": "7.4.0",
             "Mapster.DependencyInjection": "1.0.1",
             "MediatR": "12.2.0",
@@ -1708,6 +1716,7 @@
           }
         },
         "warningProperties": {
+          "allWarningsAsErrors": true,
           "warnAsError": ["NU1605"]
         },
         "restoreAuditProperties": {
@@ -1722,6 +1731,11 @@
           "framework": "net10.0",
           "targetAlias": "net10.0",
           "dependencies": {
+            "MailKit": {
+              "target": "Package",
+              "version": "[4.17.0, )",
+              "versionCentrallyManaged": true
+            },
             "Microsoft.AspNetCore.Authentication.JwtBearer": {
               "target": "Package",
               "version": "[10.0.9, )",
@@ -1751,6 +1765,7 @@
             "Dapper": "2.1.35",
             "FluentValidation": "11.9.0",
             "FluentValidation.DependencyInjectionExtensions": "11.9.0",
+            "MailKit": "4.17.0",
             "Mapster": "7.4.0",
             "Mapster.DependencyInjection": "1.0.1",
             "MediatR": "12.2.0",
@@ -2231,6 +2246,7 @@
           }
         },
         "warningProperties": {
+          "allWarningsAsErrors": true,
           "warnAsError": ["NU1605"]
         },
         "restoreAuditProperties": {
@@ -2264,6 +2280,7 @@
             "Dapper": "2.1.35",
             "FluentValidation": "11.9.0",
             "FluentValidation.DependencyInjectionExtensions": "11.9.0",
+            "MailKit": "4.17.0",
             "Mapster": "7.4.0",
             "Mapster.DependencyInjection": "1.0.1",
             "MediatR": "12.2.0",
@@ -2610,6 +2627,7 @@
           }
         },
         "warningProperties": {
+          "allWarningsAsErrors": true,
           "warnAsError": ["NU1605"]
         },
         "restoreAuditProperties": {
@@ -2653,6 +2671,7 @@
             "Dapper": "2.1.35",
             "FluentValidation": "11.9.0",
             "FluentValidation.DependencyInjectionExtensions": "11.9.0",
+            "MailKit": "4.17.0",
             "Mapster": "7.4.0",
             "Mapster.DependencyInjection": "1.0.1",
             "MediatR": "12.2.0",

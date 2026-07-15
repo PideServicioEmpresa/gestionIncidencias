@@ -15,6 +15,7 @@ public sealed class SubmitParaValidacionCommandHandler : ICommandHandler<SubmitP
     private readonly ITicketRepository _ticketRepo;
     private readonly ITicketHistorialRepository _historialRepo;
     private readonly INotificationService _notificationService;
+    private readonly IEmailService _emailService;
     private readonly IAuditService _auditService;
 
     public SubmitParaValidacionCommandHandler(
@@ -23,6 +24,7 @@ public sealed class SubmitParaValidacionCommandHandler : ICommandHandler<SubmitP
         ITicketRepository ticketRepo,
         ITicketHistorialRepository historialRepo,
         INotificationService notificationService,
+        IEmailService emailService,
         IAuditService auditService)
     {
         _currentUser = currentUser;
@@ -30,6 +32,7 @@ public sealed class SubmitParaValidacionCommandHandler : ICommandHandler<SubmitP
         _ticketRepo = ticketRepo;
         _historialRepo = historialRepo;
         _notificationService = notificationService;
+        _emailService = emailService;
         _auditService = auditService;
     }
 
@@ -89,6 +92,26 @@ public sealed class SubmitParaValidacionCommandHandler : ICommandHandler<SubmitP
                     ["codigo"] = ticket.Codigo.Valor
                 },
                 cancellationToken: cancellationToken);
+
+            // Email al solicitante con copia a inmoveg
+            var solicitante = await _usuarioRepository.ObtenerPorIdAsync(ticket.SolicitanteId, cancellationToken);
+            if (solicitante is not null)
+            {
+                // El técnico es el actor si es técnico asignado; si es admin, usar el nombre del actor igualmente
+                var tecnicoNombre = actor.NombreCompleto;
+                if (!esTecnicoAsignado && ticket.TecnicoId.HasValue)
+                {
+                    var tecnico = await _usuarioRepository.ObtenerPorIdAsync(ticket.TecnicoId.Value, cancellationToken);
+                    tecnicoNombre = tecnico?.NombreCompleto ?? tecnicoNombre;
+                }
+
+                _ = _emailService.NotificarTicketPendienteValidacionAsync(
+                    correoSolicitante: solicitante.Correo.Valor,
+                    codigo: ticket.Codigo.Valor,
+                    titulo: ticket.Titulo,
+                    tecnico: tecnicoNombre,
+                    cancellationToken: CancellationToken.None);
+            }
 
             return Result.Exito();
         }

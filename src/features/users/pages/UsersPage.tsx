@@ -297,7 +297,10 @@ export function UsersPage() {
 
   function handleToggleEmpresa() {
     if (!toggleEmpresaTarget) return
-    toggleEmpresa.mutate(toggleEmpresaTarget.id, { onSuccess: () => setToggleEmpresaTarget(null) })
+    toggleEmpresa.mutate(
+      { id: toggleEmpresaTarget.id, activa: toggleEmpresaTarget.activa },
+      { onSuccess: () => setToggleEmpresaTarget(null) },
+    )
   }
 
   function handleToggleSucursal() {
@@ -453,22 +456,21 @@ export function UsersPage() {
                       <Building2 className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <p className="font-medium">{empresa.nombre}</p>
+                      <p className="font-medium">{empresa.nombreComercial}</p>
                       <p className="text-xs text-muted-foreground">
-                        RUC: {empresa.ruc} · {empresa.totalSucursales} sucursal
-                        {empresa.totalSucursales !== 1 ? 'es' : ''}
+                        Registrada el {new Date(empresa.createdAt).toLocaleDateString('es-PE')}
                       </p>
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <Badge
                       className={
-                        empresa.activo
+                        empresa.activa
                           ? 'border-transparent bg-green-100 text-[10px] text-green-700 dark:bg-green-900/30 dark:text-green-400'
                           : 'border-transparent bg-gray-100 text-[10px] text-gray-500 dark:bg-gray-800 dark:text-gray-400'
                       }
                     >
-                      {empresa.activo ? 'Activa' : 'Inactiva'}
+                      {empresa.activa ? 'Activa' : 'Inactiva'}
                     </Badge>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -476,7 +478,7 @@ export function UsersPage() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
-                          aria-label={`Acciones para ${empresa.nombre}`}
+                          aria-label={`Acciones para ${empresa.nombreComercial}`}
                         >
                           <MoreHorizontal className="h-3.5 w-3.5" />
                         </Button>
@@ -489,12 +491,12 @@ export function UsersPage() {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className={
-                            empresa.activo ? 'text-destructive focus:text-destructive' : ''
+                            empresa.activa ? 'text-destructive focus:text-destructive' : ''
                           }
                           onClick={() => setToggleEmpresaTarget(empresa)}
                         >
                           <Power className="mr-2 h-3.5 w-3.5" />
-                          {empresa.activo ? 'Desactivar' : 'Activar'}
+                          {empresa.activa ? 'Desactivar' : 'Activar'}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -533,7 +535,7 @@ export function UsersPage() {
                 <SelectContent>
                   {empresas.map((e) => (
                     <SelectItem key={e.id} value={e.id}>
-                      {e.nombre}
+                      {e.nombreComercial}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -675,16 +677,16 @@ export function UsersPage() {
         onOpenChange={(open) => {
           if (!open) setToggleEmpresaTarget(null)
         }}
-        title={toggleEmpresaTarget?.activo ? 'Desactivar empresa' : 'Activar empresa'}
+        title={toggleEmpresaTarget?.activa ? 'Desactivar empresa' : 'Activar empresa'}
         description={
           toggleEmpresaTarget
-            ? toggleEmpresaTarget.activo
-              ? `¿Deseas desactivar la empresa "${toggleEmpresaTarget.nombre}"? Los usuarios de esta empresa no podrán acceder.`
-              : `¿Deseas activar la empresa "${toggleEmpresaTarget.nombre}"?`
+            ? toggleEmpresaTarget.activa
+              ? `¿Deseas desactivar la empresa "${toggleEmpresaTarget.nombreComercial}"? Los usuarios de esta empresa no podrán acceder.`
+              : `¿Deseas activar la empresa "${toggleEmpresaTarget.nombreComercial}"?`
             : undefined
         }
-        confirmLabel={toggleEmpresaTarget?.activo ? 'Desactivar' : 'Activar'}
-        variant={toggleEmpresaTarget?.activo ? 'destructive' : 'default'}
+        confirmLabel={toggleEmpresaTarget?.activa ? 'Desactivar' : 'Activar'}
+        variant={toggleEmpresaTarget?.activa ? 'destructive' : 'default'}
         loading={toggleEmpresa.isPending}
         onConfirm={handleToggleEmpresa}
       />

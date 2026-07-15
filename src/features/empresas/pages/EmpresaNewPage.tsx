@@ -8,24 +8,35 @@ import { FormField } from '@shared/components/FormField'
 import { useCrearEmpresa } from '../hooks/useEmpresas'
 import { ROUTES } from '@constants/index'
 
+const ZONAS_HORARIAS = [
+  'America/Lima',
+  'America/Bogota',
+  'America/Santiago',
+  'America/Buenos_Aires',
+  'America/Caracas',
+  'America/Mexico_City',
+  'America/New_York',
+  'UTC',
+]
+
 interface FormState {
-  nombre: string
-  ruc: string
-  correo: string
-  telefono: string
-  direccion: string
-  descripcion: string
-  sitioWeb: string
+  nombreComercial: string
+  razonSocial: string
+  identificacionFiscal: string
+  zonaHoraria: string
+  logoUrl: string
+  colorPrimario: string
+  colorSecundario: string
 }
 
 const INITIAL: FormState = {
-  nombre: '',
-  ruc: '',
-  correo: '',
-  telefono: '',
-  direccion: '',
-  descripcion: '',
-  sitioWeb: '',
+  nombreComercial: '',
+  razonSocial: '',
+  identificacionFiscal: '',
+  zonaHoraria: 'America/Lima',
+  logoUrl: '',
+  colorPrimario: '',
+  colorSecundario: '',
 }
 
 export function EmpresaNewPage() {
@@ -41,11 +52,15 @@ export function EmpresaNewPage() {
 
   function validate(): boolean {
     const next: Partial<Record<keyof FormState, string>> = {}
-    if (!form.nombre.trim()) next.nombre = 'Ingresa el nombre de la empresa.'
-    if (!form.ruc.trim()) next.ruc = 'Ingresa el RUC o número de identificación fiscal.'
-    if (!form.correo.trim()) next.correo = 'Ingresa un correo electrónico.'
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.correo))
-      next.correo = 'Ingresa un correo electrónico válido.'
+    if (!form.nombreComercial.trim()) next.nombreComercial = 'Ingresa el nombre comercial.'
+    if (!form.razonSocial.trim()) next.razonSocial = 'Ingresa la razón social.'
+    if (!form.identificacionFiscal.trim())
+      next.identificacionFiscal = 'Ingresa el RUC o número de identificación fiscal.'
+    if (!form.zonaHoraria.trim()) next.zonaHoraria = 'Selecciona una zona horaria.'
+    if (form.colorPrimario && !/^#[0-9A-Fa-f]{6}$/.test(form.colorPrimario))
+      next.colorPrimario = 'Formato inválido. Usa #RRGGBB (ej. #2563eb).'
+    if (form.colorSecundario && !/^#[0-9A-Fa-f]{6}$/.test(form.colorSecundario))
+      next.colorSecundario = 'Formato inválido. Usa #RRGGBB (ej. #64748b).'
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -54,13 +69,13 @@ export function EmpresaNewPage() {
     if (!validate()) return
     crearEmpresa.mutate(
       {
-        nombre: form.nombre.trim(),
-        ruc: form.ruc.trim(),
-        correo: form.correo.trim(),
-        telefono: form.telefono.trim() || undefined,
-        direccion: form.direccion.trim() || undefined,
-        descripcion: form.descripcion.trim() || undefined,
-        sitioWeb: form.sitioWeb.trim() || undefined,
+        nombreComercial: form.nombreComercial.trim(),
+        razonSocial: form.razonSocial.trim(),
+        identificacionFiscal: form.identificacionFiscal.trim(),
+        zonaHoraria: form.zonaHoraria.trim(),
+        logoUrl: form.logoUrl.trim() || undefined,
+        colorPrimario: form.colorPrimario.trim() || undefined,
+        colorSecundario: form.colorSecundario.trim() || undefined,
       },
       { onSuccess: () => navigate(ROUTES.EMPRESAS) },
     )
@@ -100,74 +115,95 @@ export function EmpresaNewPage() {
               <CardTitle className="text-sm font-semibold">Información general</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 p-3 pt-0">
-              <FormField label="Nombre de la empresa" required error={errors.nombre}>
+              <FormField label="Nombre comercial" required error={errors.nombreComercial}>
                 <Input
                   className="h-9 text-sm"
-                  placeholder="Ej. Empresa ABC S.A.C."
-                  value={form.nombre}
-                  onChange={(e) => handleChange('nombre', e.target.value)}
+                  placeholder="Ej. Empresa ABC"
+                  value={form.nombreComercial}
+                  onChange={(e) => handleChange('nombreComercial', e.target.value)}
+                />
+              </FormField>
+              <FormField label="Razón social" required error={errors.razonSocial}>
+                <Input
+                  className="h-9 text-sm"
+                  placeholder="Ej. Empresa ABC Sociedad Anónima Cerrada"
+                  value={form.razonSocial}
+                  onChange={(e) => handleChange('razonSocial', e.target.value)}
                 />
               </FormField>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <FormField label="RUC / ID Fiscal" required error={errors.ruc}>
+                <FormField label="RUC / ID Fiscal" required error={errors.identificacionFiscal}>
                   <Input
                     className="h-9 text-sm"
                     placeholder="Ej. 20123456789"
-                    value={form.ruc}
-                    onChange={(e) => handleChange('ruc', e.target.value)}
+                    value={form.identificacionFiscal}
+                    onChange={(e) => handleChange('identificacionFiscal', e.target.value)}
                   />
                 </FormField>
-                <FormField label="Teléfono" optional>
-                  <Input
-                    className="h-9 text-sm"
-                    placeholder="+51 999 000 000"
-                    value={form.telefono}
-                    onChange={(e) => handleChange('telefono', e.target.value)}
-                  />
+                <FormField label="Zona horaria" required error={errors.zonaHoraria}>
+                  <select
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    value={form.zonaHoraria}
+                    onChange={(e) => handleChange('zonaHoraria', e.target.value)}
+                  >
+                    {ZONAS_HORARIAS.map((z) => (
+                      <option key={z} value={z}>
+                        {z}
+                      </option>
+                    ))}
+                  </select>
                 </FormField>
               </div>
-              <FormField label="Correo electrónico" required error={errors.correo}>
-                <Input
-                  className="h-9 text-sm"
-                  type="email"
-                  placeholder="contacto@empresa.com"
-                  value={form.correo}
-                  onChange={(e) => handleChange('correo', e.target.value)}
-                />
-              </FormField>
-              <FormField label="Sitio web" optional>
-                <Input
-                  className="h-9 text-sm"
-                  placeholder="https://www.empresa.com"
-                  value={form.sitioWeb}
-                  onChange={(e) => handleChange('sitioWeb', e.target.value)}
-                />
-              </FormField>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="px-3 pb-2 pt-3">
-              <CardTitle className="text-sm font-semibold">Ubicación y descripción</CardTitle>
+              <CardTitle className="text-sm font-semibold">Personalización (opcional)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 p-3 pt-0">
-              <FormField label="Dirección" optional>
+              <FormField label="URL del logo" optional>
                 <Input
                   className="h-9 text-sm"
-                  placeholder="Av. Principal 123, Lima"
-                  value={form.direccion}
-                  onChange={(e) => handleChange('direccion', e.target.value)}
+                  placeholder="https://empresa.com/logo.png"
+                  value={form.logoUrl}
+                  onChange={(e) => handleChange('logoUrl', e.target.value)}
                 />
               </FormField>
-              <FormField label="Descripción" optional>
-                <textarea
-                  className="flex min-h-[80px] w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="Breve descripción de la empresa..."
-                  value={form.descripcion}
-                  onChange={(e) => handleChange('descripcion', e.target.value)}
-                  rows={3}
-                />
-              </FormField>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <FormField label="Color primario" optional error={errors.colorPrimario}>
+                  <div className="flex gap-2">
+                    <Input
+                      className="h-9 text-sm"
+                      placeholder="#2563eb"
+                      value={form.colorPrimario}
+                      onChange={(e) => handleChange('colorPrimario', e.target.value)}
+                    />
+                    {form.colorPrimario && /^#[0-9A-Fa-f]{6}$/.test(form.colorPrimario) && (
+                      <div
+                        className="h-9 w-9 shrink-0 rounded-md border"
+                        style={{ backgroundColor: form.colorPrimario }}
+                      />
+                    )}
+                  </div>
+                </FormField>
+                <FormField label="Color secundario" optional error={errors.colorSecundario}>
+                  <div className="flex gap-2">
+                    <Input
+                      className="h-9 text-sm"
+                      placeholder="#64748b"
+                      value={form.colorSecundario}
+                      onChange={(e) => handleChange('colorSecundario', e.target.value)}
+                    />
+                    {form.colorSecundario && /^#[0-9A-Fa-f]{6}$/.test(form.colorSecundario) && (
+                      <div
+                        className="h-9 w-9 shrink-0 rounded-md border"
+                        style={{ backgroundColor: form.colorSecundario }}
+                      />
+                    )}
+                  </div>
+                </FormField>
+              </div>
             </CardContent>
           </Card>
 
@@ -189,34 +225,60 @@ export function EmpresaNewPage() {
             </CardHeader>
             <CardContent className="space-y-4 p-3 pt-0">
               <div className="flex flex-col items-center gap-3 py-2">
-                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Building2 className="h-7 w-7" />
+                <div
+                  className="flex h-14 w-14 items-center justify-center rounded-xl text-white"
+                  style={{
+                    backgroundColor:
+                      form.colorPrimario && /^#[0-9A-Fa-f]{6}$/.test(form.colorPrimario)
+                        ? form.colorPrimario
+                        : undefined,
+                  }}
+                  data-default={
+                    !form.colorPrimario || !/^#[0-9A-Fa-f]{6}$/.test(form.colorPrimario)
+                  }
+                >
+                  {form.logoUrl ? (
+                    <img
+                      src={form.logoUrl}
+                      alt="Logo"
+                      className="h-full w-full rounded-xl object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                      }}
+                    />
+                  ) : (
+                    <Building2
+                      className="h-7 w-7"
+                      style={{
+                        color:
+                          form.colorPrimario && /^#[0-9A-Fa-f]{6}$/.test(form.colorPrimario)
+                            ? 'white'
+                            : undefined,
+                      }}
+                    />
+                  )}
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-semibold">
-                    {form.nombre.trim() || 'Nombre de la empresa'}
+                    {form.nombreComercial.trim() || 'Nombre comercial'}
                   </p>
-                  {form.ruc.trim() && (
-                    <p className="mt-0.5 text-xs text-muted-foreground">RUC: {form.ruc.trim()}</p>
+                  {form.razonSocial.trim() && (
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {form.razonSocial.trim()}
+                    </p>
                   )}
-                  {form.correo.trim() && (
-                    <p className="mt-0.5 text-xs text-muted-foreground">{form.correo.trim()}</p>
+                  {form.identificacionFiscal.trim() && (
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      RUC: {form.identificacionFiscal.trim()}
+                    </p>
                   )}
                 </div>
               </div>
               <div className="space-y-1.5 text-xs">
-                {form.telefono.trim() && (
-                  <div className="flex justify-between gap-2">
-                    <span className="text-muted-foreground">Teléfono</span>
-                    <span className="font-medium">{form.telefono.trim()}</span>
-                  </div>
-                )}
-                {form.direccion.trim() && (
-                  <div className="flex justify-between gap-2">
-                    <span className="shrink-0 text-muted-foreground">Dirección</span>
-                    <span className="truncate text-right font-medium">{form.direccion.trim()}</span>
-                  </div>
-                )}
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Zona horaria</span>
+                  <span className="font-medium">{form.zonaHoraria}</span>
+                </div>
               </div>
             </CardContent>
           </Card>

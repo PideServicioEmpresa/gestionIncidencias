@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Pencil, Building2, Mail, Phone, Globe, MapPin, Power } from 'lucide-react'
+import { ArrowLeft, Pencil, Building2, Globe, Power } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@shared/ui/button'
 import { Badge } from '@shared/ui/badge'
@@ -78,8 +78,8 @@ export function EmpresaDetailPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h2 className="text-base font-semibold tracking-tight">{empresa.nombre}</h2>
-            <p className="text-xs text-muted-foreground">RUC: {empresa.ruc}</p>
+            <h2 className="text-base font-semibold tracking-tight">{empresa.nombreComercial}</h2>
+            <p className="text-xs text-muted-foreground">RUC: {empresa.identificacionFiscal}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -105,48 +105,73 @@ export function EmpresaDetailPage() {
             <CardContent className="space-y-3 p-3 pt-0">
               <InfoRow
                 icon={<Building2 className="h-3.5 w-3.5" />}
-                label="Nombre"
-                value={empresa.nombre}
+                label="Nombre comercial"
+                value={empresa.nombreComercial}
               />
               <InfoRow
                 icon={<Building2 className="h-3.5 w-3.5" />}
-                label="RUC"
-                value={empresa.ruc}
+                label="Razón social"
+                value={empresa.razonSocial}
               />
               <InfoRow
-                icon={<Mail className="h-3.5 w-3.5" />}
-                label="Correo"
-                value={empresa.correo}
+                icon={<Building2 className="h-3.5 w-3.5" />}
+                label="RUC / ID Fiscal"
+                value={empresa.identificacionFiscal}
               />
-              {empresa.telefono && (
-                <InfoRow
-                  icon={<Phone className="h-3.5 w-3.5" />}
-                  label="Teléfono"
-                  value={empresa.telefono}
-                />
-              )}
-              {empresa.sitioWeb && (
-                <InfoRow
-                  icon={<Globe className="h-3.5 w-3.5" />}
-                  label="Sitio web"
-                  value={empresa.sitioWeb}
-                />
-              )}
-              {empresa.direccion && (
-                <InfoRow
-                  icon={<MapPin className="h-3.5 w-3.5" />}
-                  label="Dirección"
-                  value={empresa.direccion}
-                />
-              )}
-              {empresa.descripcion && (
-                <div className="pt-1">
-                  <p className="mb-1 text-xs text-muted-foreground">Descripción</p>
-                  <p className="text-sm leading-relaxed">{empresa.descripcion}</p>
-                </div>
-              )}
+              <InfoRow
+                icon={<Globe className="h-3.5 w-3.5" />}
+                label="Zona horaria"
+                value={empresa.zonaHoraria}
+              />
             </CardContent>
           </Card>
+
+          {(empresa.logoUrl || empresa.colorPrimario || empresa.colorSecundario) && (
+            <Card>
+              <CardHeader className="px-3 pb-2 pt-3">
+                <CardTitle className="text-sm font-semibold">Personalización</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 p-3 pt-0">
+                {empresa.logoUrl && (
+                  <InfoRow
+                    icon={<Building2 className="h-3.5 w-3.5" />}
+                    label="Logo URL"
+                    value={empresa.logoUrl}
+                  />
+                )}
+                {empresa.colorPrimario && (
+                  <div className="flex items-start gap-2.5 text-xs">
+                    <span className="mt-0.5 shrink-0 text-muted-foreground">
+                      <Building2 className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="w-28 shrink-0 text-muted-foreground">Color primario</span>
+                    <div className="flex items-center gap-1.5">
+                      <div
+                        className="h-4 w-4 rounded border"
+                        style={{ backgroundColor: empresa.colorPrimario }}
+                      />
+                      <span className="font-medium">{empresa.colorPrimario}</span>
+                    </div>
+                  </div>
+                )}
+                {empresa.colorSecundario && (
+                  <div className="flex items-start gap-2.5 text-xs">
+                    <span className="mt-0.5 shrink-0 text-muted-foreground">
+                      <Building2 className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="w-28 shrink-0 text-muted-foreground">Color secundario</span>
+                    <div className="flex items-center gap-1.5">
+                      <div
+                        className="h-4 w-4 rounded border"
+                        style={{ backgroundColor: empresa.colorSecundario }}
+                      />
+                      <span className="font-medium">{empresa.colorSecundario}</span>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Panel lateral */}
@@ -160,22 +185,18 @@ export function EmpresaDetailPage() {
                 <span className="text-muted-foreground">Estado actual</span>
                 <Badge
                   className={
-                    empresa.activo
+                    empresa.activa
                       ? 'border-transparent bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                       : 'border-transparent bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
                   }
                 >
-                  {empresa.activo ? 'Activa' : 'Inactiva'}
+                  {empresa.activa ? 'Activa' : 'Inactiva'}
                 </Badge>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Sucursales</span>
-                <span className="font-semibold">{empresa.totalSucursales}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Registrada el</span>
                 <span className="font-medium">
-                  {new Date(empresa.creadoEn).toLocaleDateString('es-PE')}
+                  {new Date(empresa.createdAt).toLocaleDateString('es-PE')}
                 </span>
               </div>
             </CardContent>
@@ -189,11 +210,11 @@ export function EmpresaDetailPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className={`w-full gap-1.5 ${empresa.activo ? 'border-destructive/50 text-destructive hover:bg-destructive/10' : ''}`}
+                className={`w-full gap-1.5 ${empresa.activa ? 'border-destructive/50 text-destructive hover:bg-destructive/10' : ''}`}
                 onClick={() => setConfirmToggle(true)}
               >
                 <Power className="h-3.5 w-3.5" />
-                {empresa.activo ? 'Desactivar empresa' : 'Activar empresa'}
+                {empresa.activa ? 'Desactivar empresa' : 'Activar empresa'}
               </Button>
             </CardContent>
           </Card>
@@ -203,17 +224,20 @@ export function EmpresaDetailPage() {
       <ConfirmDialog
         open={confirmToggle}
         onOpenChange={setConfirmToggle}
-        title={empresa.activo ? 'Desactivar empresa' : 'Activar empresa'}
+        title={empresa.activa ? 'Desactivar empresa' : 'Activar empresa'}
         description={
-          empresa.activo
-            ? `¿Desactivar "${empresa.nombre}"? Los usuarios de esta empresa no podrán acceder al sistema.`
-            : `¿Activar "${empresa.nombre}"? Los usuarios de esta empresa podrán volver a acceder.`
+          empresa.activa
+            ? `¿Desactivar "${empresa.nombreComercial}"? Los usuarios de esta empresa no podrán acceder al sistema.`
+            : `¿Activar "${empresa.nombreComercial}"? Los usuarios de esta empresa podrán volver a acceder.`
         }
-        confirmLabel={empresa.activo ? 'Desactivar' : 'Activar'}
-        variant={empresa.activo ? 'destructive' : 'default'}
+        confirmLabel={empresa.activa ? 'Desactivar' : 'Activar'}
+        variant={empresa.activa ? 'destructive' : 'default'}
         loading={toggleEmpresa.isPending}
         onConfirm={() => {
-          toggleEmpresa.mutate(empresa.id, { onSuccess: () => setConfirmToggle(false) })
+          toggleEmpresa.mutate(
+            { id: empresa.id, activa: empresa.activa },
+            { onSuccess: () => setConfirmToggle(false) },
+          )
         }}
       />
     </div>
@@ -224,7 +248,7 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
   return (
     <div className="flex items-start gap-2.5 text-xs">
       <span className="mt-0.5 shrink-0 text-muted-foreground">{icon}</span>
-      <span className="w-20 shrink-0 text-muted-foreground">{label}</span>
+      <span className="w-28 shrink-0 text-muted-foreground">{label}</span>
       <span className="font-medium text-foreground">{value}</span>
     </div>
   )

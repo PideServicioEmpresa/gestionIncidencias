@@ -11,18 +11,24 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
 {
     private readonly ICurrentUserService _currentUser;
     private readonly IUsuarioRepository _usuarioRepository;
+    private readonly IAreaRepository _areaRepository;
     private readonly ITicketRepository _ticketRepo;
+    private readonly IEmailService _emailService;
     private readonly IAuditService _auditService;
 
     public CrearTicketCommandHandler(
         ICurrentUserService currentUser,
         IUsuarioRepository usuarioRepository,
+        IAreaRepository areaRepository,
         ITicketRepository ticketRepo,
+        IEmailService emailService,
         IAuditService auditService)
     {
         _currentUser = currentUser;
         _usuarioRepository = usuarioRepository;
+        _areaRepository = areaRepository;
         _ticketRepo = ticketRepo;
+        _emailService = emailService;
         _auditService = auditService;
     }
 
@@ -59,9 +65,6 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
 
             var id = await _ticketRepo.CrearAsync(ticket, cancellationToken);
 
-            // El trigger trg_tickets_after_insert inserta automáticamente
-            // la entrada CREADO en ticket_historial; no duplicar aquí.
-
             await _auditService.RegistrarAsync(
                 "tickets",
                 id,
@@ -69,6 +72,23 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
                 null,
                 new { ticket.Estado, ticket.Titulo, ticket.SolicitanteId },
                 cancellationToken);
+
+            // Obtener nombre del área para el email (sin bloquear la respuesta)
+            var areaNombre = "Sin área";
+            if (request.AreaId != Guid.Empty)
+            {
+                var area = await _areaRepository.ObtenerPorIdAsync(request.AreaId, cancellationToken);
+                areaNombre = area?.Nombre ?? areaNombre;
+            }
+
+            _ = _emailService.NotificarTicketCreadoAsync(
+                correoSolicitante: actor.Correo.Valor,
+                codigo: ticket.Codigo.Valor,
+                titulo: ticket.Titulo,
+                prioridad: ticket.PrioridadEfectiva.ToString(),
+                area: areaNombre,
+                solicitante: actor.NombreCompleto,
+                cancellationToken: CancellationToken.None);
 
             return Result.Exito(id);
         }

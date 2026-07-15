@@ -16,6 +16,7 @@ public sealed class AsignarTicketCommandHandler : ICommandHandler<AsignarTicketC
     private readonly ITicketHistorialRepository _historialRepo;
     private readonly ITicketAsignacionRepository _asignacionRepo;
     private readonly INotificationService _notificationService;
+    private readonly IEmailService _emailService;
     private readonly IAuditService _auditService;
 
     public AsignarTicketCommandHandler(
@@ -25,6 +26,7 @@ public sealed class AsignarTicketCommandHandler : ICommandHandler<AsignarTicketC
         ITicketHistorialRepository historialRepo,
         ITicketAsignacionRepository asignacionRepo,
         INotificationService notificationService,
+        IEmailService emailService,
         IAuditService auditService)
     {
         _currentUser = currentUser;
@@ -33,6 +35,7 @@ public sealed class AsignarTicketCommandHandler : ICommandHandler<AsignarTicketC
         _historialRepo = historialRepo;
         _asignacionRepo = asignacionRepo;
         _notificationService = notificationService;
+        _emailService = emailService;
         _auditService = auditService;
     }
 
@@ -98,6 +101,19 @@ public sealed class AsignarTicketCommandHandler : ICommandHandler<AsignarTicketC
                     ["codigo"] = ticket.Codigo.Valor
                 },
                 cancellationToken: cancellationToken);
+
+            // Email al técnico con copia a inmoveg
+            var tecnico = await _usuarioRepository.ObtenerPorIdAsync(request.TecnicoId, cancellationToken);
+            if (tecnico is not null)
+            {
+                _ = _emailService.NotificarTicketAsignadoAsync(
+                    correoTecnico: tecnico.Correo.Valor,
+                    codigo: ticket.Codigo.Valor,
+                    titulo: ticket.Titulo,
+                    tecnico: tecnico.NombreCompleto,
+                    prioridad: ticket.PrioridadEfectiva.ToString(),
+                    cancellationToken: CancellationToken.None);
+            }
 
             return Result.Exito();
         }
