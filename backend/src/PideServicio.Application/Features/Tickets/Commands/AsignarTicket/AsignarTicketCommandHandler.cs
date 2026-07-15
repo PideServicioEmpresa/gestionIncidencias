@@ -106,8 +106,10 @@ public sealed class AsignarTicketCommandHandler : ICommandHandler<AsignarTicketC
                 ticketId: ticket.Id,
                 cancellationToken: cancellationToken);
 
-            // Email al técnico con copia a inmoveg
+            // Email al técnico y al solicitante con copia a inmoveg
             var tecnico = await _usuarioRepository.ObtenerPorIdAsync(request.TecnicoId, cancellationToken);
+            var solicitante = await _usuarioRepository.ObtenerPorIdAsync(ticket.SolicitanteId, cancellationToken);
+
             if (tecnico is not null)
             {
                 _ = _emailService.NotificarTicketAsignadoAsync(
@@ -117,6 +119,17 @@ public sealed class AsignarTicketCommandHandler : ICommandHandler<AsignarTicketC
                     tecnico: tecnico.NombreCompleto,
                     prioridad: ticket.PrioridadEfectiva.ToString(),
                     cancellationToken: CancellationToken.None);
+
+                if (solicitante is not null)
+                {
+                    _ = _emailService.NotificarAsignacionASolicitanteAsync(
+                        correoSolicitante: solicitante.Correo.Valor,
+                        codigo: ticket.Codigo.Valor,
+                        titulo: ticket.Titulo,
+                        tecnico: tecnico.NombreCompleto,
+                        prioridad: ticket.PrioridadEfectiva.ToString(),
+                        cancellationToken: CancellationToken.None);
+                }
             }
 
             return Result.Exito();

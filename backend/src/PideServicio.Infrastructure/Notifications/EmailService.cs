@@ -84,6 +84,15 @@ public sealed class EmailService : IEmailService
         return EnviarConCopiaAsync(correoTecnico, asunto, html, cancellationToken);
     }
 
+    public Task NotificarAsignacionASolicitanteAsync(
+        string correoSolicitante, string codigo, string titulo,
+        string tecnico, string prioridad,
+        CancellationToken cancellationToken = default)
+    {
+        var (asunto, html) = EmailTemplates.TicketAsignadoSolicitante(codigo, titulo, tecnico, prioridad);
+        return EnviarConCopiaAsync(correoSolicitante, asunto, html, cancellationToken);
+    }
+
     public Task NotificarTicketPendienteValidacionAsync(
         string correoSolicitante, string codigo, string titulo,
         string tecnico,

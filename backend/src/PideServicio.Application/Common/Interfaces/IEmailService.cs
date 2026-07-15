@@ -34,6 +34,14 @@ public interface IEmailService
         string prioridad,
         CancellationToken cancellationToken = default);
 
+    Task NotificarAsignacionASolicitanteAsync(
+        string correoSolicitante,
+        string codigo,
+        string titulo,
+        string tecnico,
+        string prioridad,
+        CancellationToken cancellationToken = default);
+
     Task NotificarTicketPendienteValidacionAsync(
         string correoSolicitante,
         string codigo,

@@ -64,6 +64,23 @@ internal static class EmailTemplates
         return (asunto, html);
     }
 
+    public static (string Asunto, string Html) TicketAsignadoSolicitante(
+        string codigo, string titulo, string tecnico, string prioridad)
+    {
+        var asunto = $"[{codigo}] Tu solicitud fue asignada: {titulo}";
+        var html = Wrap("Solicitud en atención", "Tu solicitud ha sido asignada a un técnico", $"""
+            <span class="badge">En atención · {codigo}</span>
+            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="desc">Tu solicitud ha sido asignada y está siendo atendida. Te notificaremos cuando el técnico complete el trabajo.</p>
+            <table class="data">
+              <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
+              <tr><td>Técnico asignado</td><td>{EscapeHtml(tecnico)}</td></tr>
+              <tr><td>Prioridad</td><td>{EscapeHtml(prioridad)}</td></tr>
+            </table>
+            """);
+        return (asunto, html);
+    }
+
     public static (string Asunto, string Html) TicketPendienteValidacion(
         string codigo, string titulo, string tecnico)
     {
