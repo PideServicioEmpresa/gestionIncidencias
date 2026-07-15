@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, User, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, User, Eye, EyeOff, Building2 } from 'lucide-react'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { Badge } from '@shared/ui/badge'
@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import { FormField } from '@shared/components/FormField'
 import { useCrearUsuario } from '../hooks/useUsuarios'
+import { useEmpresas } from '@features/empresas/hooks/useEmpresas'
+import { useSucursales } from '@features/sucursales/hooks/useSucursales'
 import { useAuthStore } from '@store/auth.store'
 import type { UserRole } from '@types-app/index'
 import { ROUTES } from '@constants/index'
@@ -46,16 +48,8 @@ interface FormState {
   contrasena: string
   confirmarContrasena: string
   rol: UserRole | ''
-}
-
-const INITIAL_FORM: FormState = {
-  name: '',
-  apellido: '',
-  correo: '',
-  telefono: '',
-  contrasena: '',
-  confirmarContrasena: '',
-  rol: '',
+  empresaId: string
+  sucursalId: string
 }
 
 // ── UserNewPage ───────────────────────────────────────────────────────────────
@@ -64,11 +58,36 @@ export function UserNewPage() {
   const navigate = useNavigate()
   const crearUsuario = useCrearUsuario()
   const currentUser = useAuthStore((s) => s.user)
+  const isSuperAdmin = currentUser?.rol === 'superadmin'
 
-  const [form, setForm] = useState<FormState>(INITIAL_FORM)
+  const [form, setForm] = useState<FormState>({
+    name: '',
+    apellido: '',
+    correo: '',
+    telefono: '',
+    contrasena: '',
+    confirmarContrasena: '',
+    rol: '',
+    empresaId: isSuperAdmin ? '' : (currentUser?.empresaId ?? ''),
+    sucursalId: '',
+  })
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({})
   const [showPw, setShowPw] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+
+  // ── Datos externos ──────────────────────────────────────────────────────────
+
+  const { data: empresasData, isLoading: loadingEmpresas } = useEmpresas(
+    isSuperAdmin ? { soloActivas: true, tamanoPagina: 100 } : undefined,
+  )
+  const { data: sucursalesData, isLoading: loadingSucursales } = useSucursales(
+    form.empresaId
+      ? { empresaId: form.empresaId, soloActivas: true, tamanoPagina: 100 }
+      : undefined,
+  )
+
+  const empresas = empresasData?.items ?? []
+  const sucursales = sucursalesData?.items ?? []
 
   // Iniciales calculadas en tiempo real
   const initials = useMemo(() => {
@@ -80,7 +99,11 @@ export function UserNewPage() {
   // ── Handlers ────────────────────────────────────────────────────────────────
 
   function handleChange(field: keyof FormState, value: string) {
-    setForm((prev) => ({ ...prev, [field]: value }))
+    setForm((prev) => {
+      const next = { ...prev, [field]: value }
+      if (field === 'empresaId') next.sucursalId = ''
+      return next
+    })
     setErrors((prev) => ({ ...prev, [field]: undefined }))
   }
 
@@ -93,24 +116,31 @@ export function UserNewPage() {
       next.correo = 'Ingresa un correo electrónico válido.'
     if (!form.contrasena) next.contrasena = 'Ingresa una contraseña temporal.'
     else if (form.contrasena.length < 8) next.contrasena = 'Mínimo 8 caracteres.'
+    else if (!/[A-Z]/.test(form.contrasena))
+      next.contrasena = 'Debe contener al menos una mayúscula.'
+    else if (!/[0-9]/.test(form.contrasena)) next.contrasena = 'Debe contener al menos un número.'
     if (form.confirmarContrasena !== form.contrasena)
       next.confirmarContrasena = 'Las contraseñas no coinciden.'
     if (!form.rol) next.rol = 'Selecciona un rol.'
+    if (!form.empresaId) next.empresaId = 'Selecciona una empresa.'
+    if (!form.sucursalId) next.sucursalId = 'Selecciona una sucursal.'
     setErrors(next)
     return Object.keys(next).length === 0
   }
 
   function handleSubmit() {
     if (!validate()) return
-    const sucursalId = currentUser?.sucursalId
-    if (!sucursalId) {
-      toast.error('No se pudo determinar la sucursal del usuario actual.')
-      return
-    }
-    const nombreUsuario = form.correo.split('@')[0] ?? form.correo
+
+    // Sanitizar nombreUsuario para cumplir ^[a-z0-9_]{3,50}$
+    const raw = form.correo.split('@')[0].toLowerCase()
+    const nombreUsuario = raw
+      .replace(/[^a-z0-9_]/g, '_')
+      .replace(/_{2,}/g, '_')
+      .slice(0, 50)
+
     crearUsuario.mutate(
       {
-        sucursalId,
+        sucursalId: form.sucursalId,
         nombre: form.name.trim(),
         apellido: form.apellido.trim(),
         correo: form.correo.trim(),
@@ -120,7 +150,13 @@ export function UserNewPage() {
         rol: form.rol.toUpperCase(),
       },
       {
-        onSuccess: () => navigate(ROUTES.USERS),
+        onSuccess: () => {
+          toast.success('Usuario creado correctamente.')
+          navigate(ROUTES.USERS)
+        },
+        onError: (err: Error) => {
+          toast.error(err.message || 'No se pudo crear el usuario.')
+        },
       },
     )
   }
@@ -161,7 +197,7 @@ export function UserNewPage() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         {/* ── Columna izquierda: formulario ─────────────────────────────────── */}
         <div className="flex-1 space-y-4">
-          {/* Card: Informacion personal */}
+          {/* Card: Información personal */}
           <Card>
             <CardHeader className="px-3 pb-2 pt-3">
               <CardTitle className="text-sm font-semibold">Información personal</CardTitle>
@@ -216,7 +252,7 @@ export function UserNewPage() {
                   <Input
                     className="h-9 pr-9 text-sm"
                     type={showPw ? 'text' : 'password'}
-                    placeholder="Mínimo 8 caracteres"
+                    placeholder="Mín. 8 caracteres, 1 mayúscula y 1 número"
                     value={form.contrasena}
                     onChange={(e) => handleChange('contrasena', e.target.value)}
                     autoComplete="new-password"
@@ -264,7 +300,7 @@ export function UserNewPage() {
             <CardHeader className="px-3 pb-2 pt-3">
               <CardTitle className="text-sm font-semibold">Acceso y permisos</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 p-3 pt-0">
+            <CardContent className="p-3 pt-0">
               <FormField label="Rol" required error={errors.rol}>
                 <Select value={form.rol} onValueChange={(v) => handleChange('rol', v)}>
                   <SelectTrigger className="h-9 text-sm">
@@ -275,16 +311,80 @@ export function UserNewPage() {
                     <SelectItem value="tecnico">Técnico</SelectItem>
                     <SelectItem value="supervisor">Supervisor</SelectItem>
                     <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="superadmin">SuperAdministrador</SelectItem>
+                    {isSuperAdmin && <SelectItem value="superadmin">SuperAdministrador</SelectItem>}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            </CardContent>
+          </Card>
+
+          {/* Card: Asignación */}
+          <Card>
+            <CardHeader className="px-3 pb-2 pt-3">
+              <CardTitle className="text-sm font-semibold">Asignación</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 p-3 pt-0">
+              {isSuperAdmin ? (
+                <FormField label="Empresa" required error={errors.empresaId}>
+                  <Select
+                    value={form.empresaId}
+                    onValueChange={(v) => handleChange('empresaId', v)}
+                    disabled={loadingEmpresas}
+                  >
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue
+                        placeholder={loadingEmpresas ? 'Cargando...' : 'Seleccionar empresa'}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {empresas.map((e) => (
+                        <SelectItem key={e.id} value={e.id}>
+                          {e.nombreComercial}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormField>
+              ) : (
+                <div className="flex items-center gap-2.5 rounded-lg border bg-muted/30 px-3 py-2.5">
+                  <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div>
+                    <p className="text-[11px] text-muted-foreground">Empresa asignada</p>
+                    <p className="text-xs font-medium">Tu empresa actual</p>
+                  </div>
+                </div>
+              )}
+
+              <FormField label="Sucursal" required error={errors.sucursalId}>
+                <Select
+                  value={form.sucursalId}
+                  onValueChange={(v) => handleChange('sucursalId', v)}
+                  disabled={!form.empresaId || loadingSucursales}
+                >
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue
+                      placeholder={
+                        !form.empresaId
+                          ? 'Selecciona una empresa primero'
+                          : loadingSucursales
+                            ? 'Cargando...'
+                            : 'Seleccionar sucursal'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sucursales.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.nombre}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </FormField>
 
-              {currentUser?.sucursalId && (
-                <p className="text-xs text-muted-foreground">
-                  El usuario será creado en tu sucursal actual.
-                </p>
-              )}
+              <p className="text-[11px] text-muted-foreground">
+                Actualmente cada usuario puede pertenecer a una sola sucursal.
+              </p>
             </CardContent>
           </Card>
 
@@ -327,7 +427,7 @@ export function UserNewPage() {
                 </div>
               </div>
 
-              {/* Badges de rol y estado */}
+              {/* Detalles */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">Rol</span>
@@ -346,6 +446,15 @@ export function UserNewPage() {
                     Activo
                   </Badge>
                 </div>
+
+                {form.sucursalId && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Sucursal</span>
+                    <span className="max-w-[120px] truncate text-right font-medium">
+                      {sucursales.find((s) => s.id === form.sucursalId)?.nombre ?? '—'}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Hint */}
