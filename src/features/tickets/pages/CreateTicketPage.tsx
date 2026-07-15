@@ -37,8 +37,8 @@ const createTicketSchema = z.object({
   priority: z.enum(['baja', 'media', 'alta', 'critica'], {
     errorMap: () => ({ message: 'Selecciona una prioridad.' }),
   }),
-  sucursalId: z.string().min(1, 'Selecciona una empresa.'),
-  areaId: z.string().min(1, 'Selecciona una sucursal.'),
+  sucursalId: z.string().min(1, 'Selecciona una sucursal.'),
+  areaId: z.string().min(1, 'Selecciona un área.'),
   location: z.string().max(200, 'Máximo 200 caracteres').optional(),
   description: z
     .string()
@@ -280,8 +280,8 @@ export function CreateTicketPage() {
                 />
               </FormField>
 
-              {/* Empresa (sucursalId) */}
-              <FormField label="Empresa" required error={errors.sucursalId?.message}>
+              {/* Sucursal */}
+              <FormField label="Sucursal" required error={errors.sucursalId?.message}>
                 <Controller
                   control={control}
                   name="sucursalId"
@@ -301,7 +301,7 @@ export function CreateTicketPage() {
                       >
                         <SelectValue
                           placeholder={
-                            sucursalesQuery.isLoading ? 'Cargando...' : 'Seleccionar empresa...'
+                            sucursalesQuery.isLoading ? 'Cargando...' : 'Seleccionar sucursal...'
                           }
                         />
                       </SelectTrigger>
@@ -317,8 +317,8 @@ export function CreateTicketPage() {
                 />
               </FormField>
 
-              {/* Sucursal (areaId) */}
-              <FormField label="Sucursal" required error={errors.areaId?.message}>
+              {/* Área */}
+              <FormField label="Área" required error={errors.areaId?.message}>
                 <Controller
                   control={control}
                   name="areaId"
@@ -336,10 +336,10 @@ export function CreateTicketPage() {
                         <SelectValue
                           placeholder={
                             !watchedSucursal
-                              ? 'Primero selecciona una empresa.'
+                              ? 'Primero selecciona una sucursal.'
                               : areasQuery.isLoading
                                 ? 'Cargando...'
-                                : 'Selecciona una sucursal.'
+                                : 'Selecciona un área.'
                           }
                         />
                       </SelectTrigger>

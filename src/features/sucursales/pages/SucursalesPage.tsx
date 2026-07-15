@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Plus, MoreHorizontal, MapPin, Power, Pencil, Eye } from 'lucide-react'
+import { Search, Plus, MoreHorizontal, MapPin, Power, Pencil, Eye, Building2 } from 'lucide-react'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { Badge } from '@shared/ui/badge'
@@ -17,6 +17,7 @@ import { ConfirmDialog } from '@shared/components/ConfirmDialog'
 import { useSucursales, useToggleSucursal } from '../hooks/useSucursales'
 import type { SucursalResumenDto } from '../services/sucursalService'
 import { ROUTES, sucursalDetailPath, sucursalEditPath } from '@constants/index'
+import { useEmpresas } from '@features/empresas/hooks/useEmpresas'
 
 export function SucursalesPage() {
   const navigate = useNavigate()
@@ -25,6 +26,11 @@ export function SucursalesPage() {
 
   const { data, isLoading } = useSucursales({ busqueda: busqueda || undefined })
   const toggleSucursal = useToggleSucursal()
+  const empresasQuery = useEmpresas({ tamanoPagina: 100 })
+  const empresaMap: Record<string, string> = {}
+  for (const e of empresasQuery.data?.items ?? []) {
+    empresaMap[e.id] = e.nombreComercial
+  }
 
   const sucursales = data?.items ?? []
 
@@ -108,6 +114,7 @@ export function SucursalesPage() {
             <SucursalRow
               key={sucursal.id}
               sucursal={sucursal}
+              empresaNombre={empresaMap[sucursal.empresaId]}
               onView={() => navigate(sucursalDetailPath(sucursal.id))}
               onEdit={() => navigate(sucursalEditPath(sucursal.id))}
               onToggle={() => setToggleTarget(sucursal)}
@@ -138,12 +145,13 @@ export function SucursalesPage() {
 
 interface SucursalRowProps {
   sucursal: SucursalResumenDto
+  empresaNombre?: string
   onView: () => void
   onEdit: () => void
   onToggle: () => void
 }
 
-function SucursalRow({ sucursal, onView, onEdit, onToggle }: SucursalRowProps) {
+function SucursalRow({ sucursal, empresaNombre, onView, onEdit, onToggle }: SucursalRowProps) {
   return (
     <Card className="transition-colors hover:bg-accent/30">
       <CardContent className="p-3">
@@ -158,6 +166,12 @@ function SucursalRow({ sucursal, onView, onEdit, onToggle }: SucursalRowProps) {
 
           <button onClick={onView} className="min-w-0 flex-1 text-left focus-visible:outline-none">
             <p className="truncate text-sm font-semibold leading-tight">{sucursal.nombre}</p>
+            {empresaNombre && (
+              <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
+                <Building2 className="h-2.5 w-2.5" />
+                {empresaNombre}
+              </span>
+            )}
             <p className="mt-0.5 text-xs text-muted-foreground">
               Registrada el {new Date(sucursal.createdAt).toLocaleDateString('es-PE')}
             </p>
