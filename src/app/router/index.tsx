@@ -10,6 +10,9 @@ import { PageSkeleton } from '@shared/components/PageSkeletons'
 // LoginPage se carga de manera eager (es la primera pantalla para usuarios no autenticados)
 import { LoginPage } from '@features/auth/pages/LoginPage'
 
+// ResetPasswordPage se carga eager — Supabase la visita sin sesión activa vía token en hash
+import { ResetPasswordPage } from '@features/auth/pages/ResetPasswordPage'
+
 // Resto de páginas con lazy loading para reducir el bundle inicial
 const DashboardPage = lazy(() =>
   import('@features/dashboard/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
@@ -152,6 +155,12 @@ const router = createBrowserRouter([
         children: [{ path: ROUTES.LOGIN, element: <LoginPage /> }],
       },
     ],
+  },
+
+  // Ruta pública sin guard — Supabase procesa el token del hash antes de que haya sesión
+  {
+    element: <AuthLayout />,
+    children: [{ path: ROUTES.RESET_PASSWORD, element: <ResetPasswordPage /> }],
   },
 
   // App routes (authenticated)

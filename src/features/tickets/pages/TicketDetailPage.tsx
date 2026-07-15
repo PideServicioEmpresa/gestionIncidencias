@@ -16,6 +16,8 @@ import {
   X,
   Settings2,
   Check,
+  Eye,
+  Download,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@shared/ui/button'
@@ -169,27 +171,111 @@ function HistoryEntry({ entry }: { entry: TicketHistorialDto }) {
 }
 
 function EvidenciaItem({ ev }: { ev: EvidenciaDto }) {
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [thumbError, setThumbError] = useState(false)
   const isImage = ev.tipoMime.startsWith('image/')
   const isVideo = ev.tipoMime.startsWith('video/')
   const Icon = isImage ? Image : isVideo ? Video : FileText
   const tipoLabel = ev.tipo === 'INICIAL' ? 'Evidencia inicial' : 'Evidencia de cierre'
+  const canPreview = isImage || isVideo
+
   return (
-    <a
-      href={ev.urlAlmacenamiento}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-center gap-3 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/50"
-    >
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-        <Icon className="h-4 w-4 text-muted-foreground" />
+    <>
+      <div className="flex items-center gap-3 rounded-lg border p-3 text-sm">
+        {/* Thumbnail */}
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
+          {isImage && !thumbError ? (
+            <img
+              src={ev.urlAlmacenamiento}
+              alt={ev.nombreOriginal}
+              className="h-full w-full object-cover"
+              onError={() => setThumbError(true)}
+            />
+          ) : (
+            <Icon className="h-5 w-5 text-muted-foreground" />
+          )}
+        </div>
+
+        {/* Info */}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-medium">{ev.nombreOriginal}</p>
+          <p className="text-xs text-muted-foreground">
+            {formatFileSize(ev.tamanoBytes)} · {tipoLabel}
+          </p>
+        </div>
+
+        {/* Acciones */}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {canPreview && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1 px-2 text-xs"
+              onClick={() => setPreviewOpen(true)}
+            >
+              <Eye className="h-3 w-3" />
+              Visualizar
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+            <a
+              href={ev.urlAlmacenamiento}
+              download={ev.nombreOriginal}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Descargar"
+            >
+              <Download className="h-3.5 w-3.5" />
+            </a>
+          </Button>
+        </div>
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{ev.nombreOriginal}</p>
-        <p className="text-xs text-muted-foreground">
-          {formatFileSize(ev.tamanoBytes)} · {tipoLabel}
-        </p>
-      </div>
-    </a>
+
+      {/* Modal de previsualización */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-3xl p-0">
+          <DialogHeader className="px-4 pb-2 pt-4">
+            <DialogTitle className="truncate pr-6 text-sm font-medium">
+              {ev.nombreOriginal}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {formatFileSize(ev.tamanoBytes)} · {tipoLabel}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex min-h-[200px] items-center justify-center overflow-hidden bg-black/80 px-4">
+            {isImage ? (
+              <img
+                src={ev.urlAlmacenamiento}
+                alt={ev.nombreOriginal}
+                className="max-h-[70vh] w-auto max-w-full object-contain"
+              />
+            ) : isVideo ? (
+              <video
+                src={ev.urlAlmacenamiento}
+                controls
+                className="max-h-[70vh] w-full"
+                autoPlay={false}
+              />
+            ) : null}
+          </div>
+
+          <DialogFooter className="px-4 pb-4 pt-2">
+            <Button variant="outline" size="sm" asChild>
+              <a
+                href={ev.urlAlmacenamiento}
+                download={ev.nombreOriginal}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+                Descargar
+              </a>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 

@@ -3,6 +3,7 @@ export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
   FORGOT_PASSWORD: '/recuperar-contrasena',
+  RESET_PASSWORD: '/reset-password',
   DASHBOARD: '/dashboard',
   PROFILE: '/perfil',
   TICKETS: '/tickets',

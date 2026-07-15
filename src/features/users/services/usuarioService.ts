@@ -82,8 +82,9 @@ export const usuarioService = {
   eliminar: (id: string) => apiClient.delete(`/usuarios/${id}`),
 
   restablecerContrasena: async (correo: string): Promise<void> => {
+    const appUrl = import.meta.env.VITE_APP_URL ?? window.location.origin
     const { error } = await supabase.auth.resetPasswordForEmail(correo, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${appUrl}/reset-password`,
     })
     if (error) throw new Error(error.message)
   },
