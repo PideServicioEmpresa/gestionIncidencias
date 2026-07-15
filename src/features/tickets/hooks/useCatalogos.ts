@@ -60,8 +60,17 @@ export function useTecnicos(empresaId?: string) {
   return useQuery({
     queryKey: CATALOGO_KEYS.tecnicos(empresaId),
     queryFn: async () => {
-      const resp = await catalogoService.listarTecnicos(empresaId)
-      return resp.items ?? []
+      const [tecnicosResp, trabajadoresResp] = await Promise.all([
+        catalogoService.listarTecnicos(empresaId),
+        catalogoService.listarTrabajadores(empresaId),
+      ])
+      const merged = [...(tecnicosResp.items ?? []), ...(trabajadoresResp.items ?? [])]
+      const seen = new Set<string>()
+      return merged.filter((u) => {
+        if (seen.has(u.id)) return false
+        seen.add(u.id)
+        return true
+      })
     },
     staleTime: 1000 * 60 * 5,
   })

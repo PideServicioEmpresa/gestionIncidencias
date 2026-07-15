@@ -96,6 +96,14 @@ export const catalogoService = {
       ...(empresaId ? { empresaId } : {}),
     }),
 
+  listarTrabajadores: (empresaId?: string) =>
+    apiClient.get<PagedBackendResponse<TecnicoResumenDto>>('/usuarios', {
+      rol: 'TRABAJADOR',
+      soloActivos: true,
+      tamanoPagina: 100,
+      ...(empresaId ? { empresaId } : {}),
+    }),
+
   listarMotivosRechazo: () =>
     apiClient.get<PagedBackendResponse<MotivoRechazoResumenDto>>('/motivos-rechazo', {
       soloActivos: true,
