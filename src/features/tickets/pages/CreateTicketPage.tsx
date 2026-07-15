@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -74,6 +74,80 @@ function formatFileSize(bytes: number): string {
     return (bytes / 1024).toFixed(1) + ' KB'
   }
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
+// ── Combobox de Área ──────────────────────────────────────────────────────────
+
+interface AreaOption {
+  id: string
+  nombre: string
+}
+
+interface AreaComboboxProps {
+  areas: AreaOption[]
+  value: string
+  onChange: (id: string) => void
+  disabled?: boolean
+  placeholder?: string
+  hasError?: boolean
+}
+
+function AreaCombobox({
+  areas,
+  value,
+  onChange,
+  disabled,
+  placeholder,
+  hasError,
+}: AreaComboboxProps) {
+  const [text, setText] = useState('')
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    setText(areas.find((a) => a.id === value)?.nombre ?? '')
+  }, [value, areas])
+
+  const filtered = text
+    ? areas.filter((a) => a.nombre.toLowerCase().includes(text.toLowerCase()))
+    : areas
+
+  return (
+    <div className="relative">
+      <Input
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value)
+          onChange('')
+          setOpen(true)
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        disabled={disabled}
+        placeholder={placeholder}
+        className={`h-8 text-xs${hasError ? 'ring-1 ring-destructive/50' : ''}`}
+        autoComplete="off"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md">
+          <ul className="max-h-48 overflow-auto py-1">
+            {filtered.map((a) => (
+              <li
+                key={a.id}
+                className="cursor-pointer px-3 py-1.5 text-xs hover:bg-accent"
+                onMouseDown={() => {
+                  onChange(a.id)
+                  setText(a.nombre)
+                  setOpen(false)
+                }}
+              >
+                {a.nombre}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ── Página ────────────────────────────────────────────────────────────────────
@@ -323,34 +397,20 @@ export function CreateTicketPage() {
                   control={control}
                   name="areaId"
                   render={({ field }) => (
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
+                    <AreaCombobox
+                      areas={areas}
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
                       disabled={!watchedSucursal || areasQuery.isLoading}
-                    >
-                      <SelectTrigger
-                        id="areaId"
-                        className="[data-error=true]:ring-1 [data-error=true]:ring-destructive/50 h-8 text-xs"
-                        data-error={!!errors.areaId}
-                      >
-                        <SelectValue
-                          placeholder={
-                            !watchedSucursal
-                              ? 'Primero selecciona una sucursal.'
-                              : areasQuery.isLoading
-                                ? 'Cargando...'
-                                : 'Selecciona un área.'
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {areas.map((a) => (
-                          <SelectItem key={a.id} value={a.id}>
-                            {a.nombre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder={
+                        !watchedSucursal
+                          ? 'Primero selecciona una sucursal.'
+                          : areasQuery.isLoading
+                            ? 'Cargando...'
+                            : 'Buscar área...'
+                      }
+                      hasError={!!errors.areaId}
+                    />
                   )}
                 />
               </FormField>

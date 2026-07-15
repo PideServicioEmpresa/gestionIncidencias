@@ -165,13 +165,15 @@ function SucursalRow({ sucursal, empresaNombre, onView, onEdit, onToggle }: Sucu
           </button>
 
           <button onClick={onView} className="min-w-0 flex-1 text-left focus-visible:outline-none">
-            <p className="truncate text-sm font-semibold leading-tight">{sucursal.nombre}</p>
-            {empresaNombre && (
-              <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
-                <Building2 className="h-2.5 w-2.5" />
-                {empresaNombre}
-              </span>
-            )}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-sm font-semibold leading-tight">{sucursal.nombre}</span>
+              {empresaNombre && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
+                  <Building2 className="h-2.5 w-2.5" />
+                  {empresaNombre}
+                </span>
+              )}
+            </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
               Registrada el {new Date(sucursal.createdAt).toLocaleDateString('es-PE')}
             </p>
