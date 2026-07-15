@@ -38,7 +38,7 @@ const createTicketSchema = z.object({
     errorMap: () => ({ message: 'Selecciona una prioridad.' }),
   }),
   sucursalId: z.string().min(1, 'Selecciona una sucursal.'),
-  areaId: z.string().min(1, 'Selecciona un área.'),
+  areaId: z.string().optional(),
   location: z.string().max(200, 'Máximo 200 caracteres').optional(),
   description: z
     .string()
@@ -114,9 +114,8 @@ function AreaCombobox({
   function handleBlur() {
     setTimeout(() => {
       setOpen(false)
-      // Si ya hay una selección válida, nada que hacer
       if (value) return
-      // Intentar auto-confirmar por coincidencia exacta o única opción filtrada
+      // Auto-confirmar por coincidencia exacta o única opción filtrada
       const exact = areas.find((a) => a.nombre.toLowerCase() === text.trim().toLowerCase())
       if (exact) {
         onChange(exact.id)
@@ -124,11 +123,8 @@ function AreaCombobox({
       } else if (filtered.length === 1) {
         onChange(filtered[0].id)
         setText(filtered[0].nombre)
-      } else {
-        // Texto inválido: limpiar para que el usuario sepa que debe elegir
-        setText('')
-        onChange('')
       }
+      // Si no hay coincidencia, se deja el texto libre (areaId queda vacío, campo es opcional)
     }, 150)
   }
 
@@ -216,7 +212,7 @@ export function CreateTicketPage() {
         titulo: data.title,
         descripcion: data.description,
         sucursalId: data.sucursalId,
-        areaId: data.areaId,
+        ...(data.areaId ? { areaId: data.areaId } : {}),
         tipoServicioId: data.type,
         categoriaId: data.categoriaId,
         prioridad: data.priority.toUpperCase(),

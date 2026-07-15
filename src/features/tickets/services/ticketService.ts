@@ -89,7 +89,7 @@ export const ticketService = {
     titulo: string
     descripcion: string
     sucursalId: string
-    areaId: string
+    areaId?: string
     tipoServicioId: string
     categoriaId?: string
     prioridad: string
@@ -97,7 +97,7 @@ export const ticketService = {
   }) => apiClient.post<string>('/tickets', body),
 
   asignar: (ticketId: string, tecnicoId: string) =>
-    apiClient.patch(`/tickets/${ticketId}/asignar`, { tecnicoId }),
+    apiClient.post(`/tickets/${ticketId}/asignar`, { tecnicoId }),
 
   cambiarPrioridad: (ticketId: string, nuevaPrioridad: string) =>
     apiClient.patch(`/tickets/${ticketId}/prioridad`, { nuevaPrioridad }),
