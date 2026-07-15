@@ -1,3 +1,4 @@
+
 # Checklist de Validación — Backend
 
 > Verificar antes de dar por terminada cualquier tarea de Edge Functions / servicios. Responsable: `backend` + `reviewer`.

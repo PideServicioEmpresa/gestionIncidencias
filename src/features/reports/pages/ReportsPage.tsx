@@ -12,6 +12,13 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  exportarDatosGeneralesPDF,
+  exportarReporteMensualPDF,
+  exportarRendimientoPDF,
+  exportarIncidenciasCriticasPDF,
+  exportarCierrePorSucursalPDF,
+} from '../utils/reportePDF'
 import { Button } from '@shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@shared/ui/card'
 import { Badge } from '@shared/ui/badge'
@@ -133,20 +140,40 @@ export function ReportsPage() {
     toast.info('Filtros eliminados')
   }
 
+  const GENERADORES: Record<string, () => void> = {
+    'Reporte mensual de tickets': exportarReporteMensualPDF,
+    'Rendimiento por trabajador': exportarRendimientoPDF,
+    'Análisis de incidencias críticas': exportarIncidenciasCriticasPDF,
+    'Índice de cierre por sucursal': exportarCierrePorSucursalPDF,
+  }
+
   const handleDownload = (reportTitle: string) => {
     if (downloading) return
     setDownloading(reportTitle)
-    const promise = new Promise<void>((resolve) => {
-      setTimeout(() => {
+    const promise = new Promise<void>((resolve, reject) => {
+      try {
+        const generador = GENERADORES[reportTitle]
+        if (generador) {
+          generador()
+        } else {
+          exportarDatosGeneralesPDF({
+            desde: filterDesde,
+            hasta: filterHasta,
+            empresa: filterEmpresa,
+            estado: filterEstado,
+          })
+        }
         resolve()
-      }, 1500)
+      } catch (err) {
+        reject(err)
+      }
     }).finally(() => {
       setDownloading(null)
     })
     toast.promise(promise, {
-      loading: 'Generando reporte...',
-      success: 'Reporte descargado',
-      error: 'Error al generar el reporte',
+      loading: 'Generando PDF...',
+      success: 'PDF descargado correctamente',
+      error: 'Error al generar el PDF',
     })
   }
 
@@ -175,7 +202,7 @@ export function ReportsPage() {
           <Button
             variant="outline"
             disabled={downloading !== null}
-            onClick={() => handleDownload('exportar-datos')}
+            onClick={() => handleDownload('exportar-datos-generales')}
           >
             <Download className="mr-2 h-4 w-4" />
             Exportar datos
@@ -225,7 +252,7 @@ export function ReportsPage() {
             <div className="flex flex-col gap-1">
               <span className="text-[10px] font-medium text-muted-foreground">Empresa</span>
               <Select value={filterEmpresa} onValueChange={setFilterEmpresa}>
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger className="h-9 text-xs">
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
@@ -239,7 +266,7 @@ export function ReportsPage() {
             <div className="flex flex-col gap-1">
               <span className="text-[10px] font-medium text-muted-foreground">Estado</span>
               <Select value={filterEstado} onValueChange={setFilterEstado}>
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger className="h-9 text-xs">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
