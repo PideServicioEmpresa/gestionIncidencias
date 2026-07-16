@@ -7,7 +7,6 @@ import {
   ChevronRight,
   HelpCircle,
   AlertTriangle,
-  Users,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -17,10 +16,10 @@ import { SeccionTiposServicio } from '../components/SeccionTiposServicio'
 import { SeccionCategorias } from '../components/SeccionCategorias'
 import { SeccionEmpresas } from '../components/SeccionEmpresas'
 import { SeccionSucursales } from '../components/SeccionSucursales'
+import { SeccionRoles } from '../components/SeccionRoles'
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/card'
 import { Switch } from '@shared/ui/switch'
 import { Button } from '@shared/ui/button'
-import { Badge } from '@shared/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import { Input } from '@shared/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@shared/ui/tooltip'
@@ -28,35 +27,6 @@ import { ConfirmDialog } from '@shared/components/ConfirmDialog'
 import { FormField } from '@shared/components/FormField'
 import { NotificationPreferences } from '@features/notifications/components/NotificationPreferences'
 import { toast } from 'sonner'
-
-const ROLES_INFO = [
-  {
-    nombre: 'SuperAdministrador',
-    color: 'bg-purple-100 text-purple-700 border-purple-200',
-    descripcion:
-      'Acceso total al sistema. Gestiona empresas, usuarios, configuración global y catálogos.',
-  },
-  {
-    nombre: 'Administrador',
-    color: 'bg-blue-100 text-blue-700 border-blue-200',
-    descripcion: 'Gestiona sucursales, usuarios, tickets y la configuración de su empresa.',
-  },
-  {
-    nombre: 'Supervisor',
-    color: 'bg-cyan-100 text-cyan-700 border-cyan-200',
-    descripcion: 'Supervisa tickets y equipos de trabajo. Sin acceso a configuración del sistema.',
-  },
-  {
-    nombre: 'Técnico',
-    color: 'bg-green-100 text-green-700 border-green-200',
-    descripcion: 'Atiende tickets asignados, actualiza estados y registra soluciones.',
-  },
-  {
-    nombre: 'Trabajador',
-    color: 'bg-amber-100 text-amber-700 border-amber-200',
-    descripcion: 'Crea tickets y consulta el estado de sus solicitudes.',
-  },
-]
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -592,31 +562,8 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* ── ROLES (referencia, ocupa las 2 columnas) ────────────────────── */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="px-3 pb-2 pt-3">
-            <CardTitle className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-              <Users className="h-3.5 w-3.5 text-blue-500" />
-              Roles del sistema
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <p className="mb-3 text-xs text-muted-foreground">
-              Los roles se asignan al crear o editar un usuario. Cada rol define qué puede ver y
-              hacer dentro del sistema.
-            </p>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-              {ROLES_INFO.map((rol) => (
-                <div key={rol.nombre} className="space-y-1.5 rounded-lg border bg-muted/20 p-3">
-                  <Badge className={`border text-[10px] ${rol.color} bg-transparent`}>
-                    {rol.nombre}
-                  </Badge>
-                  <p className="text-xs leading-relaxed text-muted-foreground">{rol.descripcion}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {/* ── ROLES ───────────────────────────────────────────────────────── */}
+        <SeccionRoles />
 
         {/* ── TIPOS DE SERVICIO ──────────────────────────────────────────────── */}
         <SeccionTiposServicio />
