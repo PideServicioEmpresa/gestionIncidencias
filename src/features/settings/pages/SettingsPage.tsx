@@ -9,7 +9,7 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@store/auth.store'
 import { configuracionService } from '../services/configuracionService'
 import { SeccionTiposServicio } from '../components/SeccionTiposServicio'
@@ -105,15 +105,20 @@ export function SettingsPage() {
     if (parametrosError) toast.error(parametrosError.message)
   }, [parametrosError])
 
-  // Mutation para actualizar parámetros
-  const { mutate: actualizarParametro } = useMutation({
-    mutationFn: ({ clave, valor }: { clave: string; valor: string }) =>
-      configuracionService.actualizar(clave, valor, user?.empresaId),
-    onSuccess: () => {
+  // Helper: guarda múltiples parámetros en paralelo y muestra toast según resultado
+  const guardar = async (pares: Record<string, string>, mensajeExito: string) => {
+    try {
+      await Promise.all(
+        Object.entries(pares).map(([clave, valor]) =>
+          configuracionService.actualizar(clave, valor, user?.empresaId),
+        ),
+      )
       void qc.invalidateQueries({ queryKey: ['configuracion'] })
-    },
-    onError: (err: Error) => toast.error(err.message),
-  })
+      toast.success(mensajeExito)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al guardar la configuración')
+    }
+  }
 
   // General
   const [nombreEmpresa, setNombreEmpresa] = useState('')
@@ -254,16 +259,16 @@ export function SettingsPage() {
             <div className="flex justify-end pt-1">
               <Button
                 size="sm"
-                onClick={() => {
-                  if (nombreEmpresa.trim())
-                    actualizarParametro({ clave: 'NOMBRE_EMPRESA', valor: nombreEmpresa.trim() })
-                  actualizarParametro({ clave: 'ZONA_HORARIA', valor: zona })
-                  actualizarParametro({
-                    clave: 'MODO_MANTENIMIENTO',
-                    valor: String(modoMantenimiento),
-                  })
-                  toast.success('Configuracion general guardada')
-                }}
+                onClick={() =>
+                  void guardar(
+                    {
+                      ...(nombreEmpresa.trim() ? { NOMBRE_EMPRESA: nombreEmpresa.trim() } : {}),
+                      ZONA_HORARIA: zona,
+                      MODO_MANTENIMIENTO: String(modoMantenimiento),
+                    },
+                    'Configuración general guardada',
+                  )
+                }
               >
                 Guardar cambios
               </Button>
@@ -341,15 +346,16 @@ export function SettingsPage() {
             <div className="flex justify-end pt-1">
               <Button
                 size="sm"
-                onClick={() => {
-                  actualizarParametro({ clave: 'SESSION_TIMEOUT_MIN', valor: sessionTimeout })
-                  actualizarParametro({ clave: 'AUTH_DOS_FACTORES', valor: String(dosFactor) })
-                  actualizarParametro({
-                    clave: 'BLOQUEO_INTENTOS',
-                    valor: String(bloqueoPorIntentos),
-                  })
-                  toast.success('Configuracion de seguridad guardada')
-                }}
+                onClick={() =>
+                  void guardar(
+                    {
+                      SESSION_TIMEOUT_MIN: sessionTimeout,
+                      AUTH_DOS_FACTORES: String(dosFactor),
+                      BLOQUEO_INTENTOS: String(bloqueoPorIntentos),
+                    },
+                    'Configuración de seguridad guardada',
+                  )
+                }
               >
                 Guardar cambios
               </Button>
@@ -448,18 +454,16 @@ export function SettingsPage() {
             <div className="flex justify-end pt-1">
               <Button
                 size="sm"
-                onClick={() => {
-                  actualizarParametro({ clave: 'MAX_ADJUNTO_MB', valor: maxFileSize })
-                  actualizarParametro({
-                    clave: 'ASIGNACION_AUTOMATICA',
-                    valor: String(asignacionAutomatica),
-                  })
-                  actualizarParametro({
-                    clave: 'PERMITIR_REAPERTURA',
-                    valor: String(permitirReapertura),
-                  })
-                  toast.success('Configuracion de tickets guardada')
-                }}
+                onClick={() =>
+                  void guardar(
+                    {
+                      MAX_ADJUNTO_MB: maxFileSize,
+                      ASIGNACION_AUTOMATICA: String(asignacionAutomatica),
+                      PERMITIR_REAPERTURA: String(permitirReapertura),
+                    },
+                    'Configuración de tickets guardada',
+                  )
+                }
               >
                 Guardar cambios
               </Button>
@@ -532,16 +536,17 @@ export function SettingsPage() {
             <div className="flex justify-end pt-1">
               <Button
                 size="sm"
-                onClick={() => {
-                  actualizarParametro({ clave: 'NOTIF_EMAIL', valor: String(notifEmail) })
-                  actualizarParametro({ clave: 'RESUMEN_DIARIO', valor: String(resumenDiario) })
-                  actualizarParametro({ clave: 'ALERTAS_CRITICOS', valor: String(alertasCriticos) })
-                  actualizarParametro({
-                    clave: 'RECORDATORIOS_SLA',
-                    valor: String(recordatoriosSla),
-                  })
-                  toast.success('Configuracion de notificaciones guardada')
-                }}
+                onClick={() =>
+                  void guardar(
+                    {
+                      NOTIF_EMAIL: String(notifEmail),
+                      RESUMEN_DIARIO: String(resumenDiario),
+                      ALERTAS_CRITICOS: String(alertasCriticos),
+                      RECORDATORIOS_SLA: String(recordatoriosSla),
+                    },
+                    'Configuración de notificaciones guardada',
+                  )
+                }
               >
                 Guardar cambios
               </Button>
