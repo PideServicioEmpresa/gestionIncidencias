@@ -66,6 +66,34 @@ public sealed class EmailService : IEmailService
         await Task.WhenAll(tareas);
     }
 
+    public Task NotificarNuevoTicketAAdminsAsync(
+        IReadOnlyList<string> correosAdmins,
+        string codigo,
+        Guid ticketId,
+        string titulo,
+        string prioridad,
+        string? sucursal,
+        string area,
+        string solicitante,
+        CancellationToken cancellationToken = default)
+    {
+        if (correosAdmins.Count == 0)
+            return Task.CompletedTask;
+
+        try
+        {
+            var urlFrontend = string.IsNullOrWhiteSpace(_options.UrlFrontend) ? null : _options.UrlFrontend;
+            var (asunto, html) = EmailTemplates.TicketCreadoAdmin(
+                codigo, ticketId, titulo, prioridad, sucursal, area, solicitante, urlFrontend);
+            return EnviarAVariosAsync(correosAdmins, asunto, html, ct: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al preparar email NotificarNuevoTicketAAdminsAsync para ticket {Codigo}", codigo);
+            return Task.CompletedTask;
+        }
+    }
+
     public Task NotificarTicketCreadoAsync(
         string correoSolicitante, string codigo, string titulo,
         string prioridad, string area, string solicitante,

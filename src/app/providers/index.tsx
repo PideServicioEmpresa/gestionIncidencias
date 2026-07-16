@@ -7,6 +7,8 @@ import { ThemeProvider } from '@shared/components/ThemeProvider'
 import { ErrorBoundary } from '@shared/components/ErrorBoundary'
 import { authService } from '@features/auth/services/authService'
 import { ApiClientError } from '@services/apiClient'
+import { usePreferencesStore } from '@store/preferences.store'
+import type { AccentColor } from '@store/preferences.store'
 
 // Los errores 401 y 403 se manejan en apiClient (redirect + clearAuth).
 // Aquí solo mostramos toast para errores de red u otros errores de queries.
@@ -35,6 +37,29 @@ const queryClient = new QueryClient({
     },
   }),
 })
+
+// Mapa HSL por color de acento — inline style gana sobre cualquier regla CSS
+const ACCENT_HSL: Record<AccentColor, string> = {
+  blue: '217 91% 60%',
+  violet: '263 70% 60%',
+  green: '142 71% 45%',
+  orange: '25 95% 58%',
+  red: '0 84% 60%',
+  yellow: '45 93% 52%',
+}
+
+function AccentApplier() {
+  const accentColor = usePreferencesStore((s) => s.accentColor)
+
+  useEffect(() => {
+    const hsl = ACCENT_HSL[accentColor] ?? ACCENT_HSL.blue
+    document.documentElement.style.setProperty('--primary', hsl)
+    document.documentElement.style.setProperty('--ring', hsl)
+    document.documentElement.style.setProperty('--sidebar-primary', hsl)
+  }, [accentColor])
+
+  return null
+}
 
 interface ProvidersProps {
   children: React.ReactNode
@@ -79,6 +104,7 @@ export function Providers({ children }: ProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="dark" storageKey="pide-servicio-theme">
+        <AccentApplier />
         <ErrorBoundary>
           <SessionRestorer>{children}</SessionRestorer>
         </ErrorBoundary>

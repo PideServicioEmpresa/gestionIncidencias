@@ -19,4 +19,7 @@ public sealed class NotificationOptions
 
     // Correo fijo que recibe copia de todos los eventos (ej: inmoveg)
     public string CorreoCopia { get; init; } = string.Empty;
+
+    // URL base del frontend — usada en los CTAs de los correos (ej. https://app.pideservicio.com)
+    public string UrlFrontend { get; init; } = string.Empty;
 }

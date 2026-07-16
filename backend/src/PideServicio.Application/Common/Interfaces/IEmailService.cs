@@ -17,6 +17,22 @@ public interface IEmailService
         CancellationToken ct = default);
 
     // Métodos de conveniencia para eventos de tickets
+
+    /// <summary>
+    /// Notifica a los administradores y superadministradores que hay un ticket nuevo
+    /// pendiente de asignación. Cada correo se envía de forma independiente.
+    /// </summary>
+    Task NotificarNuevoTicketAAdminsAsync(
+        IReadOnlyList<string> correosAdmins,
+        string codigo,
+        Guid ticketId,
+        string titulo,
+        string prioridad,
+        string? sucursal,
+        string area,
+        string solicitante,
+        CancellationToken cancellationToken = default);
+
     Task NotificarTicketCreadoAsync(
         string correoSolicitante,
         string codigo,

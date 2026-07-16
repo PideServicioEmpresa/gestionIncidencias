@@ -83,6 +83,92 @@
     --sidebar-accent-foreground: 0 0% 92%;
     --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
+
+    color-scheme: dark;
+  }
+
+  /* === TEMA CLARO === */
+  .light {
+    color-scheme: light;
+
+    /* Fondos — jerarquía por contraste: página < paneles */
+    --background: 220 20% 96%; /* gris frío muy claro, no blanco puro */
+    --foreground: 224 20% 12%; /* casi negro con matiz azulado */
+
+    /* Cards y overlays — blanco puro para resaltar sobre el fondo */
+    --card: 0 0% 100%;
+    --card-foreground: 224 20% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 20% 12%;
+
+    /* Primary — azul corporativo, levemente más oscuro para contraste en claro */
+    --primary: 217 91% 52%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary — gris medio, para elementos de segundo plano */
+    --secondary: 220 14% 91%;
+    --secondary-foreground: 224 20% 20%;
+
+    /* Muted — texto apagado y fondos tenues */
+    --muted: 220 14% 93%;
+    --muted-foreground: 220 9% 46%;
+
+    /* Accent — hover/active state */
+    --accent: 220 14% 91%;
+    --accent-foreground: 224 20% 12%;
+
+    /* Destructive */
+    --destructive: 0 84% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Bordes y campos de entrada — visibles pero sutiles */
+    --border: 220 13% 85%;
+    --input: 220 13% 85%;
+    --ring: 217 91% 52%;
+
+    /* Radius no cambia */
+    --radius: 0.5rem;
+
+    /* === COLORES SEMÁNTICOS (más oscuros para contrastar sobre claro) === */
+    --success: 142 71% 38%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 42%;
+    --warning-foreground: 0 0% 10%;
+    --info: 199 89% 40%;
+    --info-foreground: 0 0% 100%;
+
+    /* === ESTADOS DE TICKETS === */
+    --ticket-sin-asignar: 220 9% 50%;
+    --ticket-sin-asignar-foreground: 0 0% 100%;
+    --ticket-asignado: 217 91% 52%;
+    --ticket-asignado-foreground: 0 0% 100%;
+    --ticket-en-proceso: 25 95% 50%;
+    --ticket-en-proceso-foreground: 0 0% 100%;
+    --ticket-pendiente: 45 93% 42%;
+    --ticket-pendiente-foreground: 0 0% 10%;
+    --ticket-cerrado: 142 71% 38%;
+    --ticket-cerrado-foreground: 0 0% 100%;
+    --ticket-reabierto: 0 72% 50%;
+    --ticket-reabierto-foreground: 0 0% 100%;
+
+    /* === PRIORIDADES === */
+    --priority-baja: 142 71% 38%;
+    --priority-baja-foreground: 0 0% 100%;
+    --priority-media: 38 92% 42%;
+    --priority-media-foreground: 0 0% 10%;
+    --priority-alta: 25 95% 50%;
+    --priority-alta-foreground: 0 0% 100%;
+    --priority-critica: 0 84% 55%;
+    --priority-critica-foreground: 0 0% 100%;
+
+    /* === SIDEBAR — levemente más oscuro que el fondo de página === */
+    --sidebar: 220 20% 93%;
+    --sidebar-foreground: 224 20% 15%;
+    --sidebar-border: 220 13% 85%;
+    --sidebar-accent: 220 14% 88%;
+    --sidebar-accent-foreground: 224 20% 12%;
+    --sidebar-primary: 217 91% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
   }
 }
 

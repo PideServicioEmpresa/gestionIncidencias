@@ -15,6 +15,7 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
     private readonly ICurrentUserService _currentUser;
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly IAreaRepository _areaRepository;
+    private readonly ISucursalRepository _sucursalRepository;
     private readonly ITicketRepository _ticketRepo;
     private readonly ITicketHistorialRepository _historialRepo;
     private readonly INotificationService _notificationService;
@@ -26,6 +27,7 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
         ICurrentUserService currentUser,
         IUsuarioRepository usuarioRepository,
         IAreaRepository areaRepository,
+        ISucursalRepository sucursalRepository,
         ITicketRepository ticketRepo,
         ITicketHistorialRepository historialRepo,
         INotificationService notificationService,
@@ -36,6 +38,7 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
         _currentUser = currentUser;
         _usuarioRepository = usuarioRepository;
         _areaRepository = areaRepository;
+        _sucursalRepository = sucursalRepository;
         _ticketRepo = ticketRepo;
         _historialRepo = historialRepo;
         _notificationService = notificationService;
@@ -115,14 +118,55 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
                 new { ticket.Estado, ticket.Titulo, ticket.SolicitanteId },
                 cancellationToken);
 
-            // Fire-and-forget con try-catch explícito para no perder errores de email silenciosamente
+            // Materializar todos los valores necesarios para los correos ANTES de los fire-and-forget.
+            // El scope del request HTTP puede liberarse antes de que las tareas en background terminen,
+            // por lo que los fire-and-forget solo deben recibir primitivos/strings ya resueltos.
             var correoSolicitante = actor.Correo.Valor;
             var codigoTicket = ticket.Codigo.Valor;
             var tituloTicket = ticket.Titulo;
             var prioridadTicket = ticket.PrioridadEfectiva.ToString();
             var areaNombreCaptura = areaNombre;
             var solicitanteNombre = actor.NombreCompleto;
+            var ticketIdCaptura = id;
+            var empresaIdCaptura = ticket.EmpresaId;
 
+            // Obtener nombre de sucursal (best-effort: si falla no se bloquea la respuesta)
+            string? sucursalNombre = null;
+            try
+            {
+                var sucursal = await _sucursalRepository.ObtenerPorIdAsync(request.SucursalId, cancellationToken);
+                sucursalNombre = sucursal?.Nombre;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener sucursal {SucursalId} para email a admins del ticket {Codigo}",
+                    request.SucursalId, codigoTicket);
+            }
+
+            // Obtener correos de admins y superadmins (best-effort: si falla no se bloquea la respuesta)
+            IReadOnlyList<string> correosAdmins = [];
+            try
+            {
+                var adminsTask = _usuarioRepository.ListarAdminsActivosPorEmpresaAsync(empresaIdCaptura, cancellationToken);
+                var superAdminsTask = _usuarioRepository.ListarSuperAdminsActivosAsync(cancellationToken);
+                await Task.WhenAll(adminsTask, superAdminsTask);
+
+                correosAdmins = adminsTask.Result
+                    .Concat(superAdminsTask.Result)
+                    .DistinctBy(u => u.Id)
+                    .Select(u => u.Correo.Valor)
+                    .Where(c => !string.IsNullOrWhiteSpace(c))
+                    .ToList()
+                    .AsReadOnly();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener correos de admins para ticket {Codigo}", codigoTicket);
+            }
+
+            var sucursalCaptura = sucursalNombre;
+
+            // Correo al solicitante — fire-and-forget
             _ = Task.Run(async () =>
             {
                 try
@@ -142,7 +186,32 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
                 }
             }, CancellationToken.None);
 
-            var empresaIdCaptura = ticket.EmpresaId;
+            // Correos a admins/superadmins — fire-and-forget independiente del anterior
+            if (correosAdmins.Count > 0)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _emailService.NotificarNuevoTicketAAdminsAsync(
+                            correosAdmins: correosAdmins,
+                            codigo: codigoTicket,
+                            ticketId: ticketIdCaptura,
+                            titulo: tituloTicket,
+                            prioridad: prioridadTicket,
+                            sucursal: sucursalCaptura,
+                            area: areaNombreCaptura,
+                            solicitante: solicitanteNombre,
+                            cancellationToken: CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error en fire-and-forget NotificarNuevoTicketAAdminsAsync para ticket {Codigo}", codigoTicket);
+                    }
+                }, CancellationToken.None);
+            }
+
+            // Notificación push a gestores y superadmins — fire-and-forget
             _ = Task.Run(async () =>
             {
                 try
@@ -152,7 +221,7 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
                         "Nuevo ticket creado",
                         $"Se creó el ticket {codigoTicket}: {tituloTicket}",
                         tipoEvento: "ticket.nuevo",
-                        ticketId: id,
+                        ticketId: ticketIdCaptura,
                         cancellationToken: CancellationToken.None);
                 }
                 catch (Exception ex)

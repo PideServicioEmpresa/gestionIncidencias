@@ -264,6 +264,39 @@ internal static class EmailTemplates
         return (asunto, html);
     }
 
+    public static (string Asunto, string Html) TicketCreadoAdmin(
+        string codigo, Guid ticketId, string titulo, string prioridad,
+        string? sucursal, string area, string solicitante, string? urlFrontend)
+    {
+        var asunto = $"[{codigo}] Nuevo ticket pendiente de asignación: {titulo}";
+
+        var filasSucursal = !string.IsNullOrEmpty(sucursal)
+            ? $"<tr><td>Sucursal</td><td>{EscapeHtml(sucursal)}</td></tr>"
+            : string.Empty;
+
+        var cta = string.Empty;
+        if (!string.IsNullOrWhiteSpace(urlFrontend))
+        {
+            var enlace = $"{urlFrontend.TrimEnd('/')}/tickets/{ticketId}";
+            cta = $"""<a href="{enlace}" class="btn">Ir al ticket</a>""";
+        }
+
+        var html = Wrap("Nuevo ticket pendiente", "Requiere asignación de técnico", $"""
+            <span class="badge">Sin asignar · {EscapeHtml(codigo)}</span>
+            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="desc">Se ha registrado un nuevo ticket que está pendiente de asignación. Ingresa al sistema para asignarlo a un técnico.</p>
+            <table class="data">
+              <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
+              <tr><td>Prioridad</td><td>{EscapeHtml(prioridad)}</td></tr>
+              {filasSucursal}
+              <tr><td>Área</td><td>{EscapeHtml(area)}</td></tr>
+              <tr><td>Solicitante</td><td>{EscapeHtml(solicitante)}</td></tr>
+            </table>
+            {cta}
+            """);
+        return (asunto, html);
+    }
+
     private static string EscapeHtml(string? text)
     {
         if (string.IsNullOrEmpty(text)) return string.Empty;
