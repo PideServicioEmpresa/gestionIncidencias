@@ -24,6 +24,54 @@ public sealed class Parametro : BaseEntity
 
     private Parametro() { }
 
+    /// <summary>
+    /// Crea un nuevo parámetro. Se usa cuando el PUT llega para una clave que aún no existe en BD.
+    /// El tipo de dato se infiere del valor: boolean → BOOLEANO, entero → ENTERO,
+    /// JSON literal → JSON, cualquier otro → TEXTO.
+    /// </summary>
+    public static Parametro CrearNuevo(
+        string clave,
+        string valor,
+        Guid? empresaId,
+        string? descripcion = null)
+    {
+        if (string.IsNullOrWhiteSpace(clave))
+            throw new ValidationException("Clave", "La clave del parámetro no puede estar vacía.");
+        if (string.IsNullOrWhiteSpace(valor))
+            throw new ValidationException("Valor", "El valor del parámetro no puede estar vacío.");
+
+        var now = DateTimeOffset.UtcNow;
+        return new Parametro
+        {
+            Id          = Guid.NewGuid(),
+            Clave       = clave.Trim().ToUpperInvariant(),
+            Valor       = valor.Trim(),
+            TipoDato    = InferirTipoDato(valor.Trim()),
+            Descripcion = descripcion,
+            EmpresaId   = empresaId,
+            CreatedAt   = now,
+            UpdatedAt   = now,
+            UpdatedBy   = null
+        };
+    }
+
+    private static TipoDatoParametroTipo InferirTipoDato(string valor)
+    {
+        if (bool.TryParse(valor, out _))
+            return TipoDatoParametroTipo.BOOLEANO;
+
+        if (long.TryParse(valor, System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out _))
+            return TipoDatoParametroTipo.ENTERO;
+
+        var trimmed = valor.Trim();
+        if ((trimmed.StartsWith('{') && trimmed.EndsWith('}')) ||
+            (trimmed.StartsWith('[') && trimmed.EndsWith(']')))
+            return TipoDatoParametroTipo.JSON;
+
+        return TipoDatoParametroTipo.TEXTO;
+    }
+
     public void ActualizarValor(string nuevoValor, Guid actualizadoPor)
     {
         if (string.IsNullOrWhiteSpace(nuevoValor))

@@ -4,6 +4,7 @@ using PideServicio.Application.Common.CQRS;
 using PideServicio.Application.Common.Interfaces;
 using PideServicio.Application.Common.Interfaces.Repositories;
 using PideServicio.Application.Common.Models;
+using PideServicio.Domain.Entities;
 using PideServicio.Domain.Enums;
 using PideServicio.Domain.Exceptions;
 
@@ -48,20 +49,34 @@ public sealed class UpdateParametroCommandHandler
                 empresaIdBusqueda,
                 cancellationToken);
 
+            string valorAnterior;
+
             if (parametro is null)
-                return Result.NoEncontrado($"Parámetro '{request.Clave}' no encontrado.");
+            {
+                // La clave no existe aún: se crea con los valores proporcionados.
+                // El tipo de dato se infiere del valor; descripción queda vacía hasta que
+                // un administrador la enriquezca mediante otro endpoint.
+                parametro = Parametro.CrearNuevo(
+                    request.Clave,
+                    request.NuevoValor,
+                    empresaIdBusqueda);
 
-            // Guardar valor anterior para auditoría.
-            var valorAnterior = parametro.Valor;
+                valorAnterior = string.Empty;
+            }
+            else
+            {
+                // Guardar valor anterior para auditoría.
+                valorAnterior = parametro.Valor;
+                parametro.ActualizarValor(request.NuevoValor, usuario.Id);
+            }
 
-            parametro.ActualizarValor(request.NuevoValor, usuario.Id);
-
-            await _parametroRepository.ActualizarAsync(parametro, cancellationToken);
+            // UPSERT: inserta si es nuevo, actualiza si ya existía.
+            await _parametroRepository.UpsertAsync(parametro, cancellationToken);
 
             await _auditService.RegistrarAsync(
                 "parametros",
                 parametro.Id,
-                "ACTUALIZAR",
+                string.IsNullOrEmpty(valorAnterior) ? "CREAR" : "ACTUALIZAR",
                 new { Valor = valorAnterior },
                 new { parametro.Valor },
                 cancellationToken);

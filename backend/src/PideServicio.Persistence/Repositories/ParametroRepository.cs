@@ -202,4 +202,56 @@ public sealed class ParametroRepository : IParametroRepository
             parametro.UpdatedBy
         });
     }
+
+    /// <summary>
+    /// Actualiza el parámetro si ya existe (match por clave + empresa_id, con soporte de NULL);
+    /// si no existe, lo inserta. Evita ON CONFLICT con columnas NULLables usando CTE UPDATE + INSERT.
+    /// tipo_dato se pasa como texto y se castea al ENUM de PostgreSQL en la propia sentencia SQL.
+    /// </summary>
+    public async Task UpsertAsync(Parametro parametro, CancellationToken ct = default)
+    {
+        // Estrategia: UPDATE primero (devuelve el id si tocó alguna fila).
+        // Si no se actualizó nada (fila nueva), INSERT condicional.
+        // La condición de igualdad con empresa_id maneja correctamente NULL en ambos lados:
+        //   - empresa_id = @EmpresaId  →  falla cuando ambos son NULL (NULL = NULL → NULL)
+        //   - empresa_id IS NULL AND @EmpresaId IS NULL  →  cubre el caso global
+        const string sql = """
+            WITH actualizado AS (
+                UPDATE parametros_sistema
+                SET valor      = @Valor,
+                    updated_at = @UpdatedAt,
+                    updated_by = @UpdatedBy
+                WHERE clave = @Clave
+                  AND (   (empresa_id = @EmpresaId)
+                       OR (empresa_id IS NULL AND @EmpresaId IS NULL))
+                RETURNING id
+            )
+            INSERT INTO parametros_sistema
+                (id, clave, valor, tipo_dato, descripcion, empresa_id, created_at, updated_at, updated_by)
+            SELECT @Id,
+                   @Clave,
+                   @Valor,
+                   @TipoDato::tipo_dato_parametro_tipo,
+                   @Descripcion,
+                   @EmpresaId,
+                   @CreatedAt,
+                   @UpdatedAt,
+                   @UpdatedBy
+            WHERE NOT EXISTS (SELECT 1 FROM actualizado)
+            """;
+
+        await using var cn = (NpgsqlConnection)await _db.CrearConexionAsync(ct);
+        await cn.ExecuteAsync(sql, new
+        {
+            parametro.Id,
+            parametro.Clave,
+            parametro.Valor,
+            TipoDato   = parametro.TipoDato.ToString(),  // TEXT → cast en SQL
+            parametro.Descripcion,
+            parametro.EmpresaId,
+            parametro.CreatedAt,
+            parametro.UpdatedAt,
+            parametro.UpdatedBy
+        });
+    }
 }

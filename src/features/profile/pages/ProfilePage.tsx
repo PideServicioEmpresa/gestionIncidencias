@@ -8,6 +8,8 @@ import {
   Lock,
   Bell,
   Moon,
+  Sun,
+  Monitor,
   Loader2,
   Check,
   Eye,
@@ -18,6 +20,10 @@ import {
   MapPin,
   User,
 } from 'lucide-react'
+import { useTheme } from '@hooks/use-theme'
+import type { Theme } from '@shared/components/ThemeContext'
+import { usePreferencesStore } from '@store/preferences.store'
+import type { AccentColor } from '@store/preferences.store'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@shared/ui/card'
@@ -93,14 +99,11 @@ export function ProfilePage() {
   const [showNueva, setShowNueva] = useState(false)
   const [showConfirmar, setShowConfirmar] = useState(false)
 
-  const [notifications, setNotifications] = useState({
-    email: true,
-    push: true,
-    assignments: true,
-    statusChanges: true,
-    comments: false,
-  })
-  const [accentColor, setAccentColor] = useState<'blue' | 'violet' | 'green' | 'orange'>('blue')
+  // Tema persistido via ThemeProvider + localStorage
+  const { theme, setTheme } = useTheme()
+
+  // Preferencias de acento y notificaciones persistidas en localStorage via Zustand
+  const { accentColor, notifications, setAccentColor, setNotificationPref } = usePreferencesStore()
 
   // Ref para input file oculto
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -215,17 +218,21 @@ export function ProfilePage() {
     ? `${user.nombre.charAt(0)}${user.apellido?.charAt(0) ?? ''}`.toUpperCase()
     : '??'
 
+  // Opciones de tema
+  const THEME_OPTIONS: { id: Theme; label: string; desc: string; Icon: React.ElementType }[] = [
+    { id: 'light', label: 'Claro', desc: 'Fondo blanco', Icon: Sun },
+    { id: 'dark', label: 'Oscuro', desc: 'Fondo oscuro', Icon: Moon },
+    { id: 'system', label: 'Sistema', desc: 'Sigue el SO', Icon: Monitor },
+  ]
+
   // Paleta de colores de acento
-  const ACCENT_OPTIONS: {
-    id: 'blue' | 'violet' | 'green' | 'orange'
-    label: string
-    ring: string
-    dot: string
-  }[] = [
+  const ACCENT_OPTIONS: { id: AccentColor; label: string; ring: string; dot: string }[] = [
     { id: 'blue', label: 'Azul', ring: 'ring-blue-500', dot: 'bg-blue-500' },
     { id: 'violet', label: 'Violeta', ring: 'ring-violet-500', dot: 'bg-violet-500' },
     { id: 'green', label: 'Verde', ring: 'ring-emerald-500', dot: 'bg-emerald-500' },
     { id: 'orange', label: 'Naranja', ring: 'ring-orange-500', dot: 'bg-orange-500' },
+    { id: 'red', label: 'Rojo', ring: 'ring-red-500', dot: 'bg-red-500' },
+    { id: 'yellow', label: 'Amarillo', ring: 'ring-yellow-400', dot: 'bg-yellow-400' },
   ]
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -366,27 +373,36 @@ export function ProfilePage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 p-3 pt-0">
-              {/* Tema actual */}
-              <div className="flex items-center gap-3 rounded-md border border-border/50 bg-muted/30 px-3 py-2">
-                <Moon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <div className="min-w-0">
-                  <p className="text-xs font-medium">Tema oscuro</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    Predeterminado · único modo disponible
-                  </p>
+              {/* Selector de tema */}
+              <div>
+                <p className="mb-2 text-xs font-medium">Tema de la interfaz</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {THEME_OPTIONS.map(({ id, label, desc, Icon }) => {
+                    const isActive = theme === id
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setTheme(id)}
+                        className={`flex flex-col items-center gap-1.5 rounded-md border px-2 py-2.5 text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                          isActive
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border/50 bg-muted/20 text-muted-foreground hover:border-border hover:bg-muted/40'
+                        }`}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span className="text-[11px] font-medium leading-none">{label}</span>
+                        <span className="text-[9px] leading-none opacity-70">{desc}</span>
+                      </button>
+                    )
+                  })}
                 </div>
-                <Badge
-                  variant="outline"
-                  className="ml-auto shrink-0 border-muted-foreground/30 text-[10px] text-muted-foreground"
-                >
-                  Activo
-                </Badge>
               </div>
 
               {/* Selector de color de acento */}
               <div>
                 <p className="mb-2 text-xs font-medium">Color de acento</p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {ACCENT_OPTIONS.map((opt) => (
                     <button
                       key={opt.id}
@@ -638,7 +654,7 @@ export function ProfilePage() {
                   <Switch
                     checked={notifications[pref.id as keyof typeof notifications]}
                     onCheckedChange={(v) => {
-                      setNotifications((prev) => ({ ...prev, [pref.id]: v }))
+                      setNotificationPref(pref.id as keyof typeof notifications, v)
                       toast.success('Preferencia guardada')
                     }}
                   />
