@@ -1,4 +1,4 @@
-namespace PideServicio.Application.Features.Tickets.Commands.ReabrirTicket;
+﻿namespace PideServicio.Application.Features.Tickets.Commands.ReabrirTicket;
 
 using Microsoft.Extensions.Logging;
 using PideServicio.Application.Common.CQRS;
@@ -124,7 +124,7 @@ public sealed class ReabrirTicketCommandHandler : ICommandHandler<ReabrirTicketC
                     {
                         _logger.LogError(ex, "Error en fire-and-forget EnviarAsync (tecnico anterior) para ticket {Codigo}", notifCodigo);
                     }
-                });
+                }, CancellationToken.None);
 
                 // Email al técnico anterior — fire-and-forget con try-catch explícito
                 var tecnico = await _usuarioRepository.ObtenerPorIdAsync(tecnicoAnteriorId.Value, cancellationToken);
@@ -152,7 +152,7 @@ public sealed class ReabrirTicketCommandHandler : ICommandHandler<ReabrirTicketC
                         {
                             _logger.LogError(ex, "Error en fire-and-forget NotificarTicketReabiertoAsync para ticket {Codigo}", codigoTicket);
                         }
-                    });
+                    }, CancellationToken.None);
                 }
             }
 
@@ -172,7 +172,7 @@ public sealed class ReabrirTicketCommandHandler : ICommandHandler<ReabrirTicketC
                 {
                     _logger.LogError(ex, "Error en fire-and-forget EnviarAGestoresYSuperAdminsAsync para ticket {Codigo}", notifCodigo);
                 }
-            });
+            }, CancellationToken.None);
 
             return Result.Exito();
         }

@@ -1,4 +1,4 @@
-namespace PideServicio.Application.Features.Tickets.Commands.ReasignarTicket;
+﻿namespace PideServicio.Application.Features.Tickets.Commands.ReasignarTicket;
 
 using Microsoft.Extensions.Logging;
 using PideServicio.Application.Common.CQRS;
@@ -130,7 +130,7 @@ public sealed class ReasignarTicketCommandHandler : ICommandHandler<ReasignarTic
                     {
                         _logger.LogError(ex, "Error en fire-and-forget EnviarAsync (tecnico anterior) para ticket {Codigo}", notifCodigo);
                     }
-                });
+                }, CancellationToken.None);
             }
 
             _ = Task.Run(async () =>
@@ -149,7 +149,7 @@ public sealed class ReasignarTicketCommandHandler : ICommandHandler<ReasignarTic
                 {
                     _logger.LogError(ex, "Error en fire-and-forget EnviarAsync (nuevo tecnico) para ticket {Codigo}", notifCodigo);
                 }
-            });
+            }, CancellationToken.None);
 
             _ = Task.Run(async () =>
             {
@@ -167,7 +167,7 @@ public sealed class ReasignarTicketCommandHandler : ICommandHandler<ReasignarTic
                 {
                     _logger.LogError(ex, "Error en fire-and-forget EnviarAGestoresYSuperAdminsAsync para ticket {Codigo}", notifCodigo);
                 }
-            });
+            }, CancellationToken.None);
 
             // Emails — fire-and-forget con try-catch explícito
             var nuevoTecnico = await _usuarioRepository.ObtenerPorIdAsync(request.NuevoTecnicoId, cancellationToken);
@@ -205,7 +205,7 @@ public sealed class ReasignarTicketCommandHandler : ICommandHandler<ReasignarTic
                         {
                             _logger.LogError(ex, "Error en fire-and-forget NotificarDesasignacionTecnicoAsync para ticket {Codigo}", codigoTicket);
                         }
-                    });
+                    }, CancellationToken.None);
                 }
             }
 
@@ -235,7 +235,7 @@ public sealed class ReasignarTicketCommandHandler : ICommandHandler<ReasignarTic
                     {
                         _logger.LogError(ex, "Error en fire-and-forget NotificarTicketReasignadoAsync para ticket {Codigo}", codigoTicket);
                     }
-                });
+                }, CancellationToken.None);
 
                 if (solicitante is not null)
                 {
@@ -256,7 +256,7 @@ public sealed class ReasignarTicketCommandHandler : ICommandHandler<ReasignarTic
                         {
                             _logger.LogError(ex, "Error en fire-and-forget NotificarAsignacionASolicitanteAsync para ticket {Codigo}", codigoTicket);
                         }
-                    });
+                    }, CancellationToken.None);
                 }
             }
 

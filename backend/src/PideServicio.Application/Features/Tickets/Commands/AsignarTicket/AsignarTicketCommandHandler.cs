@@ -1,4 +1,4 @@
-namespace PideServicio.Application.Features.Tickets.Commands.AsignarTicket;
+﻿namespace PideServicio.Application.Features.Tickets.Commands.AsignarTicket;
 
 using Microsoft.Extensions.Logging;
 using PideServicio.Application.Common.CQRS;
@@ -123,7 +123,7 @@ public sealed class AsignarTicketCommandHandler : ICommandHandler<AsignarTicketC
                 {
                     _logger.LogError(ex, "Error en fire-and-forget EnviarAsync (tecnico) para ticket {Codigo}", notifCodigo);
                 }
-            });
+            }, CancellationToken.None);
 
             _ = Task.Run(async () =>
             {
@@ -141,7 +141,7 @@ public sealed class AsignarTicketCommandHandler : ICommandHandler<AsignarTicketC
                 {
                     _logger.LogError(ex, "Error en fire-and-forget EnviarAGestoresYSuperAdminsAsync para ticket {Codigo}", notifCodigo);
                 }
-            });
+            }, CancellationToken.None);
 
             // Email al técnico y al solicitante — fire-and-forget con try-catch explícito
             var tecnico = await _usuarioRepository.ObtenerPorIdAsync(request.TecnicoId, cancellationToken);
@@ -179,7 +179,7 @@ public sealed class AsignarTicketCommandHandler : ICommandHandler<AsignarTicketC
                     {
                         _logger.LogError(ex, "Error en fire-and-forget NotificarTicketAsignadoAsync para ticket {Codigo}", codigoTicket);
                     }
-                });
+                }, CancellationToken.None);
 
                 if (solicitante is not null)
                 {
@@ -201,7 +201,7 @@ public sealed class AsignarTicketCommandHandler : ICommandHandler<AsignarTicketC
                         {
                             _logger.LogError(ex, "Error en fire-and-forget NotificarAsignacionASolicitanteAsync para ticket {Codigo}", codigoTicket);
                         }
-                    });
+                    }, CancellationToken.None);
                 }
             }
 

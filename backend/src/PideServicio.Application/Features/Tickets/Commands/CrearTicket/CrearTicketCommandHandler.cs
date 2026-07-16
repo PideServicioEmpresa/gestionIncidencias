@@ -1,4 +1,4 @@
-namespace PideServicio.Application.Features.Tickets.Commands.CrearTicket;
+﻿namespace PideServicio.Application.Features.Tickets.Commands.CrearTicket;
 
 using Microsoft.Extensions.Logging;
 using PideServicio.Application.Common.CQRS;
@@ -140,7 +140,7 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
                 {
                     _logger.LogError(ex, "Error en fire-and-forget NotificarTicketCreadoAsync para ticket {Codigo}", codigoTicket);
                 }
-            });
+            }, CancellationToken.None);
 
             var empresaIdCaptura = ticket.EmpresaId;
             _ = Task.Run(async () =>
@@ -159,7 +159,7 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
                 {
                     _logger.LogError(ex, "Error en fire-and-forget EnviarAGestoresYSuperAdminsAsync para ticket {Codigo}", codigoTicket);
                 }
-            });
+            }, CancellationToken.None);
 
             return Result.Exito(id);
         }

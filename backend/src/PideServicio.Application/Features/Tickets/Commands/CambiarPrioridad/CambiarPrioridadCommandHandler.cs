@@ -108,7 +108,7 @@ public sealed class CambiarPrioridadCommandHandler : ICommandHandler<CambiarPrio
                     {
                         _logger.LogError(ex, "Error en fire-and-forget EnviarAsync (tecnico) para ticket {Codigo}", notifCodigo);
                     }
-                });
+                }, CancellationToken.None);
 
                 // Email al técnico — fire-and-forget con try-catch explícito
                 var tecnico = await _usuarioRepository.ObtenerPorIdAsync(ticket.TecnicoId.Value, cancellationToken);
@@ -136,7 +136,7 @@ public sealed class CambiarPrioridadCommandHandler : ICommandHandler<CambiarPrio
                         {
                             _logger.LogError(ex, "Error en fire-and-forget NotificarCambioPrioridadTecnicoAsync para ticket {Codigo}", codigoTicket);
                         }
-                    });
+                    }, CancellationToken.None);
                 }
             }
 

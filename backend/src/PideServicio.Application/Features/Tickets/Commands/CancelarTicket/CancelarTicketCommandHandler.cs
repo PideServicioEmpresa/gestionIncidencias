@@ -1,4 +1,4 @@
-namespace PideServicio.Application.Features.Tickets.Commands.CancelarTicket;
+﻿namespace PideServicio.Application.Features.Tickets.Commands.CancelarTicket;
 
 using Microsoft.Extensions.Logging;
 using PideServicio.Application.Common.CQRS;
@@ -123,7 +123,7 @@ public sealed class CancelarTicketCommandHandler : ICommandHandler<CancelarTicke
                     {
                         _logger.LogError(ex, "Error en fire-and-forget EnviarAsync (solicitante) para ticket {Codigo}", notifCodigo);
                     }
-                });
+                }, CancellationToken.None);
             }
 
             if (ticket.TecnicoId.HasValue)
@@ -145,7 +145,7 @@ public sealed class CancelarTicketCommandHandler : ICommandHandler<CancelarTicke
                     {
                         _logger.LogError(ex, "Error en fire-and-forget EnviarAsync (tecnico) para ticket {Codigo}", notifCodigo);
                     }
-                });
+                }, CancellationToken.None);
             }
 
             _ = Task.Run(async () =>
@@ -164,7 +164,7 @@ public sealed class CancelarTicketCommandHandler : ICommandHandler<CancelarTicke
                 {
                     _logger.LogError(ex, "Error en fire-and-forget EnviarAGestoresYSuperAdminsAsync para ticket {Codigo}", notifCodigo);
                 }
-            });
+            }, CancellationToken.None);
 
             // Email al solicitante con el motivo de cancelación — fire-and-forget con try-catch explícito
             var correoSolicitante = esSolicitante
@@ -194,7 +194,7 @@ public sealed class CancelarTicketCommandHandler : ICommandHandler<CancelarTicke
                     {
                         _logger.LogError(ex, "Error en fire-and-forget NotificarTicketCanceladoAsync para ticket {Codigo}", codigoTicket);
                     }
-                });
+                }, CancellationToken.None);
             }
 
             return Result.Exito();

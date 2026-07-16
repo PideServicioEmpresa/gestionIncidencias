@@ -1,4 +1,4 @@
-namespace PideServicio.Application.Features.Tickets.Commands.CerrarTicket;
+﻿namespace PideServicio.Application.Features.Tickets.Commands.CerrarTicket;
 
 using Microsoft.Extensions.Logging;
 using PideServicio.Application.Common.CQRS;
@@ -110,7 +110,7 @@ public sealed class CerrarTicketCommandHandler : ICommandHandler<CerrarTicketCom
                     {
                         _logger.LogError(ex, "Error en fire-and-forget EnviarAsync (tecnico) para ticket {Codigo}", notifCodigo);
                     }
-                });
+                }, CancellationToken.None);
             }
 
             _ = Task.Run(async () =>
@@ -129,7 +129,7 @@ public sealed class CerrarTicketCommandHandler : ICommandHandler<CerrarTicketCom
                 {
                     _logger.LogError(ex, "Error en fire-and-forget EnviarAGestoresYSuperAdminsAsync para ticket {Codigo}", notifCodigo);
                 }
-            });
+            }, CancellationToken.None);
 
             var codigoTicket = ticket.Codigo.Valor;
             var tituloTicket = ticket.Titulo;
@@ -158,7 +158,7 @@ public sealed class CerrarTicketCommandHandler : ICommandHandler<CerrarTicketCom
                     {
                         _logger.LogError(ex, "Error en fire-and-forget NotificarTicketCerradoAsync para ticket {Codigo}", codigoTicket);
                     }
-                });
+                }, CancellationToken.None);
             }
 
             // Email al técnico — fire-and-forget con try-catch explícito
@@ -183,7 +183,7 @@ public sealed class CerrarTicketCommandHandler : ICommandHandler<CerrarTicketCom
                         {
                             _logger.LogError(ex, "Error en fire-and-forget NotificarTicketCerradoTecnicoAsync para ticket {Codigo}", codigoTicket);
                         }
-                    });
+                    }, CancellationToken.None);
                 }
             }
 

@@ -1,4 +1,4 @@
-namespace PideServicio.Application.Features.Tickets.Commands.IniciarProceso;
+﻿namespace PideServicio.Application.Features.Tickets.Commands.IniciarProceso;
 
 using Microsoft.Extensions.Logging;
 using PideServicio.Application.Common.CQRS;
@@ -108,7 +108,7 @@ public sealed class IniciarProcesoCommandHandler : ICommandHandler<IniciarProces
                 {
                     _logger.LogError(ex, "Error en fire-and-forget EnviarAsync (solicitante) para ticket {Codigo}", notifCodigo);
                 }
-            });
+            }, CancellationToken.None);
 
             _ = Task.Run(async () =>
             {
@@ -126,7 +126,7 @@ public sealed class IniciarProcesoCommandHandler : ICommandHandler<IniciarProces
                 {
                     _logger.LogError(ex, "Error en fire-and-forget EnviarAGestoresYSuperAdminsAsync para ticket {Codigo}", notifCodigo);
                 }
-            });
+            }, CancellationToken.None);
 
             // Email al solicitante — fire-and-forget con try-catch explícito
             var solicitante = await _usuarioRepository.ObtenerPorIdAsync(ticket.SolicitanteId, cancellationToken);
@@ -152,7 +152,7 @@ public sealed class IniciarProcesoCommandHandler : ICommandHandler<IniciarProces
                     {
                         _logger.LogError(ex, "Error en fire-and-forget NotificarTicketEnProcesoAsync para ticket {Codigo}", codigoTicket);
                     }
-                });
+                }, CancellationToken.None);
             }
 
             return Result.Exito();
