@@ -8,7 +8,6 @@
     ".NETCoreApp,Version=v10.0": {
       "PideServicio.Infrastructure/1.0.0": {
         "dependencies": {
-          "MailKit": "4.17.0",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.9",
           "PideServicio.Application": "1.0.0",
           "PideServicio.Domain": "1.0.0",
@@ -18,14 +17,6 @@
         },
         "runtime": {
           "PideServicio.Infrastructure.dll": {}
-        }
-      },
-      "BouncyCastle.Cryptography/2.6.2": {
-        "runtime": {
-          "lib/net6.0/BouncyCastle.Cryptography.dll": {
-            "assemblyVersion": "2.0.0.0",
-            "fileVersion": "2.6.2.46322"
-          }
         }
       },
       "FluentValidation/11.9.0": {
@@ -44,17 +35,6 @@
           "lib/netstandard2.1/FluentValidation.DependencyInjectionExtensions.dll": {
             "assemblyVersion": "11.0.0.0",
             "fileVersion": "11.9.0.0"
-          }
-        }
-      },
-      "MailKit/4.17.0": {
-        "dependencies": {
-          "MimeKit": "4.17.0"
-        },
-        "runtime": {
-          "lib/net10.0/MailKit.dll": {
-            "assemblyVersion": "4.17.0.0",
-            "fileVersion": "4.17.0.0"
           }
         }
       },
@@ -187,17 +167,6 @@
           "lib/net9.0/Microsoft.IdentityModel.Tokens.dll": {
             "assemblyVersion": "8.0.1.0",
             "fileVersion": "8.0.1.50722"
-          }
-        }
-      },
-      "MimeKit/4.17.0": {
-        "dependencies": {
-          "BouncyCastle.Cryptography": "2.6.2"
-        },
-        "runtime": {
-          "lib/net10.0/MimeKit.dll": {
-            "assemblyVersion": "4.17.0.0",
-            "fileVersion": "4.17.0.0"
           }
         }
       },
@@ -370,13 +339,6 @@
       "serviceable": false,
       "sha512": ""
     },
-    "BouncyCastle.Cryptography/2.6.2": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-7oWOcvnntmMKNzDLsdxAYqApt+AjpRpP2CShjMfIa3umZ42UQMvH0tl1qAliYPNYO6vTdcGMqnRrCPmsfzTI1w==",
-      "path": "bouncycastle.cryptography/2.6.2",
-      "hashPath": "bouncycastle.cryptography.2.6.2.nupkg.sha512"
-    },
     "FluentValidation/11.9.0": {
       "type": "package",
       "serviceable": true,
@@ -390,13 +352,6 @@
       "sha512": "sha512-Ko++xvN7HUf4WlHJL6bhsybUj/uho8ApOYIdxGjpF8Ot7Fukz6LRfRJ06H0KXhWqmMHWEbu89hJbjKJHtg7b9g==",
       "path": "fluentvalidation.dependencyinjectionextensions/11.9.0",
       "hashPath": "fluentvalidation.dependencyinjectionextensions.11.9.0.nupkg.sha512"
-    },
-    "MailKit/4.17.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-1nUAVLxM9fhT/78we6/AGsCesnpn5dRNLLeRqOfr52Wnk87pzVwo5YMTMyqnmoXrYc7piGhmayiMA/OgDluIjg==",
-      "path": "mailkit/4.17.0",
-      "hashPath": "mailkit.4.17.0.nupkg.sha512"
     },
     "Mapster/7.4.0": {
       "type": "package",
@@ -488,13 +443,6 @@
       "sha512": "sha512-kDimB6Dkd3nkW2oZPDkMkVHfQt3IDqO5gL0oa8WVy3OP4uE8Ij+8TXnqg9TOd9ufjsY3IDiGz7pCUbnfL18tjg==",
       "path": "microsoft.identitymodel.tokens/8.0.1",
       "hashPath": "microsoft.identitymodel.tokens.8.0.1.nupkg.sha512"
-    },
-    "MimeKit/4.17.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-h/KXsCreJf8RpR/PSAtlbvYtZFndp9N8Wn1Bs248AL7ITyhn+AiIY5bLTvt60tbN2mu6g8KadtBNWygTji2lqg==",
-      "path": "mimekit/4.17.0",
-      "hashPath": "mimekit.4.17.0.nupkg.sha512"
     },
     "Serilog/3.1.1": {
       "type": "package",

@@ -76,8 +76,15 @@ public static class DependencyInjection
         // Servicios de auditoría y notificaciones
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<INotificationService, NotificationService>();
-        services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IPushNotificationService, PushNotificationService>();
+
+        // EmailService — usa Brevo HTTP API en lugar de SMTP; HttpClient gestionado por el factory
+        services.AddHttpClient("brevo", client =>
+        {
+            client.BaseAddress = new Uri("https://api.brevo.com/v3/");
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+        services.AddScoped<IEmailService, EmailService>();
 
         // Supabase Auth Service — HttpClient tipado para la API de Auth de Supabase
         services.AddHttpClient<SupabaseAuthService>();

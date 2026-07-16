@@ -22,4 +22,7 @@ public sealed class NotificationOptions
 
     // URL base del frontend — usada en los CTAs de los correos (ej. https://app.pideservicio.com)
     public string UrlFrontend { get; init; } = string.Empty;
+
+    // Brevo (API transaccional HTTP — reemplaza SMTP)
+    public string BrevoApiKey { get; init; } = string.Empty;
 }

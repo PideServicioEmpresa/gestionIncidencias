@@ -43,6 +43,7 @@
           }
         },
         "warningProperties": {
+          "allWarningsAsErrors": true,
           "warnAsError": ["NU1605"]
         },
         "restoreAuditProperties": {
@@ -597,6 +598,7 @@
           }
         },
         "warningProperties": {
+          "allWarningsAsErrors": true,
           "warnAsError": ["NU1605"]
         },
         "restoreAuditProperties": {
@@ -1001,6 +1003,7 @@
           }
         },
         "warningProperties": {
+          "allWarningsAsErrors": true,
           "warnAsError": ["NU1605"]
         },
         "restoreAuditProperties": {
@@ -1353,6 +1356,7 @@
           }
         },
         "warningProperties": {
+          "allWarningsAsErrors": true,
           "warnAsError": ["NU1605"]
         },
         "restoreAuditProperties": {
@@ -1712,6 +1716,7 @@
           }
         },
         "warningProperties": {
+          "allWarningsAsErrors": true,
           "warnAsError": ["NU1605"]
         },
         "restoreAuditProperties": {
@@ -1726,11 +1731,6 @@
           "framework": "net10.0",
           "targetAlias": "net10.0",
           "dependencies": {
-            "MailKit": {
-              "target": "Package",
-              "version": "[4.17.0, )",
-              "versionCentrallyManaged": true
-            },
             "Microsoft.AspNetCore.Authentication.JwtBearer": {
               "target": "Package",
               "version": "[10.0.9, )",
@@ -2241,6 +2241,7 @@
           }
         },
         "warningProperties": {
+          "allWarningsAsErrors": true,
           "warnAsError": ["NU1605"]
         },
         "restoreAuditProperties": {
@@ -2621,6 +2622,7 @@
           }
         },
         "warningProperties": {
+          "allWarningsAsErrors": true,
           "warnAsError": ["NU1605"]
         },
         "restoreAuditProperties": {

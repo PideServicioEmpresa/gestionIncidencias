@@ -1167,11 +1167,6 @@
           "framework": "net10.0",
           "targetAlias": "net10.0",
           "dependencies": {
-            "MailKit": {
-              "target": "Package",
-              "version": "[4.17.0, )",
-              "versionCentrallyManaged": true
-            },
             "Microsoft.AspNetCore.Authentication.JwtBearer": {
               "target": "Package",
               "version": "[10.0.9, )",

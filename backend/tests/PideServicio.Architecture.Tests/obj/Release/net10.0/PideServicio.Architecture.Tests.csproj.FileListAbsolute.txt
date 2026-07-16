@@ -21,11 +21,9 @@ D:\VegaTrabajo\PideServicio\backend\tests\PideServicio.Architecture.Tests\bin\Re
 D:\VegaTrabajo\PideServicio\backend\tests\PideServicio.Architecture.Tests\bin\Release\net10.0\HealthChecks.NpgSql.dll
 D:\VegaTrabajo\PideServicio\backend\tests\PideServicio.Architecture.Tests\bin\Release\net10.0\HealthChecks.UI.Client.dll
 D:\VegaTrabajo\PideServicio\backend\tests\PideServicio.Architecture.Tests\bin\Release\net10.0\HealthChecks.UI.Core.dll
-D:\VegaTrabajo\PideServicio\backend\tests\PideServicio.Architecture.Tests\bin\Release\net10.0\BouncyCastle.Cryptography.dll
 D:\VegaTrabajo\PideServicio\backend\tests\PideServicio.Architecture.Tests\bin\Release\net10.0\Dapper.dll
 D:\VegaTrabajo\PideServicio\backend\tests\PideServicio.Architecture.Tests\bin\Release\net10.0\FluentValidation.dll
 D:\VegaTrabajo\PideServicio\backend\tests\PideServicio.Architecture.Tests\bin\Release\net10.0\FluentValidation.DependencyInjectionExtensions.dll
-D:\VegaTrabajo\PideServicio\backend\tests\PideServicio.Architecture.Tests\bin\Release\net10.0\MailKit.dll
 D:\VegaTrabajo\PideServicio\backend\tests\PideServicio.Architecture.Tests\bin\Release\net10.0\Mapster.dll
 D:\VegaTrabajo\PideServicio\backend\tests\PideServicio.Architecture.Tests\bin\Release\net10.0\Mapster.Core.dll
 D:\VegaTrabajo\PideServicio\backend\tests\PideServicio.Architecture.Tests\bin\Release\net10.0\Mapster.DependencyInjection.dll
@@ -48,7 +46,6 @@ D:\VegaTrabajo\PideServicio\backend\tests\PideServicio.Architecture.Tests\bin\Re
 D:\VegaTrabajo\PideServicio\backend\tests\PideServicio.Architecture.Tests\bin\Release\net10.0\Microsoft.TestPlatform.CrossPlatEngine.dll
 D:\VegaTrabajo\PideServicio\backend\tests\PideServicio.Architecture.Tests\bin\Release\net10.0\Microsoft.TestPlatform.Utilities.dll
 D:\VegaTrabajo\PideServicio\backend\tests\PideServicio.Architecture.Tests\bin\Release\net10.0\Microsoft.VisualStudio.TestPlatform.Common.dll
-D:\VegaTrabajo\PideServicio\backend\tests\PideServicio.Architecture.Tests\bin\Release\net10.0\MimeKit.dll
 D:\VegaTrabajo\PideServicio\backend\tests\PideServicio.Architecture.Tests\bin\Release\net10.0\Mono.Cecil.Mdb.dll
 D:\VegaTrabajo\PideServicio\backend\tests\PideServicio.Architecture.Tests\bin\Release\net10.0\Mono.Cecil.Pdb.dll
 D:\VegaTrabajo\PideServicio\backend\tests\PideServicio.Architecture.Tests\bin\Release\net10.0\Mono.Cecil.Rocks.dll

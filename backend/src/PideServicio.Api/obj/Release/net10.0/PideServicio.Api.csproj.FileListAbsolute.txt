@@ -81,6 +81,3 @@ D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Api\obj\Release\net10.0\ref
 D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Api\obj\Release\net10.0\PideServicio.Api.pdb
 D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Api\obj\Release\net10.0\PideServicio.Api.genruntimeconfig.cache
 D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Api\obj\Release\net10.0\ref\PideServicio.Api.dll
-D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Api\bin\Release\net10.0\BouncyCastle.Cryptography.dll
-D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Api\bin\Release\net10.0\MailKit.dll
-D:\VegaTrabajo\PideServicio\backend\src\PideServicio.Api\bin\Release\net10.0\MimeKit.dll

@@ -1,20 +1,25 @@
 namespace PideServicio.Infrastructure.Notifications;
 
-using MailKit.Net.Smtp;
-using MailKit.Security;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MimeKit;
 using PideServicio.Application.Common.Interfaces;
 
 public sealed class EmailService : IEmailService
 {
     private readonly NotificationOptions _options;
+    private readonly HttpClient _httpClient;
     private readonly ILogger<EmailService> _logger;
 
-    public EmailService(IOptions<NotificationOptions> options, ILogger<EmailService> logger)
+    public EmailService(
+        IOptions<NotificationOptions> options,
+        IHttpClientFactory httpClientFactory,
+        ILogger<EmailService> logger)
     {
         _options = options.Value;
+        _httpClient = httpClientFactory.CreateClient("brevo");
         _logger = logger;
     }
 
@@ -31,17 +36,15 @@ public sealed class EmailService : IEmailService
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(_options.SmtpUsuario) || string.IsNullOrWhiteSpace(_options.SmtpContrasena))
+        if (string.IsNullOrWhiteSpace(_options.BrevoApiKey))
         {
-            _logger.LogWarning("Credenciales SMTP no configuradas. Se omite envío a {Destinatario}", destinatario);
+            _logger.LogWarning("Brevo API key no configurada (Notificaciones__BrevoApiKey). Se omite envío a {Destinatario}", destinatario);
             return;
         }
 
         try
         {
-            var mensaje = ConstruirMensaje(destinatario, asunto, cuerpoHtml, cuerpoTexto);
-            await EnviarMensajeAsync(mensaje, ct);
-
+            await EnviarViaBrevoAsync(destinatario, asunto, cuerpoHtml, cuerpoTexto, ct);
             _logger.LogInformation("Email enviado a {Destinatario}: {Asunto}", destinatario, asunto);
         }
         catch (Exception ex)
@@ -311,56 +314,49 @@ public sealed class EmailService : IEmailService
         return EnviarAVariosAsync(destinatarios, asunto, html, ct: ct);
     }
 
-    private MimeMessage ConstruirMensaje(string destinatario, string asunto, string cuerpoHtml, string? cuerpoTexto)
+    private async Task EnviarViaBrevoAsync(
+        string destinatario, string asunto, string htmlContent, string? cuerpoTexto, CancellationToken ct)
     {
+        // textContent: nunca vacío para evitar filtros de spam y rechazos de Brevo
+        var textoPlano = !string.IsNullOrWhiteSpace(cuerpoTexto)
+            ? cuerpoTexto
+            : StripHtml(htmlContent);
+        if (string.IsNullOrWhiteSpace(textoPlano))
+            textoPlano = asunto;
+
         var remitente = string.IsNullOrWhiteSpace(_options.RemitenteDireccion)
-            ? _options.SmtpUsuario
+            ? _options.SmtpUsuario  // fallback a usuario SMTP por compatibilidad histórica
             : _options.RemitenteDireccion;
 
-        var mensaje = new MimeMessage();
-        mensaje.From.Add(new MailboxAddress(_options.RemitenteNombre, remitente));
-        mensaje.To.Add(MailboxAddress.Parse(destinatario));
-        mensaje.Subject = asunto;
-
-        var builder = new BodyBuilder
+        var payload = new
         {
-            HtmlBody = cuerpoHtml,
-            TextBody = cuerpoTexto ?? StripHtml(cuerpoHtml),
+            sender = new { name = _options.RemitenteNombre, email = remitente },
+            to = new[] { new { email = destinatario } },
+            subject = asunto,
+            htmlContent = htmlContent,
+            textContent = textoPlano,
         };
-        mensaje.Body = builder.ToMessageBody();
 
-        return mensaje;
-    }
+        var json = JsonSerializer.Serialize(payload);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "smtp/email");
+        // api-key se agrega por request (no en AddHttpClient) para leer desde IOptions en tiempo de ejecución
+        request.Headers.Add("api-key", _options.BrevoApiKey);
+        request.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
-    private async Task EnviarMensajeAsync(MimeMessage mensaje, CancellationToken ct)
-    {
-        const int MaxIntentos = 2;
+        var response = await _httpClient.SendAsync(request, ct);
 
-        for (int intento = 1; intento <= MaxIntentos; intento++)
+        if (!response.IsSuccessStatusCode)
         {
-            using var cliente = new SmtpClient();
-            cliente.Timeout = 30_000; // 30 segundos; evita cuelgues indefinidos en la conexión SMTP
-            try
-            {
-                await cliente.ConnectAsync(_options.SmtpHost, _options.SmtpPuerto, SecureSocketOptions.StartTls, ct);
-                await cliente.AuthenticateAsync(_options.SmtpUsuario, _options.SmtpContrasena, ct);
-                await cliente.SendAsync(mensaje, ct);
-                await cliente.DisconnectAsync(quit: true, ct);
-                return;
-            }
-            catch (Exception ex) when (intento < MaxIntentos && !ct.IsCancellationRequested)
-            {
-                _logger.LogWarning(ex,
-                    "Intento {Intento}/{Max} fallido al enviar email SMTP a {Destinatario}. Se reintenta en 3 s.",
-                    intento, MaxIntentos, mensaje.To.FirstOrDefault()?.ToString());
-                await Task.Delay(TimeSpan.FromSeconds(3), ct);
-            }
+            var cuerpoError = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogError(
+                "Brevo API respondió {StatusCode} al enviar a {Destinatario} — asunto: {Asunto}. Detalle Brevo: {BrevoError}",
+                (int)response.StatusCode, destinatario, asunto, cuerpoError);
+            // Lanzar para que EnviarAsync registre también el contexto del llamador
+            response.EnsureSuccessStatusCode();
         }
     }
 
     private static string StripHtml(string html)
-    {
-        return System.Text.RegularExpressions.Regex.Replace(html, "<[^>]+>", " ")
+        => System.Text.RegularExpressions.Regex.Replace(html, "<[^>]+>", " ")
             .Replace("  ", " ").Trim();
-    }
 }
