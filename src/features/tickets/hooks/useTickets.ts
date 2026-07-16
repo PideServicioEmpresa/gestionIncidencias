@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { ticketService } from '../services/ticketService'
 import type { TicketListParams } from '../services/ticketService'
 
@@ -24,7 +25,7 @@ export function useTicket(id: string) {
     queryKey: TICKET_KEYS.detail(id),
     queryFn: () => ticketService.obtener(id),
     enabled: !!id,
-    staleTime: 1000 * 30,
+    staleTime: 1000 * 15,
   })
 }
 
@@ -70,7 +71,10 @@ export function useCrearTicket() {
     mutationFn: (body: Parameters<typeof ticketService.crear>[0]) => ticketService.crear(body),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: TICKET_KEYS.all })
+      void qc.invalidateQueries({ queryKey: ['dashboard'] })
+      void qc.invalidateQueries({ queryKey: ['notificaciones'] })
     },
+    onError: (e: Error) => toast.error(e.message),
   })
 }
 
@@ -81,7 +85,50 @@ export function useAsignarTicket() {
       ticketService.asignar(ticketId, tecnicoId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: TICKET_KEYS.all })
+      void qc.invalidateQueries({ queryKey: ['dashboard'] })
+      void qc.invalidateQueries({ queryKey: ['notificaciones'] })
     },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useReasignarTicket() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      ticketId,
+      nuevoTecnicoId,
+      motivo,
+    }: {
+      ticketId: string
+      nuevoTecnicoId: string
+      motivo?: string
+    }) => ticketService.reasignar(ticketId, nuevoTecnicoId, motivo),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: TICKET_KEYS.all })
+      void qc.invalidateQueries({ queryKey: ['dashboard'] })
+      void qc.invalidateQueries({ queryKey: ['notificaciones'] })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useActualizarTicket() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      ticketId,
+      nuevoTitulo,
+      nuevoTipoServicioId,
+    }: {
+      ticketId: string
+      nuevoTitulo?: string
+      nuevoTipoServicioId?: string
+    }) => ticketService.actualizar(ticketId, nuevoTitulo, nuevoTipoServicioId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: TICKET_KEYS.all })
+    },
+    onError: (e: Error) => toast.error(e.message),
   })
 }
 
@@ -92,7 +139,9 @@ export function useCambiarPrioridad() {
       ticketService.cambiarPrioridad(ticketId, nuevaPrioridad),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: TICKET_KEYS.all })
+      void qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
+    onError: (e: Error) => toast.error(e.message),
   })
 }
 
@@ -103,7 +152,9 @@ export function useCambiarArea() {
       ticketService.cambiarArea(ticketId, nuevaAreaId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: TICKET_KEYS.all })
+      void qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
+    onError: (e: Error) => toast.error(e.message),
   })
 }
 
@@ -113,7 +164,9 @@ export function useIniciarProceso() {
     mutationFn: (ticketId: string) => ticketService.iniciarProceso(ticketId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: TICKET_KEYS.all })
+      void qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
+    onError: (e: Error) => toast.error(e.message),
   })
 }
 
@@ -123,7 +176,9 @@ export function usePausar() {
     mutationFn: (ticketId: string) => ticketService.pausar(ticketId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: TICKET_KEYS.all })
+      void qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
+    onError: (e: Error) => toast.error(e.message),
   })
 }
 
@@ -133,7 +188,9 @@ export function useReanudar() {
     mutationFn: (ticketId: string) => ticketService.reanudar(ticketId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: TICKET_KEYS.all })
+      void qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
+    onError: (e: Error) => toast.error(e.message),
   })
 }
 
@@ -143,7 +200,10 @@ export function useSubmitValidacion() {
     mutationFn: (ticketId: string) => ticketService.submitValidacion(ticketId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: TICKET_KEYS.all })
+      void qc.invalidateQueries({ queryKey: ['dashboard'] })
+      void qc.invalidateQueries({ queryKey: ['notificaciones'] })
     },
+    onError: (e: Error) => toast.error(e.message),
   })
 }
 
@@ -153,7 +213,10 @@ export function useCerrarTicket() {
     mutationFn: ({ ticketId }: { ticketId: string }) => ticketService.cerrar(ticketId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: TICKET_KEYS.all })
+      void qc.invalidateQueries({ queryKey: ['dashboard'] })
+      void qc.invalidateQueries({ queryKey: ['notificaciones'] })
     },
+    onError: (e: Error) => toast.error(e.message),
   })
 }
 
@@ -171,7 +234,10 @@ export function useReabrirTicket() {
     }) => ticketService.reabrir(ticketId, motivoRechazoId, comentarioRechazo),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: TICKET_KEYS.all })
+      void qc.invalidateQueries({ queryKey: ['dashboard'] })
+      void qc.invalidateQueries({ queryKey: ['notificaciones'] })
     },
+    onError: (e: Error) => toast.error(e.message),
   })
 }
 
@@ -189,7 +255,10 @@ export function useCancelarTicket() {
     }) => ticketService.cancelar(ticketId, motivoCancelacionId, comentario),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: TICKET_KEYS.all })
+      void qc.invalidateQueries({ queryKey: ['dashboard'] })
+      void qc.invalidateQueries({ queryKey: ['notificaciones'] })
     },
+    onError: (e: Error) => toast.error(e.message),
   })
 }
 
@@ -208,7 +277,9 @@ export function useCrearComentario() {
     onSuccess: (_data, { ticketId }) => {
       void qc.invalidateQueries({ queryKey: TICKET_KEYS.comentarios(ticketId) })
       void qc.invalidateQueries({ queryKey: TICKET_KEYS.historial(ticketId) })
+      void qc.invalidateQueries({ queryKey: ['notificaciones'] })
     },
+    onError: (e: Error) => toast.error(e.message),
   })
 }
 
@@ -227,5 +298,6 @@ export function useSubirEvidencia() {
     onSuccess: (_data, { ticketId }) => {
       void qc.invalidateQueries({ queryKey: TICKET_KEYS.evidencias(ticketId) })
     },
+    onError: (e: Error) => toast.error(e.message),
   })
 }

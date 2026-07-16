@@ -11,7 +11,8 @@ export function useNotificaciones(params?: NotificacionListParams) {
   return useQuery({
     queryKey: NOTIF_KEYS.list(params),
     queryFn: () => notificacionService.listar(params),
-    staleTime: 1000 * 30,
+    staleTime: 1000 * 15,
+    refetchInterval: 1000 * 30,
   })
 }
 
@@ -42,7 +43,7 @@ export function useConteoNotificaciones() {
       const resp = await notificacionService.listar({ soloNoLeidas: true, tamanoPagina: 1 })
       return { sinLeer: resp.totalRegistros ?? 0 }
     },
-    staleTime: 1000 * 30,
-    refetchInterval: 1000 * 60,
+    staleTime: 1000 * 15,
+    refetchInterval: 1000 * 30,
   })
 }

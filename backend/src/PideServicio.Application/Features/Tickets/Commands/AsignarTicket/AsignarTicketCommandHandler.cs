@@ -1,5 +1,6 @@
 namespace PideServicio.Application.Features.Tickets.Commands.AsignarTicket;
 
+using Microsoft.Extensions.Logging;
 using PideServicio.Application.Common.CQRS;
 using PideServicio.Application.Common.Interfaces;
 using PideServicio.Application.Common.Interfaces.Repositories;
@@ -12,31 +13,40 @@ public sealed class AsignarTicketCommandHandler : ICommandHandler<AsignarTicketC
 {
     private readonly ICurrentUserService _currentUser;
     private readonly IUsuarioRepository _usuarioRepository;
+    private readonly ISucursalRepository _sucursalRepository;
+    private readonly IAreaRepository _areaRepository;
     private readonly ITicketRepository _ticketRepo;
     private readonly ITicketHistorialRepository _historialRepo;
     private readonly ITicketAsignacionRepository _asignacionRepo;
     private readonly INotificationService _notificationService;
     private readonly IEmailService _emailService;
     private readonly IAuditService _auditService;
+    private readonly ILogger<AsignarTicketCommandHandler> _logger;
 
     public AsignarTicketCommandHandler(
         ICurrentUserService currentUser,
         IUsuarioRepository usuarioRepository,
+        ISucursalRepository sucursalRepository,
+        IAreaRepository areaRepository,
         ITicketRepository ticketRepo,
         ITicketHistorialRepository historialRepo,
         ITicketAsignacionRepository asignacionRepo,
         INotificationService notificationService,
         IEmailService emailService,
-        IAuditService auditService)
+        IAuditService auditService,
+        ILogger<AsignarTicketCommandHandler> logger)
     {
         _currentUser = currentUser;
         _usuarioRepository = usuarioRepository;
+        _sucursalRepository = sucursalRepository;
+        _areaRepository = areaRepository;
         _ticketRepo = ticketRepo;
         _historialRepo = historialRepo;
         _asignacionRepo = asignacionRepo;
         _notificationService = notificationService;
         _emailService = emailService;
         _auditService = auditService;
+        _logger = logger;
     }
 
     public async Task<Result> Handle(AsignarTicketCommand request, CancellationToken cancellationToken)
@@ -90,45 +100,108 @@ public sealed class AsignarTicketCommandHandler : ICommandHandler<AsignarTicketC
                 new { Estado = ticket.Estado.ToString(), ticket.TecnicoId },
                 cancellationToken);
 
-            await _notificationService.EnviarAsync(
-                request.TecnicoId,
-                "Ticket asignado",
-                $"Se te ha asignado el ticket {ticket.Codigo.Valor}: {ticket.Titulo}",
-                tipoEvento: "ticket.asignado",
-                ticketId: ticket.Id,
-                cancellationToken: cancellationToken);
+            // Notificaciones push — fire-and-forget con try-catch explícito
+            var notifTecnicoId = request.TecnicoId;
+            var notifTicketId = ticket.Id;
+            var notifEmpresaId = ticket.EmpresaId;
+            var notifCodigo = ticket.Codigo.Valor;
+            var notifTitulo = ticket.Titulo;
 
-            await _notificationService.EnviarAGestoresYSuperAdminsAsync(
-                ticket.EmpresaId,
-                "Ticket asignado",
-                $"El ticket {ticket.Codigo.Valor} fue asignado: {ticket.Titulo}",
-                tipoEvento: "ticket.asignado",
-                ticketId: ticket.Id,
-                cancellationToken: cancellationToken);
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _notificationService.EnviarAsync(
+                        notifTecnicoId,
+                        "Ticket asignado",
+                        $"Se te ha asignado el ticket {notifCodigo}: {notifTitulo}",
+                        tipoEvento: "ticket.asignado",
+                        ticketId: notifTicketId,
+                        cancellationToken: CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error en fire-and-forget EnviarAsync (tecnico) para ticket {Codigo}", notifCodigo);
+                }
+            });
 
-            // Email al técnico y al solicitante con copia a inmoveg
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _notificationService.EnviarAGestoresYSuperAdminsAsync(
+                        notifEmpresaId,
+                        "Ticket asignado",
+                        $"El ticket {notifCodigo} fue asignado: {notifTitulo}",
+                        tipoEvento: "ticket.asignado",
+                        ticketId: notifTicketId,
+                        cancellationToken: CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error en fire-and-forget EnviarAGestoresYSuperAdminsAsync para ticket {Codigo}", notifCodigo);
+                }
+            });
+
+            // Email al técnico y al solicitante — fire-and-forget con try-catch explícito
             var tecnico = await _usuarioRepository.ObtenerPorIdAsync(request.TecnicoId, cancellationToken);
             var solicitante = await _usuarioRepository.ObtenerPorIdAsync(ticket.SolicitanteId, cancellationToken);
+            var sucursal = await _sucursalRepository.ObtenerPorIdAsync(ticket.SucursalId, cancellationToken);
+            var area = await _areaRepository.ObtenerPorIdAsync(ticket.AreaId, cancellationToken);
 
             if (tecnico is not null)
             {
-                _ = _emailService.NotificarTicketAsignadoAsync(
-                    correoTecnico: tecnico.Correo.Valor,
-                    codigo: ticket.Codigo.Valor,
-                    titulo: ticket.Titulo,
-                    tecnico: tecnico.NombreCompleto,
-                    prioridad: ticket.PrioridadEfectiva.ToString(),
-                    cancellationToken: CancellationToken.None);
+                var correoTecnico = tecnico.Correo.Valor;
+                var nombreTecnico = tecnico.NombreCompleto;
+                var codigoTicket = ticket.Codigo.Valor;
+                var tituloTicket = ticket.Titulo;
+                var prioridadTicket = ticket.PrioridadEfectiva.ToString();
+                var sucursalNombre = sucursal?.Nombre;
+                var areaNombre = area?.Nombre;
+                var solicitanteNombre = solicitante?.NombreCompleto;
+
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _emailService.NotificarTicketAsignadoAsync(
+                            correoTecnico: correoTecnico,
+                            codigo: codigoTicket,
+                            titulo: tituloTicket,
+                            tecnico: nombreTecnico,
+                            prioridad: prioridadTicket,
+                            sucursal: sucursalNombre,
+                            area: areaNombre,
+                            solicitante: solicitanteNombre,
+                            cancellationToken: CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error en fire-and-forget NotificarTicketAsignadoAsync para ticket {Codigo}", codigoTicket);
+                    }
+                });
 
                 if (solicitante is not null)
                 {
-                    _ = _emailService.NotificarAsignacionASolicitanteAsync(
-                        correoSolicitante: solicitante.Correo.Valor,
-                        codigo: ticket.Codigo.Valor,
-                        titulo: ticket.Titulo,
-                        tecnico: tecnico.NombreCompleto,
-                        prioridad: ticket.PrioridadEfectiva.ToString(),
-                        cancellationToken: CancellationToken.None);
+                    var correoSolicitante = solicitante.Correo.Valor;
+
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _emailService.NotificarAsignacionASolicitanteAsync(
+                                correoSolicitante: correoSolicitante,
+                                codigo: codigoTicket,
+                                titulo: tituloTicket,
+                                tecnico: nombreTecnico,
+                                prioridad: prioridadTicket,
+                                cancellationToken: CancellationToken.None);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error en fire-and-forget NotificarAsignacionASolicitanteAsync para ticket {Codigo}", codigoTicket);
+                        }
+                    });
                 }
             }
 

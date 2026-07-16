@@ -1,5 +1,6 @@
 namespace PideServicio.Application.Features.Tickets.Commands.CerrarTicket;
 
+using Microsoft.Extensions.Logging;
 using PideServicio.Application.Common.CQRS;
 using PideServicio.Application.Common.Interfaces;
 using PideServicio.Application.Common.Interfaces.Repositories;
@@ -17,6 +18,7 @@ public sealed class CerrarTicketCommandHandler : ICommandHandler<CerrarTicketCom
     private readonly INotificationService _notificationService;
     private readonly IEmailService _emailService;
     private readonly IAuditService _auditService;
+    private readonly ILogger<CerrarTicketCommandHandler> _logger;
 
     public CerrarTicketCommandHandler(
         ICurrentUserService currentUser,
@@ -25,7 +27,8 @@ public sealed class CerrarTicketCommandHandler : ICommandHandler<CerrarTicketCom
         ITicketHistorialRepository historialRepo,
         INotificationService notificationService,
         IEmailService emailService,
-        IAuditService auditService)
+        IAuditService auditService,
+        ILogger<CerrarTicketCommandHandler> logger)
     {
         _currentUser = currentUser;
         _usuarioRepository = usuarioRepository;
@@ -34,6 +37,7 @@ public sealed class CerrarTicketCommandHandler : ICommandHandler<CerrarTicketCom
         _notificationService = notificationService;
         _emailService = emailService;
         _auditService = auditService;
+        _logger = logger;
     }
 
     public async Task<Result> Handle(CerrarTicketCommand request, CancellationToken cancellationToken)
@@ -81,38 +85,106 @@ public sealed class CerrarTicketCommandHandler : ICommandHandler<CerrarTicketCom
                 new { Estado = ticket.Estado.ToString(), ticket.Valoracion },
                 cancellationToken);
 
+            // Notificaciones push — fire-and-forget con try-catch explícito
+            var notifTicketId = ticket.Id;
+            var notifEmpresaId = ticket.EmpresaId;
+            var notifCodigo = ticket.Codigo.Valor;
+            var notifTitulo = ticket.Titulo;
+
             if (ticket.TecnicoId.HasValue)
             {
-                await _notificationService.EnviarAsync(
-                    ticket.TecnicoId.Value,
-                    "Ticket cerrado",
-                    $"El ticket {ticket.Codigo.Valor} ha sido cerrado por el solicitante.",
-                    tipoEvento: "ticket.cerrado",
-                    ticketId: ticket.Id,
-                    cancellationToken: cancellationToken);
+                var notifTecnicoId = ticket.TecnicoId.Value;
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _notificationService.EnviarAsync(
+                            notifTecnicoId,
+                            "Ticket cerrado",
+                            $"El ticket {notifCodigo} ha sido cerrado por el solicitante.",
+                            tipoEvento: "ticket.cerrado",
+                            ticketId: notifTicketId,
+                            cancellationToken: CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error en fire-and-forget EnviarAsync (tecnico) para ticket {Codigo}", notifCodigo);
+                    }
+                });
             }
 
-            await _notificationService.EnviarAGestoresYSuperAdminsAsync(
-                ticket.EmpresaId,
-                "Ticket cerrado",
-                $"El ticket {ticket.Codigo.Valor} fue cerrado: {ticket.Titulo}",
-                tipoEvento: "ticket.cerrado",
-                ticketId: ticket.Id,
-                cancellationToken: cancellationToken);
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _notificationService.EnviarAGestoresYSuperAdminsAsync(
+                        notifEmpresaId,
+                        "Ticket cerrado",
+                        $"El ticket {notifCodigo} fue cerrado: {notifTitulo}",
+                        tipoEvento: "ticket.cerrado",
+                        ticketId: notifTicketId,
+                        cancellationToken: CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error en fire-and-forget EnviarAGestoresYSuperAdminsAsync para ticket {Codigo}", notifCodigo);
+                }
+            });
 
-            // Email al solicitante con copia a inmoveg
+            var codigoTicket = ticket.Codigo.Valor;
+            var tituloTicket = ticket.Titulo;
+            var valoracion = ticket.Valoracion?.ToString();
+
+            // Email al solicitante — fire-and-forget con try-catch explícito
             var correoSolicitante = esSolicitante
                 ? actor.Correo.Valor
                 : (await _usuarioRepository.ObtenerPorIdAsync(ticket.SolicitanteId, cancellationToken))?.Correo.Valor;
 
             if (!string.IsNullOrWhiteSpace(correoSolicitante))
             {
-                _ = _emailService.NotificarTicketCerradoAsync(
-                    correoSolicitante: correoSolicitante,
-                    codigo: ticket.Codigo.Valor,
-                    titulo: ticket.Titulo,
-                    valoracion: ticket.Valoracion?.ToString(),
-                    cancellationToken: CancellationToken.None);
+                var correoSolicitanteCaptura = correoSolicitante;
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _emailService.NotificarTicketCerradoAsync(
+                            correoSolicitante: correoSolicitanteCaptura,
+                            codigo: codigoTicket,
+                            titulo: tituloTicket,
+                            valoracion: valoracion,
+                            cancellationToken: CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error en fire-and-forget NotificarTicketCerradoAsync para ticket {Codigo}", codigoTicket);
+                    }
+                });
+            }
+
+            // Email al técnico — fire-and-forget con try-catch explícito
+            if (ticket.TecnicoId.HasValue)
+            {
+                var tecnico = await _usuarioRepository.ObtenerPorIdAsync(ticket.TecnicoId.Value, cancellationToken);
+                if (tecnico is not null)
+                {
+                    var correoTecnico = tecnico.Correo.Valor;
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _emailService.NotificarTicketCerradoTecnicoAsync(
+                                correoTecnico: correoTecnico,
+                                codigo: codigoTicket,
+                                titulo: tituloTicket,
+                                valoracion: valoracion,
+                                cancellationToken: CancellationToken.None);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error en fire-and-forget NotificarTicketCerradoTecnicoAsync para ticket {Codigo}", codigoTicket);
+                        }
+                    });
+                }
             }
 
             return Result.Exito();

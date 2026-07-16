@@ -1,5 +1,6 @@
 namespace PideServicio.Application.Features.Tickets.Commands.IniciarProceso;
 
+using Microsoft.Extensions.Logging;
 using PideServicio.Application.Common.CQRS;
 using PideServicio.Application.Common.Interfaces;
 using PideServicio.Application.Common.Interfaces.Repositories;
@@ -14,20 +15,29 @@ public sealed class IniciarProcesoCommandHandler : ICommandHandler<IniciarProces
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly ITicketRepository _ticketRepo;
     private readonly ITicketHistorialRepository _historialRepo;
+    private readonly INotificationService _notificationService;
+    private readonly IEmailService _emailService;
     private readonly IAuditService _auditService;
+    private readonly ILogger<IniciarProcesoCommandHandler> _logger;
 
     public IniciarProcesoCommandHandler(
         ICurrentUserService currentUser,
         IUsuarioRepository usuarioRepository,
         ITicketRepository ticketRepo,
         ITicketHistorialRepository historialRepo,
-        IAuditService auditService)
+        INotificationService notificationService,
+        IEmailService emailService,
+        IAuditService auditService,
+        ILogger<IniciarProcesoCommandHandler> logger)
     {
         _currentUser = currentUser;
         _usuarioRepository = usuarioRepository;
         _ticketRepo = ticketRepo;
         _historialRepo = historialRepo;
+        _notificationService = notificationService;
+        _emailService = emailService;
         _auditService = auditService;
+        _logger = logger;
     }
 
     public async Task<Result> Handle(IniciarProcesoCommand request, CancellationToken cancellationToken)
@@ -74,6 +84,76 @@ public sealed class IniciarProcesoCommandHandler : ICommandHandler<IniciarProces
                 new { Estado = estadoAnterior.ToString() },
                 new { Estado = ticket.Estado.ToString() },
                 cancellationToken);
+
+            // Notificaciones push — fire-and-forget con try-catch explícito
+            var notifSolicitanteId = ticket.SolicitanteId;
+            var notifTicketId = ticket.Id;
+            var notifEmpresaId = ticket.EmpresaId;
+            var notifCodigo = ticket.Codigo.Valor;
+            var notifTitulo = ticket.Titulo;
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _notificationService.EnviarAsync(
+                        notifSolicitanteId,
+                        "Ticket en proceso",
+                        $"El técnico ha iniciado la atención del ticket {notifCodigo}: {notifTitulo}",
+                        tipoEvento: "ticket.en_proceso",
+                        ticketId: notifTicketId,
+                        cancellationToken: CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error en fire-and-forget EnviarAsync (solicitante) para ticket {Codigo}", notifCodigo);
+                }
+            });
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _notificationService.EnviarAGestoresYSuperAdminsAsync(
+                        notifEmpresaId,
+                        "Ticket en proceso",
+                        $"El técnico inició la atención del ticket {notifCodigo}: {notifTitulo}",
+                        tipoEvento: "ticket.en_proceso",
+                        ticketId: notifTicketId,
+                        cancellationToken: CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error en fire-and-forget EnviarAGestoresYSuperAdminsAsync para ticket {Codigo}", notifCodigo);
+                }
+            });
+
+            // Email al solicitante — fire-and-forget con try-catch explícito
+            var solicitante = await _usuarioRepository.ObtenerPorIdAsync(ticket.SolicitanteId, cancellationToken);
+            if (solicitante is not null)
+            {
+                var correoSolicitante = solicitante.Correo.Valor;
+                var codigoTicket = ticket.Codigo.Valor;
+                var tituloTicket = ticket.Titulo;
+                var tecnicoNombre = actor.NombreCompleto;
+
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _emailService.NotificarTicketEnProcesoAsync(
+                            correoSolicitante: correoSolicitante,
+                            codigo: codigoTicket,
+                            titulo: tituloTicket,
+                            tecnico: tecnicoNombre,
+                            cancellationToken: CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error en fire-and-forget NotificarTicketEnProcesoAsync para ticket {Codigo}", codigoTicket);
+                    }
+                });
+            }
 
             return Result.Exito();
         }

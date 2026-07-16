@@ -69,7 +69,7 @@ export function useDashboardResumen(params?: { sucursalId?: string }) {
         '/dashboard/resumen',
         params as Record<string, string | undefined>,
       ),
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 30,
     retry: 1,
   })
 }

@@ -298,6 +298,29 @@ public sealed class Ticket : AggregateRoot
             ahora));
     }
 
+    /// <summary>
+    /// Actualiza título y/o tipo de servicio. Solo Admin/SuperAdmin. Prohibido en estados terminales.
+    /// </summary>
+    public void ActualizarDatos(string? nuevoTitulo, Guid? nuevoTipoServicioId, Guid actorId)
+    {
+        ValidarNoTerminal("actualizar datos");
+
+        if (nuevoTitulo is not null)
+        {
+            if (string.IsNullOrWhiteSpace(nuevoTitulo))
+                throw new ValidationException("Titulo", "El título no puede estar vacío.");
+            if (nuevoTitulo.Length > 300)
+                throw new ValidationException("Titulo", "El título no puede exceder 300 caracteres.");
+            Titulo = nuevoTitulo.Trim();
+        }
+
+        if (nuevoTipoServicioId.HasValue)
+            TipoServicioId = nuevoTipoServicioId.Value;
+
+        UpdatedAt = DateTimeOffset.UtcNow;
+        UpdatedBy = actorId;
+    }
+
     public void AsignarSla(
         Guid slaId,
         DateTimeOffset? fechaLimitePrimeraAtencion,

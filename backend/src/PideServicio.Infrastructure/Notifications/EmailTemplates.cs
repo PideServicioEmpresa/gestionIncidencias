@@ -48,17 +48,60 @@ internal static class EmailTemplates
     }
 
     public static (string Asunto, string Html) TicketAsignado(
-        string codigo, string titulo, string tecnico, string prioridad)
+        string codigo, string titulo, string tecnico, string prioridad,
+        string? sucursal = null, string? area = null, string? solicitante = null)
     {
         var asunto = $"[{codigo}] Solicitud asignada: {titulo}";
+
+        var filasOpcionales = new System.Text.StringBuilder();
+        if (!string.IsNullOrEmpty(sucursal))
+            filasOpcionales.Append($"<tr><td>Sucursal</td><td>{EscapeHtml(sucursal)}</td></tr>");
+        if (!string.IsNullOrEmpty(area))
+            filasOpcionales.Append($"<tr><td>Área</td><td>{EscapeHtml(area)}</td></tr>");
+        if (!string.IsNullOrEmpty(solicitante))
+            filasOpcionales.Append($"<tr><td>Solicitante</td><td>{EscapeHtml(solicitante)}</td></tr>");
+
         var html = Wrap("Solicitud asignada", "Se te ha asignado una nueva solicitud", $"""
             <span class="badge">Asignado · {codigo}</span>
             <p class="title">{EscapeHtml(titulo)}</p>
-            <p class="desc">Se te ha asignado la siguiente solicitud para su atención.</p>
+            <p class="desc">Se te ha asignado la siguiente solicitud para su atención. Por favor revisa los detalles e inicia el proceso.</p>
             <table class="data">
               <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
-              <tr><td>Técnico asignado</td><td>{EscapeHtml(tecnico)}</td></tr>
+              <tr><td>Estado</td><td>Asignado</td></tr>
               <tr><td>Prioridad</td><td>{EscapeHtml(prioridad)}</td></tr>
+              <tr><td>Técnico asignado</td><td>{EscapeHtml(tecnico)}</td></tr>
+              {filasOpcionales}
+            </table>
+            """);
+        return (asunto, html);
+    }
+
+    public static (string Asunto, string Html) TicketReasignado(
+        string codigo, string titulo, string tecnico, string prioridad,
+        string? motivo = null, string? sucursal = null, string? area = null, string? solicitante = null)
+    {
+        var asunto = $"[{codigo}] Solicitud reasignada: {titulo}";
+
+        var filasOpcionales = new System.Text.StringBuilder();
+        if (!string.IsNullOrEmpty(sucursal))
+            filasOpcionales.Append($"<tr><td>Sucursal</td><td>{EscapeHtml(sucursal)}</td></tr>");
+        if (!string.IsNullOrEmpty(area))
+            filasOpcionales.Append($"<tr><td>Área</td><td>{EscapeHtml(area)}</td></tr>");
+        if (!string.IsNullOrEmpty(solicitante))
+            filasOpcionales.Append($"<tr><td>Solicitante</td><td>{EscapeHtml(solicitante)}</td></tr>");
+        if (!string.IsNullOrEmpty(motivo))
+            filasOpcionales.Append($"<tr><td>Motivo de reasignación</td><td>{EscapeHtml(motivo)}</td></tr>");
+
+        var html = Wrap("Solicitud reasignada", "Se te ha reasignado una solicitud", $"""
+            <span class="badge">Reasignado · {codigo}</span>
+            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="desc">Esta solicitud ha sido reasignada y queda bajo tu responsabilidad.</p>
+            <table class="data">
+              <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
+              <tr><td>Estado</td><td>Asignado</td></tr>
+              <tr><td>Prioridad</td><td>{EscapeHtml(prioridad)}</td></tr>
+              <tr><td>Técnico asignado</td><td>{EscapeHtml(tecnico)}</td></tr>
+              {filasOpcionales}
             </table>
             """);
         return (asunto, html);
@@ -122,10 +165,100 @@ internal static class EmailTemplates
         var html = Wrap("Solicitud reabierta", "La validación fue rechazada", $"""
             <span class="badge">Reabierto · {codigo}</span>
             <p class="title">{EscapeHtml(titulo)}</p>
-            <p class="desc">El solicitante ha rechazado la atención y la solicitud ha sido reabierta.</p>
+            <p class="desc">El solicitante ha rechazado la atención y la solicitud ha sido reabierta. El administrador la reasignará próximamente.</p>
             <table class="data">
               <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
-              <tr><td>Motivo</td><td>{EscapeHtml(motivo)}</td></tr>
+              <tr><td>Motivo de rechazo</td><td>{EscapeHtml(motivo)}</td></tr>
+            </table>
+            """);
+        return (asunto, html);
+    }
+
+    public static (string Asunto, string Html) TicketCerradoTecnico(
+        string codigo, string titulo, string? valoracion)
+    {
+        var valoracionTexto = string.IsNullOrEmpty(valoracion) ? "Sin valoración" : valoracion;
+        var asunto = $"[{codigo}] Solicitud cerrada por el solicitante: {titulo}";
+        var html = Wrap("Solicitud cerrada", "El solicitante ha cerrado la solicitud", $"""
+            <span class="badge">Cerrado · {codigo}</span>
+            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="desc">El solicitante ha validado y cerrado la solicitud. ¡Buen trabajo!</p>
+            <table class="data">
+              <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
+              <tr><td>Valoración recibida</td><td>{EscapeHtml(valoracionTexto)}</td></tr>
+            </table>
+            """);
+        return (asunto, html);
+    }
+
+    public static (string Asunto, string Html) TicketCancelado(
+        string codigo, string titulo, string motivo)
+    {
+        var asunto = $"[{codigo}] Solicitud cancelada: {titulo}";
+        var html = Wrap("Solicitud cancelada", "Tu solicitud ha sido cancelada", $"""
+            <span class="badge">Cancelado · {codigo}</span>
+            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="desc">Tu solicitud ha sido cancelada. Si necesitas asistencia, por favor registra una nueva solicitud.</p>
+            <table class="data">
+              <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
+              <tr><td>Motivo de cancelación</td><td>{EscapeHtml(motivo)}</td></tr>
+            </table>
+            """);
+        return (asunto, html);
+    }
+
+    public static (string Asunto, string Html) TicketEnProceso(
+        string codigo, string titulo, string? tecnico)
+    {
+        var asunto = $"[{codigo}] Tu solicitud está siendo atendida: {titulo}";
+        var filaTecnico = string.IsNullOrEmpty(tecnico)
+            ? string.Empty
+            : $"<tr><td>Técnico</td><td>{EscapeHtml(tecnico)}</td></tr>";
+
+        var html = Wrap("Solicitud en proceso", "El técnico ya inició la atención de tu solicitud", $"""
+            <span class="badge">En proceso · {codigo}</span>
+            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="desc">El técnico ha comenzado a trabajar en tu solicitud. Te notificaremos cuando esté lista para validación.</p>
+            <table class="data">
+              <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
+              {filaTecnico}
+            </table>
+            """);
+        return (asunto, html);
+    }
+
+    public static (string Asunto, string Html) DesasignacionTecnico(
+        string codigo, string titulo, string? motivo)
+    {
+        var asunto = $"[{codigo}] Has sido desasignado de una solicitud: {titulo}";
+        var filaMotivo = string.IsNullOrEmpty(motivo)
+            ? string.Empty
+            : $"<tr><td>Motivo</td><td>{EscapeHtml(motivo)}</td></tr>";
+
+        var html = Wrap("Desasignado de solicitud", "Has sido removido de una solicitud", $"""
+            <span class="badge">Reasignado · {codigo}</span>
+            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="desc">Has sido desasignado de la siguiente solicitud. Un administrador la reasignó a otro técnico.</p>
+            <table class="data">
+              <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
+              {filaMotivo}
+            </table>
+            """);
+        return (asunto, html);
+    }
+
+    public static (string Asunto, string Html) CambioPrioridadTecnico(
+        string codigo, string titulo, string prioridadAnterior, string prioridadNueva)
+    {
+        var asunto = $"[{codigo}] Prioridad modificada: {titulo}";
+        var html = Wrap("Prioridad actualizada", "La prioridad de tu solicitud asignada fue modificada", $"""
+            <span class="badge">Prioridad cambiada · {codigo}</span>
+            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="desc">Un administrador ha modificado la prioridad de esta solicitud asignada a ti.</p>
+            <table class="data">
+              <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
+              <tr><td>Prioridad anterior</td><td>{EscapeHtml(prioridadAnterior)}</td></tr>
+              <tr><td>Nueva prioridad</td><td><strong>{EscapeHtml(prioridadNueva)}</strong></td></tr>
             </table>
             """);
         return (asunto, html);

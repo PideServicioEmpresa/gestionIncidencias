@@ -1,5 +1,6 @@
 namespace PideServicio.Application.Features.Tickets.Commands.ReasignarTicket;
 
+using Microsoft.Extensions.Logging;
 using PideServicio.Application.Common.CQRS;
 using PideServicio.Application.Common.Interfaces;
 using PideServicio.Application.Common.Interfaces.Repositories;
@@ -12,28 +13,40 @@ public sealed class ReasignarTicketCommandHandler : ICommandHandler<ReasignarTic
 {
     private readonly ICurrentUserService _currentUser;
     private readonly IUsuarioRepository _usuarioRepository;
+    private readonly ISucursalRepository _sucursalRepository;
+    private readonly IAreaRepository _areaRepository;
     private readonly ITicketRepository _ticketRepo;
     private readonly ITicketHistorialRepository _historialRepo;
     private readonly ITicketAsignacionRepository _asignacionRepo;
     private readonly INotificationService _notificationService;
+    private readonly IEmailService _emailService;
     private readonly IAuditService _auditService;
+    private readonly ILogger<ReasignarTicketCommandHandler> _logger;
 
     public ReasignarTicketCommandHandler(
         ICurrentUserService currentUser,
         IUsuarioRepository usuarioRepository,
+        ISucursalRepository sucursalRepository,
+        IAreaRepository areaRepository,
         ITicketRepository ticketRepo,
         ITicketHistorialRepository historialRepo,
         ITicketAsignacionRepository asignacionRepo,
         INotificationService notificationService,
-        IAuditService auditService)
+        IEmailService emailService,
+        IAuditService auditService,
+        ILogger<ReasignarTicketCommandHandler> logger)
     {
         _currentUser = currentUser;
         _usuarioRepository = usuarioRepository;
+        _sucursalRepository = sucursalRepository;
+        _areaRepository = areaRepository;
         _ticketRepo = ticketRepo;
         _historialRepo = historialRepo;
         _asignacionRepo = asignacionRepo;
         _notificationService = notificationService;
+        _emailService = emailService;
         _auditService = auditService;
+        _logger = logger;
     }
 
     public async Task<Result> Handle(ReasignarTicketCommand request, CancellationToken cancellationToken)
@@ -91,21 +104,161 @@ public sealed class ReasignarTicketCommandHandler : ICommandHandler<ReasignarTic
                 new { TecnicoId = request.NuevoTecnicoId, Motivo = request.Motivo },
                 cancellationToken);
 
-            await _notificationService.EnviarAsync(
-                request.NuevoTecnicoId,
-                "Ticket reasignado",
-                $"Se te ha reasignado el ticket {ticket.Codigo.Valor}: {ticket.Titulo}",
-                tipoEvento: "ticket.reasignado",
-                ticketId: ticket.Id,
-                cancellationToken: cancellationToken);
+            // Notificaciones push — fire-and-forget con try-catch explícito
+            var notifTicketId = ticket.Id;
+            var notifEmpresaId = ticket.EmpresaId;
+            var notifCodigo = ticket.Codigo.Valor;
+            var notifTitulo = ticket.Titulo;
+            var notifNuevoTecnicoId = request.NuevoTecnicoId;
 
-            await _notificationService.EnviarAGestoresYSuperAdminsAsync(
-                ticket.EmpresaId,
-                "Ticket reasignado",
-                $"El ticket {ticket.Codigo.Valor} fue reasignado: {ticket.Titulo}",
-                tipoEvento: "ticket.reasignado",
-                ticketId: ticket.Id,
-                cancellationToken: cancellationToken);
+            if (tecnicoAnteriorId.HasValue)
+            {
+                var notifTecnicoAnteriorId = tecnicoAnteriorId.Value;
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _notificationService.EnviarAsync(
+                            notifTecnicoAnteriorId,
+                            "Ticket reasignado",
+                            $"Has sido desasignado del ticket {notifCodigo}: {notifTitulo}",
+                            tipoEvento: "ticket.reasignado",
+                            ticketId: notifTicketId,
+                            cancellationToken: CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error en fire-and-forget EnviarAsync (tecnico anterior) para ticket {Codigo}", notifCodigo);
+                    }
+                });
+            }
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _notificationService.EnviarAsync(
+                        notifNuevoTecnicoId,
+                        "Ticket reasignado",
+                        $"Se te ha reasignado el ticket {notifCodigo}: {notifTitulo}",
+                        tipoEvento: "ticket.reasignado",
+                        ticketId: notifTicketId,
+                        cancellationToken: CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error en fire-and-forget EnviarAsync (nuevo tecnico) para ticket {Codigo}", notifCodigo);
+                }
+            });
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _notificationService.EnviarAGestoresYSuperAdminsAsync(
+                        notifEmpresaId,
+                        "Ticket reasignado",
+                        $"El ticket {notifCodigo} fue reasignado: {notifTitulo}",
+                        tipoEvento: "ticket.reasignado",
+                        ticketId: notifTicketId,
+                        cancellationToken: CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error en fire-and-forget EnviarAGestoresYSuperAdminsAsync para ticket {Codigo}", notifCodigo);
+                }
+            });
+
+            // Emails — fire-and-forget con try-catch explícito
+            var nuevoTecnico = await _usuarioRepository.ObtenerPorIdAsync(request.NuevoTecnicoId, cancellationToken);
+            var solicitante = await _usuarioRepository.ObtenerPorIdAsync(ticket.SolicitanteId, cancellationToken);
+            var sucursal = await _sucursalRepository.ObtenerPorIdAsync(ticket.SucursalId, cancellationToken);
+            var area = await _areaRepository.ObtenerPorIdAsync(ticket.AreaId, cancellationToken);
+
+            var codigoTicket = ticket.Codigo.Valor;
+            var tituloTicket = ticket.Titulo;
+            var motivo = request.Motivo;
+            var prioridadTicket = ticket.PrioridadEfectiva.ToString();
+            var sucursalNombre = sucursal?.Nombre;
+            var areaNombre = area?.Nombre;
+            var solicitanteNombre = solicitante?.NombreCompleto;
+
+            // Email al técnico ANTERIOR informando la desasignación
+            if (tecnicoAnteriorId.HasValue)
+            {
+                var tecnicoAnterior = await _usuarioRepository.ObtenerPorIdAsync(tecnicoAnteriorId.Value, cancellationToken);
+                if (tecnicoAnterior is not null)
+                {
+                    var correoTecnicoAnterior = tecnicoAnterior.Correo.Valor;
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _emailService.NotificarDesasignacionTecnicoAsync(
+                                correoTecnico: correoTecnicoAnterior,
+                                codigo: codigoTicket,
+                                titulo: tituloTicket,
+                                motivo: motivo,
+                                cancellationToken: CancellationToken.None);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error en fire-and-forget NotificarDesasignacionTecnicoAsync para ticket {Codigo}", codigoTicket);
+                        }
+                    });
+                }
+            }
+
+            // Email al técnico NUEVO y al solicitante
+            if (nuevoTecnico is not null)
+            {
+                var correoNuevoTecnico = nuevoTecnico.Correo.Valor;
+                var nombreNuevoTecnico = nuevoTecnico.NombreCompleto;
+
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _emailService.NotificarTicketReasignadoAsync(
+                            correoTecnico: correoNuevoTecnico,
+                            codigo: codigoTicket,
+                            titulo: tituloTicket,
+                            tecnico: nombreNuevoTecnico,
+                            prioridad: prioridadTicket,
+                            motivo: motivo,
+                            sucursal: sucursalNombre,
+                            area: areaNombre,
+                            solicitante: solicitanteNombre,
+                            cancellationToken: CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error en fire-and-forget NotificarTicketReasignadoAsync para ticket {Codigo}", codigoTicket);
+                    }
+                });
+
+                if (solicitante is not null)
+                {
+                    var correoSolicitante = solicitante.Correo.Valor;
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _emailService.NotificarAsignacionASolicitanteAsync(
+                                correoSolicitante: correoSolicitante,
+                                codigo: codigoTicket,
+                                titulo: tituloTicket,
+                                tecnico: nombreNuevoTecnico,
+                                prioridad: prioridadTicket,
+                                cancellationToken: CancellationToken.None);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error en fire-and-forget NotificarAsignacionASolicitanteAsync para ticket {Codigo}", codigoTicket);
+                        }
+                    });
+                }
+            }
 
             return Result.Exito();
         }

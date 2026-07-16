@@ -1,5 +1,6 @@
 namespace PideServicio.Application.Features.Tickets.Commands.ReabrirTicket;
 
+using Microsoft.Extensions.Logging;
 using PideServicio.Application.Common.CQRS;
 using PideServicio.Application.Common.Interfaces;
 using PideServicio.Application.Common.Interfaces.Repositories;
@@ -18,6 +19,7 @@ public sealed class ReabrirTicketCommandHandler : ICommandHandler<ReabrirTicketC
     private readonly INotificationService _notificationService;
     private readonly IEmailService _emailService;
     private readonly IAuditService _auditService;
+    private readonly ILogger<ReabrirTicketCommandHandler> _logger;
 
     public ReabrirTicketCommandHandler(
         ICurrentUserService currentUser,
@@ -27,7 +29,8 @@ public sealed class ReabrirTicketCommandHandler : ICommandHandler<ReabrirTicketC
         IMotivoRechazoRepository motivoRechazoRepo,
         INotificationService notificationService,
         IEmailService emailService,
-        IAuditService auditService)
+        IAuditService auditService,
+        ILogger<ReabrirTicketCommandHandler> logger)
     {
         _currentUser = currentUser;
         _usuarioRepository = usuarioRepository;
@@ -37,6 +40,7 @@ public sealed class ReabrirTicketCommandHandler : ICommandHandler<ReabrirTicketC
         _notificationService = notificationService;
         _emailService = emailService;
         _auditService = auditService;
+        _logger = logger;
     }
 
     public async Task<Result> Handle(ReabrirTicketCommand request, CancellationToken cancellationToken)
@@ -95,40 +99,80 @@ public sealed class ReabrirTicketCommandHandler : ICommandHandler<ReabrirTicketC
                 new { Estado = ticket.Estado.ToString(), request.MotivoRechazoId, request.ComentarioRechazo },
                 cancellationToken);
 
+            // Notificaciones push — fire-and-forget con try-catch explícito
+            var notifTicketId = ticket.Id;
+            var notifEmpresaId = ticket.EmpresaId;
+            var notifCodigo = ticket.Codigo.Valor;
+            var notifTitulo = ticket.Titulo;
+
             if (tecnicoAnteriorId.HasValue)
             {
-                await _notificationService.EnviarAsync(
-                    tecnicoAnteriorId.Value,
-                    "Ticket rechazado",
-                    $"El ticket {ticket.Codigo.Valor} ha sido rechazado y está pendiente de reasignación.",
-                    tipoEvento: "ticket.rechazado",
-                    ticketId: ticket.Id,
-                    cancellationToken: cancellationToken);
+                var notifTecnicoAnteriorId = tecnicoAnteriorId.Value;
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _notificationService.EnviarAsync(
+                            notifTecnicoAnteriorId,
+                            "Ticket rechazado",
+                            $"El ticket {notifCodigo} ha sido rechazado y está pendiente de reasignación.",
+                            tipoEvento: "ticket.rechazado",
+                            ticketId: notifTicketId,
+                            cancellationToken: CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error en fire-and-forget EnviarAsync (tecnico anterior) para ticket {Codigo}", notifCodigo);
+                    }
+                });
 
-                // Email al técnico con copia a inmoveg
+                // Email al técnico anterior — fire-and-forget con try-catch explícito
                 var tecnico = await _usuarioRepository.ObtenerPorIdAsync(tecnicoAnteriorId.Value, cancellationToken);
                 if (tecnico is not null)
                 {
+                    var correoTecnico = tecnico.Correo.Valor;
+                    var codigoTicket = ticket.Codigo.Valor;
+                    var tituloTicket = ticket.Titulo;
                     var motivo = !string.IsNullOrWhiteSpace(request.ComentarioRechazo)
                         ? request.ComentarioRechazo
                         : "El solicitante rechazó la atención";
 
-                    _ = _emailService.NotificarTicketReabiertoAsync(
-                        correoTecnico: tecnico.Correo.Valor,
-                        codigo: ticket.Codigo.Valor,
-                        titulo: ticket.Titulo,
-                        motivo: motivo,
-                        cancellationToken: CancellationToken.None);
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _emailService.NotificarTicketReabiertoAsync(
+                                correoTecnico: correoTecnico,
+                                codigo: codigoTicket,
+                                titulo: tituloTicket,
+                                motivo: motivo,
+                                cancellationToken: CancellationToken.None);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error en fire-and-forget NotificarTicketReabiertoAsync para ticket {Codigo}", codigoTicket);
+                        }
+                    });
                 }
             }
 
-            await _notificationService.EnviarAGestoresYSuperAdminsAsync(
-                ticket.EmpresaId,
-                "Ticket reabierto",
-                $"El ticket {ticket.Codigo.Valor} ha sido rechazado y requiere reasignación.",
-                tipoEvento: "ticket.rechazado",
-                ticketId: ticket.Id,
-                cancellationToken: cancellationToken);
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _notificationService.EnviarAGestoresYSuperAdminsAsync(
+                        notifEmpresaId,
+                        "Ticket reabierto",
+                        $"El ticket {notifCodigo} ha sido rechazado y requiere reasignación.",
+                        tipoEvento: "ticket.rechazado",
+                        ticketId: notifTicketId,
+                        cancellationToken: CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error en fire-and-forget EnviarAGestoresYSuperAdminsAsync para ticket {Codigo}", notifCodigo);
+                }
+            });
 
             return Result.Exito();
         }

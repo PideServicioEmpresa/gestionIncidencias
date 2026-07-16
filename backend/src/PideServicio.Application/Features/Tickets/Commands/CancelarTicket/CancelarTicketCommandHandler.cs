@@ -1,5 +1,6 @@
 namespace PideServicio.Application.Features.Tickets.Commands.CancelarTicket;
 
+using Microsoft.Extensions.Logging;
 using PideServicio.Application.Common.CQRS;
 using PideServicio.Application.Common.Interfaces;
 using PideServicio.Application.Common.Interfaces.Repositories;
@@ -15,7 +16,10 @@ public sealed class CancelarTicketCommandHandler : ICommandHandler<CancelarTicke
     private readonly ITicketRepository _ticketRepo;
     private readonly ITicketHistorialRepository _historialRepo;
     private readonly IMotivoCancelacionRepository _motivoCancelacionRepo;
+    private readonly INotificationService _notificationService;
+    private readonly IEmailService _emailService;
     private readonly IAuditService _auditService;
+    private readonly ILogger<CancelarTicketCommandHandler> _logger;
 
     public CancelarTicketCommandHandler(
         ICurrentUserService currentUser,
@@ -23,14 +27,20 @@ public sealed class CancelarTicketCommandHandler : ICommandHandler<CancelarTicke
         ITicketRepository ticketRepo,
         ITicketHistorialRepository historialRepo,
         IMotivoCancelacionRepository motivoCancelacionRepo,
-        IAuditService auditService)
+        INotificationService notificationService,
+        IEmailService emailService,
+        IAuditService auditService,
+        ILogger<CancelarTicketCommandHandler> logger)
     {
         _currentUser = currentUser;
         _usuarioRepository = usuarioRepository;
         _ticketRepo = ticketRepo;
         _historialRepo = historialRepo;
         _motivoCancelacionRepo = motivoCancelacionRepo;
+        _notificationService = notificationService;
+        _emailService = emailService;
         _auditService = auditService;
+        _logger = logger;
     }
 
     public async Task<Result> Handle(CancelarTicketCommand request, CancellationToken cancellationToken)
@@ -87,6 +97,105 @@ public sealed class CancelarTicketCommandHandler : ICommandHandler<CancelarTicke
                 new { Estado = estadoAnterior.ToString() },
                 new { Estado = ticket.Estado.ToString(), ticket.MotivoCancelacionId },
                 cancellationToken);
+
+            // Notificaciones push — fire-and-forget con try-catch explícito
+            var notifSolicitanteId = ticket.SolicitanteId;
+            var notifTicketId = ticket.Id;
+            var notifEmpresaId = ticket.EmpresaId;
+            var notifCodigo = ticket.Codigo.Valor;
+            var notifTitulo = ticket.Titulo;
+
+            if (!esSolicitante)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _notificationService.EnviarAsync(
+                            notifSolicitanteId,
+                            "Ticket cancelado",
+                            $"Tu ticket {notifCodigo} ha sido cancelado: {notifTitulo}",
+                            tipoEvento: "ticket.cancelado",
+                            ticketId: notifTicketId,
+                            cancellationToken: CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error en fire-and-forget EnviarAsync (solicitante) para ticket {Codigo}", notifCodigo);
+                    }
+                });
+            }
+
+            if (ticket.TecnicoId.HasValue)
+            {
+                var notifTecnicoId = ticket.TecnicoId.Value;
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _notificationService.EnviarAsync(
+                            notifTecnicoId,
+                            "Ticket cancelado",
+                            $"El ticket {notifCodigo} ha sido cancelado: {notifTitulo}",
+                            tipoEvento: "ticket.cancelado",
+                            ticketId: notifTicketId,
+                            cancellationToken: CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error en fire-and-forget EnviarAsync (tecnico) para ticket {Codigo}", notifCodigo);
+                    }
+                });
+            }
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _notificationService.EnviarAGestoresYSuperAdminsAsync(
+                        notifEmpresaId,
+                        "Ticket cancelado",
+                        $"El ticket {notifCodigo} fue cancelado: {notifTitulo}",
+                        tipoEvento: "ticket.cancelado",
+                        ticketId: notifTicketId,
+                        cancellationToken: CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error en fire-and-forget EnviarAGestoresYSuperAdminsAsync para ticket {Codigo}", notifCodigo);
+                }
+            });
+
+            // Email al solicitante con el motivo de cancelación — fire-and-forget con try-catch explícito
+            var correoSolicitante = esSolicitante
+                ? actor.Correo.Valor
+                : (await _usuarioRepository.ObtenerPorIdAsync(ticket.SolicitanteId, cancellationToken))?.Correo.Valor;
+
+            if (!string.IsNullOrWhiteSpace(correoSolicitante))
+            {
+                var motivoEntidad = await _motivoCancelacionRepo.ObtenerPorIdAsync(request.MotivoCancelacionId, cancellationToken);
+                var motivoTexto = motivoEntidad?.Texto ?? "Cancelado por el sistema";
+                var correoCaptura = correoSolicitante;
+                var codigoTicket = ticket.Codigo.Valor;
+                var tituloTicket = ticket.Titulo;
+
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _emailService.NotificarTicketCanceladoAsync(
+                            correoSolicitante: correoCaptura,
+                            codigo: codigoTicket,
+                            titulo: tituloTicket,
+                            motivo: motivoTexto,
+                            cancellationToken: CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error en fire-and-forget NotificarTicketCanceladoAsync para ticket {Codigo}", codigoTicket);
+                    }
+                });
+            }
 
             return Result.Exito();
         }

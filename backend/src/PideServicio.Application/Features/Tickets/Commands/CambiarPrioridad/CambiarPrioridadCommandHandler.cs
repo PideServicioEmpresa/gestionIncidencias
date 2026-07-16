@@ -1,5 +1,6 @@
 namespace PideServicio.Application.Features.Tickets.Commands.CambiarPrioridad;
 
+using Microsoft.Extensions.Logging;
 using PideServicio.Application.Common.CQRS;
 using PideServicio.Application.Common.Interfaces;
 using PideServicio.Application.Common.Interfaces.Repositories;
@@ -14,20 +15,29 @@ public sealed class CambiarPrioridadCommandHandler : ICommandHandler<CambiarPrio
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly ITicketRepository _ticketRepo;
     private readonly ITicketHistorialRepository _historialRepo;
+    private readonly INotificationService _notificationService;
+    private readonly IEmailService _emailService;
     private readonly IAuditService _auditService;
+    private readonly ILogger<CambiarPrioridadCommandHandler> _logger;
 
     public CambiarPrioridadCommandHandler(
         ICurrentUserService currentUser,
         IUsuarioRepository usuarioRepository,
         ITicketRepository ticketRepo,
         ITicketHistorialRepository historialRepo,
-        IAuditService auditService)
+        INotificationService notificationService,
+        IEmailService emailService,
+        IAuditService auditService,
+        ILogger<CambiarPrioridadCommandHandler> logger)
     {
         _currentUser = currentUser;
         _usuarioRepository = usuarioRepository;
         _ticketRepo = ticketRepo;
         _historialRepo = historialRepo;
+        _notificationService = notificationService;
+        _emailService = emailService;
         _auditService = auditService;
+        _logger = logger;
     }
 
     public async Task<Result> Handle(CambiarPrioridadCommand request, CancellationToken cancellationToken)
@@ -71,6 +81,64 @@ public sealed class CambiarPrioridadCommandHandler : ICommandHandler<CambiarPrio
                 new { Prioridad = prioridadAnterior.ToString() },
                 new { Prioridad = ticket.PrioridadEfectiva.ToString() },
                 cancellationToken);
+
+            // Notificación push al técnico asignado — fire-and-forget con try-catch explícito
+            if (ticket.TecnicoId.HasValue)
+            {
+                var notifTecnicoId = ticket.TecnicoId.Value;
+                var notifTicketId = ticket.Id;
+                var notifCodigo = ticket.Codigo.Valor;
+                var notifTitulo = ticket.Titulo;
+                var notifPrioridadAnterior = prioridadAnterior;
+                var notifPrioridadNueva = ticket.PrioridadEfectiva;
+
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _notificationService.EnviarAsync(
+                            notifTecnicoId,
+                            "Prioridad modificada",
+                            $"La prioridad del ticket {notifCodigo} cambió de {notifPrioridadAnterior} a {notifPrioridadNueva}: {notifTitulo}",
+                            tipoEvento: "ticket.prioridad_cambiada",
+                            ticketId: notifTicketId,
+                            cancellationToken: CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error en fire-and-forget EnviarAsync (tecnico) para ticket {Codigo}", notifCodigo);
+                    }
+                });
+
+                // Email al técnico — fire-and-forget con try-catch explícito
+                var tecnico = await _usuarioRepository.ObtenerPorIdAsync(ticket.TecnicoId.Value, cancellationToken);
+                if (tecnico is not null)
+                {
+                    var correoTecnico = tecnico.Correo.Valor;
+                    var codigoTicket = ticket.Codigo.Valor;
+                    var tituloTicket = ticket.Titulo;
+                    var prioridadAnteriorStr = prioridadAnterior.ToString();
+                    var prioridadNuevaStr = ticket.PrioridadEfectiva.ToString();
+
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _emailService.NotificarCambioPrioridadTecnicoAsync(
+                                correoTecnico: correoTecnico,
+                                codigo: codigoTicket,
+                                titulo: tituloTicket,
+                                prioridadAnterior: prioridadAnteriorStr,
+                                prioridadNueva: prioridadNuevaStr,
+                                cancellationToken: CancellationToken.None);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error en fire-and-forget NotificarCambioPrioridadTecnicoAsync para ticket {Codigo}", codigoTicket);
+                        }
+                    });
+                }
+            }
 
             return Result.Exito();
         }

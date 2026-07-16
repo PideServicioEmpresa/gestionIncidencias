@@ -100,6 +100,12 @@ export const ticketService = {
   asignar: (ticketId: string, tecnicoId: string) =>
     apiClient.post(`/tickets/${ticketId}/asignar`, { tecnicoId }),
 
+  reasignar: (ticketId: string, nuevoTecnicoId: string, motivo?: string) =>
+    apiClient.post(`/tickets/${ticketId}/reasignar`, { nuevoTecnicoId, motivo }),
+
+  actualizar: (ticketId: string, nuevoTitulo?: string, nuevoTipoServicioId?: string) =>
+    apiClient.patch(`/tickets/${ticketId}/actualizar`, { nuevoTitulo, nuevoTipoServicioId }),
+
   cambiarPrioridad: (ticketId: string, nuevaPrioridad: string) =>
     apiClient.patch(`/tickets/${ticketId}/prioridad`, { nuevaPrioridad }),
 

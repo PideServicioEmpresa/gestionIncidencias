@@ -22,7 +22,6 @@ import { Input } from '@shared/ui/input'
 import { Card, CardContent } from '@shared/ui/card'
 import { Badge } from '@shared/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
-import { Textarea } from '@shared/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@shared/ui/dialog'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@shared/ui/sheet'
 import { cn } from '@lib/utils'
@@ -47,6 +46,8 @@ import type { TicketStatus, TicketPriority } from '@types-app/index'
 import {
   useTickets,
   useAsignarTicket,
+  useReasignarTicket,
+  useActualizarTicket,
   useCambiarPrioridad,
   useCambiarArea,
   useTicketHistorial,
@@ -69,6 +70,10 @@ interface EditTicketSaveParams {
   ticketId: string
   nuevaAreaId?: string
   nuevaPrioridad?: string
+  nuevoTitulo?: string
+  nuevoTipoServicioId?: string
+  nuevoTecnicoId?: string
+  tieneAsignacion: boolean
 }
 
 interface EditTicketSheetProps {
@@ -115,6 +120,8 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
   const tiposServicio = tiposServicioQuery.data ?? []
   const sucursalesQuery = useSucursales(user?.empresaId)
   const sucursales = (sucursalesQuery.data ?? []).filter((s) => s.activa)
+  const tecnicosQuery = useTecnicos(user?.empresaId)
+  const tecnicos = tecnicosQuery.data ?? []
   const initialPriority = ticket
     ? normalizePrioridad(ticket.prioridadEfectiva)
     : ('media' as TicketPriority)
@@ -125,7 +132,7 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
     sucursalId: ticket?.sucursalId ?? '',
     areaId: ticket?.areaId ?? '',
     priority: initialPriority,
-    description: '',
+    tecnicoId: ticket?.tecnicoId ?? '',
   })
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({})
 
@@ -134,7 +141,6 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
     () => (areasQuery.data ?? []).filter((a) => a.activa || a.id === ticket?.areaId),
     [areasQuery.data, ticket?.areaId],
   )
-  const areasFiltered = areas
 
   useEffect(() => {
     if (ticket) {
@@ -144,7 +150,7 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
         sucursalId: ticket.sucursalId,
         areaId: ticket.areaId,
         priority: normalizePrioridad(ticket.prioridadEfectiva),
-        description: '',
+        tecnicoId: ticket.tecnicoId ?? '',
       })
       setErrors({})
     }
@@ -162,6 +168,7 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
 
   function validate() {
     const next: Partial<Record<string, string>> = {}
+    if (!form.title.trim()) next.title = 'El título es requerido.'
     if (!form.sucursalId) next.sucursalId = 'Selecciona una sucursal.'
     if (!form.areaId) next.areaId = 'Selecciona un área.'
     return Object.keys(next).length === 0 ? null : next
@@ -175,10 +182,17 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
     }
     if (!ticket) return
 
-    const params: EditTicketSaveParams = { ticketId: ticket.id }
+    const params: EditTicketSaveParams = {
+      ticketId: ticket.id,
+      tieneAsignacion: !!ticket.tecnicoId,
+    }
     if (form.areaId !== ticket.areaId) params.nuevaAreaId = form.areaId
     if (form.priority !== normalizePrioridad(ticket.prioridadEfectiva))
       params.nuevaPrioridad = form.priority.toUpperCase()
+    const tituloTrimmed = form.title.trim()
+    if (tituloTrimmed !== ticket.titulo) params.nuevoTitulo = tituloTrimmed
+    if (form.type !== (ticket.tipoServicioId ?? '')) params.nuevoTipoServicioId = form.type
+    if (form.tecnicoId !== (ticket.tecnicoId ?? '')) params.nuevoTecnicoId = form.tecnicoId
 
     onSave(params)
     onClose()
@@ -209,9 +223,13 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
             </p>
 
             <FormField label="Tipo de servicio">
-              <Select value={form.type} disabled>
+              <Select
+                value={form.type}
+                onValueChange={(v) => handleField('type', v)}
+                disabled={tiposServicioQuery.isLoading}
+              >
                 <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="—" />
+                  <SelectValue placeholder="Selecciona tipo" />
                 </SelectTrigger>
                 <SelectContent>
                   {tiposServicio.map((t) => (
@@ -223,12 +241,11 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
               </Select>
             </FormField>
 
-            <FormField label="Título">
+            <FormField label="Título" required error={errors.title}>
               <Input
                 className="h-9 text-sm"
                 value={form.title}
-                readOnly
-                disabled
+                onChange={(e) => handleField('title', e.target.value)}
                 placeholder="Título del ticket"
               />
             </FormField>
@@ -273,7 +290,7 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    {areasFiltered.map((a) => (
+                    {areas.map((a) => (
                       <SelectItem key={a.id} value={a.id}>
                         {a.nombre}
                       </SelectItem>
@@ -309,17 +326,31 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
           {/* Sección secundaria */}
           <div className="space-y-3 px-5 py-4">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Campos adicionales
+              Asignación
             </p>
 
-            <FormField label="Descripción">
-              <Textarea
-                className="text-sm"
-                rows={3}
-                value={form.description}
-                onChange={(e) => handleField('description', e.target.value)}
-                placeholder="Describe el problema o solicitud"
-              />
+            <FormField label="Trabajador asignado">
+              <Select
+                value={form.tecnicoId}
+                onValueChange={(v) => handleField('tecnicoId', v)}
+                disabled={tecnicosQuery.isLoading}
+              >
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue
+                    placeholder={tecnicosQuery.isLoading ? 'Cargando...' : 'Sin asignar'}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {tecnicos.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.nombreCompleto}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                Solo disponible si el ticket está en estado Asignado.
+              </p>
             </FormField>
           </div>
         </div>
@@ -417,6 +448,8 @@ export function MyTicketsPage() {
 
   // Mutations
   const asignarTicket = useAsignarTicket()
+  const reasignarTicket = useReasignarTicket()
+  const actualizarTicket = useActualizarTicket()
   const cambiarPrioridad = useCambiarPrioridad()
   const cambiarArea = useCambiarArea()
 
@@ -462,13 +495,41 @@ export function MyTicketsPage() {
     )
   }
 
-  const handleSaveTicket = ({ ticketId, nuevaAreaId, nuevaPrioridad }: EditTicketSaveParams) => {
-    if (!nuevaAreaId && !nuevaPrioridad) {
+  const handleSaveTicket = ({
+    ticketId,
+    nuevaAreaId,
+    nuevaPrioridad,
+    nuevoTitulo,
+    nuevoTipoServicioId,
+    nuevoTecnicoId,
+    tieneAsignacion,
+  }: EditTicketSaveParams) => {
+    const hayCambios =
+      nuevaAreaId || nuevaPrioridad || nuevoTitulo || nuevoTipoServicioId || nuevoTecnicoId
+    if (!hayCambios) {
       toast.info('Sin cambios para guardar.')
       return
     }
     if (nuevaAreaId) cambiarArea.mutate({ ticketId, nuevaAreaId })
     if (nuevaPrioridad) cambiarPrioridad.mutate({ ticketId, nuevaPrioridad })
+    if (nuevoTitulo || nuevoTipoServicioId)
+      actualizarTicket.mutate(
+        { ticketId, nuevoTitulo, nuevoTipoServicioId },
+        { onError: (e: Error) => toast.error(e.message) },
+      )
+    if (nuevoTecnicoId) {
+      if (tieneAsignacion) {
+        reasignarTicket.mutate(
+          { ticketId, nuevoTecnicoId, motivo: 'Corrección de asignación' },
+          { onError: (e: Error) => toast.error(e.message) },
+        )
+      } else {
+        asignarTicket.mutate(
+          { ticketId, tecnicoId: nuevoTecnicoId },
+          { onError: (e: Error) => toast.error(e.message) },
+        )
+      }
+    }
   }
 
   const assigningTicket = assignTicketId ? tickets.find((t) => t.id === assignTicketId) : null

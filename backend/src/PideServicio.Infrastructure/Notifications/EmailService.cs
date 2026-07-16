@@ -71,17 +71,52 @@ public sealed class EmailService : IEmailService
         string prioridad, string area, string solicitante,
         CancellationToken cancellationToken = default)
     {
-        var (asunto, html) = EmailTemplates.TicketCreado(codigo, titulo, prioridad, area, solicitante);
-        return EnviarConCopiaAsync(correoSolicitante, asunto, html, cancellationToken);
+        try
+        {
+            var (asunto, html) = EmailTemplates.TicketCreado(codigo, titulo, prioridad, area, solicitante);
+            return EnviarConCopiaAsync(correoSolicitante, asunto, html, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al preparar email NotificarTicketCreadoAsync para {Correo}", correoSolicitante);
+            return Task.CompletedTask;
+        }
     }
 
     public Task NotificarTicketAsignadoAsync(
         string correoTecnico, string codigo, string titulo,
         string tecnico, string prioridad,
+        string? sucursal = null, string? area = null, string? solicitante = null,
         CancellationToken cancellationToken = default)
     {
-        var (asunto, html) = EmailTemplates.TicketAsignado(codigo, titulo, tecnico, prioridad);
-        return EnviarConCopiaAsync(correoTecnico, asunto, html, cancellationToken);
+        try
+        {
+            var (asunto, html) = EmailTemplates.TicketAsignado(codigo, titulo, tecnico, prioridad, sucursal, area, solicitante);
+            return EnviarConCopiaAsync(correoTecnico, asunto, html, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al preparar email NotificarTicketAsignadoAsync para {Correo}", correoTecnico);
+            return Task.CompletedTask;
+        }
+    }
+
+    public Task NotificarTicketReasignadoAsync(
+        string correoTecnico, string codigo, string titulo,
+        string tecnico, string prioridad,
+        string? motivo = null, string? sucursal = null, string? area = null, string? solicitante = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var (asunto, html) = EmailTemplates.TicketReasignado(codigo, titulo, tecnico, prioridad, motivo, sucursal, area, solicitante);
+            return EnviarConCopiaAsync(correoTecnico, asunto, html, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al preparar email NotificarTicketReasignadoAsync para {Correo}", correoTecnico);
+            return Task.CompletedTask;
+        }
     }
 
     public Task NotificarAsignacionASolicitanteAsync(
@@ -89,8 +124,16 @@ public sealed class EmailService : IEmailService
         string tecnico, string prioridad,
         CancellationToken cancellationToken = default)
     {
-        var (asunto, html) = EmailTemplates.TicketAsignadoSolicitante(codigo, titulo, tecnico, prioridad);
-        return EnviarConCopiaAsync(correoSolicitante, asunto, html, cancellationToken);
+        try
+        {
+            var (asunto, html) = EmailTemplates.TicketAsignadoSolicitante(codigo, titulo, tecnico, prioridad);
+            return EnviarConCopiaAsync(correoSolicitante, asunto, html, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al preparar email NotificarAsignacionASolicitanteAsync para {Correo}", correoSolicitante);
+            return Task.CompletedTask;
+        }
     }
 
     public Task NotificarTicketPendienteValidacionAsync(
@@ -98,8 +141,16 @@ public sealed class EmailService : IEmailService
         string tecnico,
         CancellationToken cancellationToken = default)
     {
-        var (asunto, html) = EmailTemplates.TicketPendienteValidacion(codigo, titulo, tecnico);
-        return EnviarConCopiaAsync(correoSolicitante, asunto, html, cancellationToken);
+        try
+        {
+            var (asunto, html) = EmailTemplates.TicketPendienteValidacion(codigo, titulo, tecnico);
+            return EnviarConCopiaAsync(correoSolicitante, asunto, html, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al preparar email NotificarTicketPendienteValidacionAsync para {Correo}", correoSolicitante);
+            return Task.CompletedTask;
+        }
     }
 
     public Task NotificarTicketCerradoAsync(
@@ -107,8 +158,33 @@ public sealed class EmailService : IEmailService
         string? valoracion,
         CancellationToken cancellationToken = default)
     {
-        var (asunto, html) = EmailTemplates.TicketCerrado(codigo, titulo, valoracion);
-        return EnviarConCopiaAsync(correoSolicitante, asunto, html, cancellationToken);
+        try
+        {
+            var (asunto, html) = EmailTemplates.TicketCerrado(codigo, titulo, valoracion);
+            return EnviarConCopiaAsync(correoSolicitante, asunto, html, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al preparar email NotificarTicketCerradoAsync para {Correo}", correoSolicitante);
+            return Task.CompletedTask;
+        }
+    }
+
+    public Task NotificarTicketCerradoTecnicoAsync(
+        string correoTecnico, string codigo, string titulo,
+        string? valoracion,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var (asunto, html) = EmailTemplates.TicketCerradoTecnico(codigo, titulo, valoracion);
+            return EnviarConCopiaAsync(correoTecnico, asunto, html, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al preparar email NotificarTicketCerradoTecnicoAsync para {Correo}", correoTecnico);
+            return Task.CompletedTask;
+        }
     }
 
     public Task NotificarTicketReabiertoAsync(
@@ -116,8 +192,84 @@ public sealed class EmailService : IEmailService
         string motivo,
         CancellationToken cancellationToken = default)
     {
-        var (asunto, html) = EmailTemplates.TicketReabierto(codigo, titulo, motivo);
-        return EnviarConCopiaAsync(correoTecnico, asunto, html, cancellationToken);
+        try
+        {
+            var (asunto, html) = EmailTemplates.TicketReabierto(codigo, titulo, motivo);
+            return EnviarConCopiaAsync(correoTecnico, asunto, html, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al preparar email NotificarTicketReabiertoAsync para {Correo}", correoTecnico);
+            return Task.CompletedTask;
+        }
+    }
+
+    public Task NotificarTicketCanceladoAsync(
+        string correoSolicitante, string codigo, string titulo,
+        string motivo,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var (asunto, html) = EmailTemplates.TicketCancelado(codigo, titulo, motivo);
+            return EnviarConCopiaAsync(correoSolicitante, asunto, html, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al preparar email NotificarTicketCanceladoAsync para {Correo}", correoSolicitante);
+            return Task.CompletedTask;
+        }
+    }
+
+    public Task NotificarTicketEnProcesoAsync(
+        string correoSolicitante, string codigo, string titulo,
+        string? tecnico = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var (asunto, html) = EmailTemplates.TicketEnProceso(codigo, titulo, tecnico);
+            return EnviarConCopiaAsync(correoSolicitante, asunto, html, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al preparar email NotificarTicketEnProcesoAsync para {Correo}", correoSolicitante);
+            return Task.CompletedTask;
+        }
+    }
+
+    public Task NotificarDesasignacionTecnicoAsync(
+        string correoTecnico, string codigo, string titulo,
+        string? motivo = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var (asunto, html) = EmailTemplates.DesasignacionTecnico(codigo, titulo, motivo);
+            return EnviarConCopiaAsync(correoTecnico, asunto, html, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al preparar email NotificarDesasignacionTecnicoAsync para {Correo}", correoTecnico);
+            return Task.CompletedTask;
+        }
+    }
+
+    public Task NotificarCambioPrioridadTecnicoAsync(
+        string correoTecnico, string codigo, string titulo,
+        string prioridadAnterior, string prioridadNueva,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var (asunto, html) = EmailTemplates.CambioPrioridadTecnico(codigo, titulo, prioridadAnterior, prioridadNueva);
+            return EnviarConCopiaAsync(correoTecnico, asunto, html, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al preparar email NotificarCambioPrioridadTecnicoAsync para {Correo}", correoTecnico);
+            return Task.CompletedTask;
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -154,11 +306,28 @@ public sealed class EmailService : IEmailService
 
     private async Task EnviarMensajeAsync(MimeMessage mensaje, CancellationToken ct)
     {
-        using var cliente = new SmtpClient();
-        await cliente.ConnectAsync(_options.SmtpHost, _options.SmtpPuerto, SecureSocketOptions.StartTls, ct);
-        await cliente.AuthenticateAsync(_options.SmtpUsuario, _options.SmtpContrasena, ct);
-        await cliente.SendAsync(mensaje, ct);
-        await cliente.DisconnectAsync(quit: true, ct);
+        const int MaxIntentos = 2;
+
+        for (int intento = 1; intento <= MaxIntentos; intento++)
+        {
+            using var cliente = new SmtpClient();
+            cliente.Timeout = 30_000; // 30 segundos; evita cuelgues indefinidos en la conexión SMTP
+            try
+            {
+                await cliente.ConnectAsync(_options.SmtpHost, _options.SmtpPuerto, SecureSocketOptions.StartTls, ct);
+                await cliente.AuthenticateAsync(_options.SmtpUsuario, _options.SmtpContrasena, ct);
+                await cliente.SendAsync(mensaje, ct);
+                await cliente.DisconnectAsync(quit: true, ct);
+                return;
+            }
+            catch (Exception ex) when (intento < MaxIntentos && !ct.IsCancellationRequested)
+            {
+                _logger.LogWarning(ex,
+                    "Intento {Intento}/{Max} fallido al enviar email SMTP a {Destinatario}. Se reintenta en 3 s.",
+                    intento, MaxIntentos, mensaje.To.FirstOrDefault()?.ToString());
+                await Task.Delay(TimeSpan.FromSeconds(3), ct);
+            }
+        }
     }
 
     private static string StripHtml(string html)

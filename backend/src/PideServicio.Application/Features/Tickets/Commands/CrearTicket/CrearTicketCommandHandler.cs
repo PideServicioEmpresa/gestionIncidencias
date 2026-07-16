@@ -1,10 +1,12 @@
 namespace PideServicio.Application.Features.Tickets.Commands.CrearTicket;
 
+using Microsoft.Extensions.Logging;
 using PideServicio.Application.Common.CQRS;
 using PideServicio.Application.Common.Interfaces;
 using PideServicio.Application.Common.Interfaces.Repositories;
 using PideServicio.Application.Common.Models;
 using PideServicio.Domain.Entities;
+using PideServicio.Domain.Enums;
 using PideServicio.Domain.Exceptions;
 using StringComparison = System.StringComparison;
 
@@ -14,26 +16,32 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly IAreaRepository _areaRepository;
     private readonly ITicketRepository _ticketRepo;
+    private readonly ITicketHistorialRepository _historialRepo;
     private readonly INotificationService _notificationService;
     private readonly IEmailService _emailService;
     private readonly IAuditService _auditService;
+    private readonly ILogger<CrearTicketCommandHandler> _logger;
 
     public CrearTicketCommandHandler(
         ICurrentUserService currentUser,
         IUsuarioRepository usuarioRepository,
         IAreaRepository areaRepository,
         ITicketRepository ticketRepo,
+        ITicketHistorialRepository historialRepo,
         INotificationService notificationService,
         IEmailService emailService,
-        IAuditService auditService)
+        IAuditService auditService,
+        ILogger<CrearTicketCommandHandler> logger)
     {
         _currentUser = currentUser;
         _usuarioRepository = usuarioRepository;
         _areaRepository = areaRepository;
         _ticketRepo = ticketRepo;
+        _historialRepo = historialRepo;
         _notificationService = notificationService;
         _emailService = emailService;
         _auditService = auditService;
+        _logger = logger;
     }
 
     public async Task<Result<Guid>> Handle(CrearTicketCommand request, CancellationToken cancellationToken)
@@ -89,6 +97,16 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
 
             var id = await _ticketRepo.CrearAsync(ticket, cancellationToken);
 
+            // Historial de creación (append-only, debe registrarse siempre)
+            var historial = TicketHistorialEntrada.Crear(
+                ticketId: id,
+                tipoEvento: TipoEventoHistorialTipo.CREADO,
+                actorId: actor.Id,
+                estadoAnterior: null,
+                estadoNuevo: TicketEstadoTipo.SIN_ASIGNAR);
+
+            await _historialRepo.CrearAsync(historial, cancellationToken);
+
             await _auditService.RegistrarAsync(
                 "tickets",
                 id,
@@ -97,22 +115,51 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
                 new { ticket.Estado, ticket.Titulo, ticket.SolicitanteId },
                 cancellationToken);
 
-            _ = _emailService.NotificarTicketCreadoAsync(
-                correoSolicitante: actor.Correo.Valor,
-                codigo: ticket.Codigo.Valor,
-                titulo: ticket.Titulo,
-                prioridad: ticket.PrioridadEfectiva.ToString(),
-                area: areaNombre,
-                solicitante: actor.NombreCompleto,
-                cancellationToken: CancellationToken.None);
+            // Fire-and-forget con try-catch explícito para no perder errores de email silenciosamente
+            var correoSolicitante = actor.Correo.Valor;
+            var codigoTicket = ticket.Codigo.Valor;
+            var tituloTicket = ticket.Titulo;
+            var prioridadTicket = ticket.PrioridadEfectiva.ToString();
+            var areaNombreCaptura = areaNombre;
+            var solicitanteNombre = actor.NombreCompleto;
 
-            await _notificationService.EnviarAGestoresYSuperAdminsAsync(
-                ticket.EmpresaId,
-                "Nuevo ticket creado",
-                $"Se creó el ticket {ticket.Codigo.Valor}: {ticket.Titulo}",
-                tipoEvento: "ticket.nuevo",
-                ticketId: id,
-                cancellationToken: cancellationToken);
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _emailService.NotificarTicketCreadoAsync(
+                        correoSolicitante: correoSolicitante,
+                        codigo: codigoTicket,
+                        titulo: tituloTicket,
+                        prioridad: prioridadTicket,
+                        area: areaNombreCaptura,
+                        solicitante: solicitanteNombre,
+                        cancellationToken: CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error en fire-and-forget NotificarTicketCreadoAsync para ticket {Codigo}", codigoTicket);
+                }
+            });
+
+            var empresaIdCaptura = ticket.EmpresaId;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _notificationService.EnviarAGestoresYSuperAdminsAsync(
+                        empresaIdCaptura,
+                        "Nuevo ticket creado",
+                        $"Se creó el ticket {codigoTicket}: {tituloTicket}",
+                        tipoEvento: "ticket.nuevo",
+                        ticketId: id,
+                        cancellationToken: CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error en fire-and-forget EnviarAGestoresYSuperAdminsAsync para ticket {Codigo}", codigoTicket);
+                }
+            });
 
             return Result.Exito(id);
         }

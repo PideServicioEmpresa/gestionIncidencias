@@ -1,5 +1,6 @@
 namespace PideServicio.Application.Features.Tickets.Commands.SubmitParaValidacion;
 
+using Microsoft.Extensions.Logging;
 using PideServicio.Application.Common.CQRS;
 using PideServicio.Application.Common.Interfaces;
 using PideServicio.Application.Common.Interfaces.Repositories;
@@ -17,6 +18,7 @@ public sealed class SubmitParaValidacionCommandHandler : ICommandHandler<SubmitP
     private readonly INotificationService _notificationService;
     private readonly IEmailService _emailService;
     private readonly IAuditService _auditService;
+    private readonly ILogger<SubmitParaValidacionCommandHandler> _logger;
 
     public SubmitParaValidacionCommandHandler(
         ICurrentUserService currentUser,
@@ -25,7 +27,8 @@ public sealed class SubmitParaValidacionCommandHandler : ICommandHandler<SubmitP
         ITicketHistorialRepository historialRepo,
         INotificationService notificationService,
         IEmailService emailService,
-        IAuditService auditService)
+        IAuditService auditService,
+        ILogger<SubmitParaValidacionCommandHandler> logger)
     {
         _currentUser = currentUser;
         _usuarioRepository = usuarioRepository;
@@ -34,6 +37,7 @@ public sealed class SubmitParaValidacionCommandHandler : ICommandHandler<SubmitP
         _notificationService = notificationService;
         _emailService = emailService;
         _auditService = auditService;
+        _logger = logger;
     }
 
     public async Task<Result> Handle(SubmitParaValidacionCommand request, CancellationToken cancellationToken)
@@ -81,27 +85,54 @@ public sealed class SubmitParaValidacionCommandHandler : ICommandHandler<SubmitP
                 new { Estado = ticket.Estado.ToString() },
                 cancellationToken);
 
-            await _notificationService.EnviarAsync(
-                ticket.SolicitanteId,
-                "Ticket pendiente de validación",
-                $"El ticket {ticket.Codigo.Valor} está listo para tu validación: {ticket.Titulo}",
-                tipoEvento: "ticket.pendiente_validacion",
-                ticketId: ticket.Id,
-                cancellationToken: cancellationToken);
+            // Notificaciones push — fire-and-forget con try-catch explícito
+            var notifSolicitanteId = ticket.SolicitanteId;
+            var notifTicketId = ticket.Id;
+            var notifEmpresaId = ticket.EmpresaId;
+            var notifCodigo = ticket.Codigo.Valor;
+            var notifTitulo = ticket.Titulo;
 
-            await _notificationService.EnviarAGestoresYSuperAdminsAsync(
-                ticket.EmpresaId,
-                "Ticket pendiente de validación",
-                $"El ticket {ticket.Codigo.Valor} está listo para validación: {ticket.Titulo}",
-                tipoEvento: "ticket.pendiente_validacion",
-                ticketId: ticket.Id,
-                cancellationToken: cancellationToken);
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _notificationService.EnviarAsync(
+                        notifSolicitanteId,
+                        "Ticket pendiente de validación",
+                        $"El ticket {notifCodigo} está listo para tu validación: {notifTitulo}",
+                        tipoEvento: "ticket.pendiente_validacion",
+                        ticketId: notifTicketId,
+                        cancellationToken: CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error en fire-and-forget EnviarAsync (solicitante) para ticket {Codigo}", notifCodigo);
+                }
+            });
 
-            // Email al solicitante con copia a inmoveg
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _notificationService.EnviarAGestoresYSuperAdminsAsync(
+                        notifEmpresaId,
+                        "Ticket pendiente de validación",
+                        $"El ticket {notifCodigo} está listo para validación: {notifTitulo}",
+                        tipoEvento: "ticket.pendiente_validacion",
+                        ticketId: notifTicketId,
+                        cancellationToken: CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error en fire-and-forget EnviarAGestoresYSuperAdminsAsync para ticket {Codigo}", notifCodigo);
+                }
+            });
+
+            // Email al solicitante — fire-and-forget con try-catch explícito
             var solicitante = await _usuarioRepository.ObtenerPorIdAsync(ticket.SolicitanteId, cancellationToken);
             if (solicitante is not null)
             {
-                // El técnico es el actor si es técnico asignado; si es admin, usar el nombre del actor igualmente
+                // Determinar el nombre del técnico que completó el trabajo
                 var tecnicoNombre = actor.NombreCompleto;
                 if (!esTecnicoAsignado && ticket.TecnicoId.HasValue)
                 {
@@ -109,12 +140,27 @@ public sealed class SubmitParaValidacionCommandHandler : ICommandHandler<SubmitP
                     tecnicoNombre = tecnico?.NombreCompleto ?? tecnicoNombre;
                 }
 
-                _ = _emailService.NotificarTicketPendienteValidacionAsync(
-                    correoSolicitante: solicitante.Correo.Valor,
-                    codigo: ticket.Codigo.Valor,
-                    titulo: ticket.Titulo,
-                    tecnico: tecnicoNombre,
-                    cancellationToken: CancellationToken.None);
+                var correoSolicitante = solicitante.Correo.Valor;
+                var codigoTicket = ticket.Codigo.Valor;
+                var tituloTicket = ticket.Titulo;
+                var tecnicoNombreCaptura = tecnicoNombre;
+
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _emailService.NotificarTicketPendienteValidacionAsync(
+                            correoSolicitante: correoSolicitante,
+                            codigo: codigoTicket,
+                            titulo: tituloTicket,
+                            tecnico: tecnicoNombreCaptura,
+                            cancellationToken: CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error en fire-and-forget NotificarTicketPendienteValidacionAsync para ticket {Codigo}", codigoTicket);
+                    }
+                });
             }
 
             return Result.Exito();

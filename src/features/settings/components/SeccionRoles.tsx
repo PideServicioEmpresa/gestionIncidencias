@@ -9,10 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/card'
 import { Button } from '@shared/ui/button'
 import { Badge } from '@shared/ui/badge'
 import { Input } from '@shared/ui/input'
-import { Textarea } from '@shared/ui/textarea'
 import { Skeleton } from '@shared/ui/skeleton'
-
-// ─── Tipos ───────────────────────────────────────────────────────────────────
 
 interface RolDto {
   codigo: string
@@ -25,8 +22,6 @@ interface RolesListResult {
   items: RolDto[]
   total: number
 }
-
-// ─── Constantes ──────────────────────────────────────────────────────────────
 
 const ROL_COLORS: Record<string, string> = {
   SUPERADMIN: 'border-purple-200 bg-purple-50 text-purple-700',
@@ -64,24 +59,18 @@ const ROL_DEFAULTS: Record<string, { label: string; descripcion: string }> = {
   },
 }
 
-// ─── Helpers de clave de configuración ───────────────────────────────────────
-
-function claveLabelRol(codigo: string) {
-  return `ROL_LABEL_${codigo}`
-}
-
-function claveDescRol(codigo: string) {
-  return `ROL_DESC_${codigo}`
-}
-
-// ─── Componente principal ─────────────────────────────────────────────────────
+const FALLBACK_ROLES: RolDto[] = Object.keys(ROL_DEFAULTS).map((codigo) => ({
+  codigo,
+  nombre: ROL_DEFAULTS[codigo].label,
+  descripcion: ROL_DEFAULTS[codigo].descripcion,
+  activo: true,
+}))
 
 export function SeccionRoles() {
   const qc = useQueryClient()
   const user = useAuthStore((s) => s.user)
   const empresaId = user?.empresaId
 
-  // ── Datos del backend ─────────────────────────────────────────────────────
   const { data: rolesData, isLoading: loadingRoles } = useQuery({
     queryKey: ['roles-sistema'],
     queryFn: () => apiClient.get<RolesListResult>('/roles'),
@@ -93,50 +82,39 @@ export function SeccionRoles() {
     retry: false,
   })
 
-  // ── Estado local de etiquetas y descripciones ─────────────────────────────
   const [labels, setLabels] = useState<Record<string, string>>({})
   const [descs, setDescs] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState<string | null>(null)
 
-  const roles = rolesData?.items ?? []
+  const roles = rolesData?.items?.length ? rolesData.items : FALLBACK_ROLES
 
-  // Sincronizar valores desde configuración al cargar
   useEffect(() => {
     if (!configData) return
     const get = (clave: string) => configData.find((p) => p.clave === clave)?.valor
     const newLabels: Record<string, string> = {}
     const newDescs: Record<string, string> = {}
     Object.keys(ROL_DEFAULTS).forEach((codigo) => {
-      const labelVal = get(claveLabelRol(codigo))
-      const descVal = get(claveDescRol(codigo))
-      newLabels[codigo] = labelVal ?? ROL_DEFAULTS[codigo].label
-      newDescs[codigo] = descVal ?? ROL_DEFAULTS[codigo].descripcion
+      newLabels[codigo] = get(`ROL_LABEL_${codigo}`) ?? ROL_DEFAULTS[codigo].label
+      newDescs[codigo] = get(`ROL_DESC_${codigo}`) ?? ROL_DEFAULTS[codigo].descripcion
     })
     setLabels(newLabels)
     setDescs(newDescs)
   }, [configData])
 
-  // ── Guardar etiquetas de un rol específico ────────────────────────────────
   const { mutate: actualizar } = useMutation({
     mutationFn: ({ clave, valor }: { clave: string; valor: string }) =>
       configuracionService.actualizar(clave, valor, empresaId),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['configuracion'] })
-    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['configuracion'] }),
     onError: (e: Error) => toast.error(e.message),
   })
 
-  async function guardarRol(codigo: string) {
+  function guardarRol(codigo: string) {
     setSaving(codigo)
-    try {
-      const label = labels[codigo]?.trim() || ROL_DEFAULTS[codigo].label
-      const desc = descs[codigo]?.trim() || ROL_DEFAULTS[codigo].descripcion
-      actualizar({ clave: claveLabelRol(codigo), valor: label })
-      actualizar({ clave: claveDescRol(codigo), valor: desc })
-      toast.success(`Etiqueta de "${ROL_DEFAULTS[codigo].label}" guardada`)
-    } finally {
-      setSaving(null)
-    }
+    const label = labels[codigo]?.trim() || ROL_DEFAULTS[codigo].label
+    const desc = descs[codigo]?.trim() || ROL_DEFAULTS[codigo].descripcion
+    actualizar({ clave: `ROL_LABEL_${codigo}`, valor: label })
+    actualizar({ clave: `ROL_DESC_${codigo}`, valor: desc }, { onSettled: () => setSaving(null) })
+    toast.success('Etiqueta guardada')
   }
 
   function resetearRol(codigo: string) {
@@ -147,120 +125,104 @@ export function SeccionRoles() {
   return (
     <Card className="lg:col-span-2">
       <CardHeader className="px-3 pb-2 pt-3">
-        <div className="flex flex-col gap-0.5">
-          <CardTitle className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-            <Users className="h-3.5 w-3.5 text-blue-500" />
-            Roles del sistema
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Los roles controlan los permisos de acceso. Puedes personalizar el nombre y la
-            descripción que verán los usuarios en cada empresa.
-          </p>
-        </div>
+        <CardTitle className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+          <Users className="h-3.5 w-3.5 text-blue-500" />
+          Roles del sistema
+        </CardTitle>
       </CardHeader>
       <CardContent className="p-3 pt-0">
         {loadingRoles ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-2">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Skeleton key={i} className="h-36 w-full rounded-lg" />
+              <Skeleton key={i} className="h-9 w-full" />
             ))}
           </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {(roles.length > 0
-              ? roles
-              : Object.keys(ROL_DEFAULTS).map((codigo): RolDto => ({
-                  codigo,
-                  nombre: ROL_DEFAULTS[codigo].label,
-                  descripcion: ROL_DEFAULTS[codigo].descripcion,
-                  activo: true,
-                }))
-            ).map((rol) => {
-              const color = ROL_COLORS[rol.codigo] ?? 'border-gray-200 bg-gray-50 text-gray-700'
-              const labelValue = labels[rol.codigo] ?? ROL_DEFAULTS[rol.codigo]?.label ?? rol.nombre
-              const descValue = descs[rol.codigo] ?? ROL_DEFAULTS[rol.codigo]?.descripcion ?? ''
-              const isSaving = saving === rol.codigo
-              const isModified =
-                labelValue !== (ROL_DEFAULTS[rol.codigo]?.label ?? rol.nombre) ||
-                descValue !== (ROL_DEFAULTS[rol.codigo]?.descripcion ?? '')
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  <th className="pb-2 pr-3">Rol</th>
+                  <th className="pb-2 pr-3">Nombre visible</th>
+                  <th className="hidden pb-2 pr-3 sm:table-cell">Descripción</th>
+                  <th className="w-16 pb-2 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {roles.map((rol) => {
+                  const color = ROL_COLORS[rol.codigo] ?? 'border-gray-200 bg-gray-50 text-gray-700'
+                  const labelValue =
+                    labels[rol.codigo] ?? ROL_DEFAULTS[rol.codigo]?.label ?? rol.nombre
+                  const descValue = descs[rol.codigo] ?? ROL_DEFAULTS[rol.codigo]?.descripcion ?? ''
+                  const isModified =
+                    labelValue !== (ROL_DEFAULTS[rol.codigo]?.label ?? rol.nombre) ||
+                    descValue !== (ROL_DEFAULTS[rol.codigo]?.descripcion ?? '')
 
-              return (
-                <div
-                  key={rol.codigo}
-                  className="flex flex-col gap-2.5 rounded-lg border bg-card p-3 shadow-sm"
-                >
-                  {/* Badge del rol del sistema */}
-                  <div className="flex items-center justify-between">
-                    <Badge
-                      variant="outline"
-                      className={`border text-[10px] font-semibold ${color}`}
-                    >
-                      {rol.codigo}
-                    </Badge>
-                    <div className="flex gap-1">
-                      {isModified && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-5"
-                          title="Restablecer valores por defecto"
-                          onClick={() => resetearRol(rol.codigo)}
+                  return (
+                    <tr key={rol.codigo}>
+                      <td className="py-2 pr-3">
+                        <Badge
+                          variant="outline"
+                          className={`whitespace-nowrap text-[10px] font-semibold ${color}`}
                         >
-                          <RotateCcw className="h-3 w-3 text-muted-foreground" />
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-5 w-5"
-                        title="Guardar etiqueta"
-                        disabled={isSaving}
-                        onClick={() => guardarRol(rol.codigo)}
-                      >
-                        <Save className="h-3 w-3 text-primary" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Nombre personalizable */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                      Nombre visible
-                    </label>
-                    <Input
-                      className="h-7 text-xs"
-                      value={labelValue}
-                      onChange={(e) =>
-                        setLabels((prev) => ({ ...prev, [rol.codigo]: e.target.value }))
-                      }
-                      placeholder={ROL_DEFAULTS[rol.codigo]?.label ?? rol.nombre}
-                    />
-                  </div>
-
-                  {/* Descripción personalizable */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                      Descripción
-                    </label>
-                    <Textarea
-                      className="resize-none text-xs leading-relaxed"
-                      rows={2}
-                      value={descValue}
-                      onChange={(e) =>
-                        setDescs((prev) => ({ ...prev, [rol.codigo]: e.target.value }))
-                      }
-                      placeholder={ROL_DEFAULTS[rol.codigo]?.descripcion ?? ''}
-                    />
-                  </div>
-                </div>
-              )
-            })}
+                          {rol.codigo}
+                        </Badge>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <Input
+                          className="h-7 min-w-[120px] text-xs"
+                          value={labelValue}
+                          onChange={(e) =>
+                            setLabels((prev) => ({ ...prev, [rol.codigo]: e.target.value }))
+                          }
+                          placeholder={ROL_DEFAULTS[rol.codigo]?.label ?? rol.nombre}
+                        />
+                      </td>
+                      <td className="hidden py-2 pr-3 sm:table-cell">
+                        <Input
+                          className="h-7 text-xs"
+                          value={descValue}
+                          onChange={(e) =>
+                            setDescs((prev) => ({ ...prev, [rol.codigo]: e.target.value }))
+                          }
+                          placeholder={ROL_DEFAULTS[rol.codigo]?.descripcion ?? ''}
+                        />
+                      </td>
+                      <td className="py-2">
+                        <div className="flex justify-end gap-1">
+                          {isModified && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              title="Restablecer"
+                              onClick={() => resetearRol(rol.codigo)}
+                            >
+                              <RotateCcw className="h-3 w-3 text-muted-foreground" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            title="Guardar"
+                            disabled={saving === rol.codigo}
+                            onClick={() => guardarRol(rol.codigo)}
+                          >
+                            <Save className="h-3 w-3 text-primary" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         )}
-
         <p className="mt-3 text-[10px] text-muted-foreground">
-          Los cambios en las etiquetas son por empresa y solo afectan la visualización. Los permisos
-          de cada rol están definidos a nivel del sistema y no cambian.
+          Los permisos de cada rol son del sistema y no cambian. Solo se personaliza la etiqueta
+          visible.
         </p>
       </CardContent>
     </Card>

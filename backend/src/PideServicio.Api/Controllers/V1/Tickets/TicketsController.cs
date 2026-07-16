@@ -14,6 +14,7 @@ using PideServicio.Application.Features.Tickets.Commands.IniciarProceso;
 using PideServicio.Application.Features.Tickets.Commands.PauseParaEspera;
 using PideServicio.Application.Features.Tickets.Commands.ReanudarDesdeEspera;
 using PideServicio.Application.Features.Tickets.Commands.ReabrirTicket;
+using PideServicio.Application.Features.Tickets.Commands.ActualizarTicket;
 using PideServicio.Application.Features.Tickets.Commands.ReasignarTicket;
 using PideServicio.Application.Features.Tickets.Commands.SubmitParaValidacion;
 using PideServicio.Application.Features.Tickets.DTOs;
@@ -225,6 +226,18 @@ public sealed class TicketsController : ApiControllerBase
         var result = await Mediator.Send(new CambiarAreaCommand(id, request.NuevaAreaId), ct);
         return HandleResult(result);
     }
+
+    /// <summary>Actualiza título y/o tipo de servicio. Requiere rol Admin o superior.</summary>
+    [HttpPatch("{id:guid}/actualizar")]
+    [Authorize(Policy = "Autenticado")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(422)]
+    public async Task<IActionResult> Actualizar(Guid id, [FromBody] ActualizarTicketRequest request, CancellationToken ct)
+    {
+        var result = await Mediator.Send(new ActualizarTicketCommand(id, request.NuevoTitulo, request.NuevoTipoServicioId), ct);
+        return HandleResult(result);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -259,6 +272,9 @@ public sealed record CancelarTicketRequest(Guid MotivoCancelacionId);
 
 /// <summary>Payload para cambiar la prioridad de un ticket.</summary>
 public sealed record CambiarPrioridadRequest(PrioridadTipo NuevaPrioridad);
+
+/// <summary>Payload para actualizar título y/o tipo de servicio de un ticket.</summary>
+public sealed record ActualizarTicketRequest(string? NuevoTitulo, Guid? NuevoTipoServicioId);
 
 /// <summary>Payload para reasignar el área de un ticket.</summary>
 public sealed record CambiarAreaRequest(Guid NuevaAreaId);
