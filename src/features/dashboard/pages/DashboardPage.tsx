@@ -305,7 +305,7 @@ function StatCard({ title, value, description, icon: Icon, iconColor, onClick }:
 // ── Sparkline mini-chart ────────────────────────────────────────────────────────
 
 function Sparkline({ data, color }: { data: number[]; color: string }) {
-  const points = data.map((v, i) => ({ v, i }))
+  const points = (data ?? []).map((v, i) => ({ v, i }))
   if (points.length === 0) return null
   return (
     <div className="hidden items-end justify-end lg:flex">
@@ -529,29 +529,44 @@ function AdminDashboard() {
       </div>
     )
 
+  // Normalización defensiva: garantiza que todos los arrays sean arrays (nunca null)
+  const r = {
+    ...resumen,
+    porEstado: resumen.porEstado ?? [],
+    porPrioridad: resumen.porPrioridad ?? [],
+    porSucursal: resumen.porSucursal ?? [],
+    porArea: resumen.porArea ?? [],
+    porTecnico: resumen.porTecnico ?? [],
+    porTipoServicio: resumen.porTipoServicio ?? [],
+    tendencia16Dias: resumen.tendencia16Dias ?? [],
+    tendenciaSemanal: resumen.tendenciaSemanal ?? [],
+    sparkAbiertos: resumen.sparkAbiertos ?? [],
+    sparkCriticos: resumen.sparkCriticos ?? [],
+    sparkCerrados: resumen.sparkCerrados ?? [],
+  }
+
   // ── KPIs del backend ──────────────────────────────────────────────────────────
 
-  const totalAbiertos = resumen.totalAbiertos
-  const criticos = resumen.criticos
-  const cerradosHoy = resumen.cerradosHoy
-  const tasaResolucion = resumen.tasaResolucionPct
+  const totalAbiertos = r.totalAbiertos ?? 0
+  const criticos = r.criticos ?? 0
+  const cerradosHoy = r.cerradosHoy ?? 0
+  const tasaResolucion = r.tasaResolucionPct ?? 0
 
   // Contadores de estado para el mini-row
-  const getEstado = (estado: string) =>
-    (resumen.porEstado ?? []).find((e) => e.estado === estado)?.total ?? 0
+  const getEstado = (estado: string) => r.porEstado.find((e) => e.estado === estado)?.total ?? 0
 
   // ── Opciones de filtro derivadas del backend ──────────────────────────────────
 
-  const sucursalOptions = (resumen.porSucursal ?? []).map((s) => ({
+  const sucursalOptions = r.porSucursal.map((s) => ({
     id: s.sucursalId,
-    name: s.sucursalNombre,
+    name: s.sucursalNombre ?? '',
   }))
 
   const areaOptions =
     selectedSucursalId !== 'general'
-      ? (resumen.porArea ?? [])
+      ? r.porArea
           .filter((a) => a.sucursalId === selectedSucursalId)
-          .map((a) => ({ id: a.areaId, name: a.areaNombre }))
+          .map((a) => ({ id: a.areaId, name: a.areaNombre ?? '' }))
       : []
 
   function handleSucursalChange(val: string) {
@@ -561,90 +576,97 @@ function AdminDashboard() {
 
   // ── Datos para gráficos — directo del backend ─────────────────────────────────
 
-  const statusData = (resumen.porEstado ?? [])
+  const statusData = r.porEstado
     .filter((e) => e != null && e.estado != null)
     .map((e) => ({
       name: estadoLabel(e.estado),
-      value: e.total,
+      value: e.total ?? 0,
       color: ESTADO_COLOR_MAP[e.estado] ?? '#6b7280',
       status: String(e.estado).toLowerCase(),
     }))
 
-  const priorityData = (resumen.porPrioridad ?? [])
+  const priorityData = r.porPrioridad
     .filter((p) => p != null && p.prioridad != null)
     .map((p) => ({
       name: prioridadLabel(p.prioridad),
-      value: p.total,
+      value: p.total ?? 0,
       color: PRIORIDAD_COLOR_MAP[p.prioridad] ?? '#6b7280',
       priority: String(p.prioridad).toLowerCase(),
     }))
 
-  const sucursalData = (resumen.porSucursal ?? []).map((s) => ({
-    name:
-      s.sucursalNombre.length > 12 ? s.sucursalNombre.substring(0, 12) + '...' : s.sucursalNombre,
-    fullName: s.sucursalNombre,
-    value: s.total,
-    sucursalId: s.sucursalId,
-  }))
+  const sucursalData = r.porSucursal.map((s) => {
+    const nombre = s.sucursalNombre ?? ''
+    return {
+      name: nombre.length > 12 ? nombre.substring(0, 12) + '...' : nombre,
+      fullName: nombre,
+      value: s.total ?? 0,
+      sucursalId: s.sucursalId,
+    }
+  })
 
   // Filtro local por área en el gráfico de distribución por área
   const areaFiltrada =
-    selectedAreaId !== 'general'
-      ? (resumen.porArea ?? []).filter((a) => a.areaId === selectedAreaId)
-      : (resumen.porArea ?? [])
+    selectedAreaId !== 'general' ? r.porArea.filter((a) => a.areaId === selectedAreaId) : r.porArea
 
-  const areasData = areaFiltrada.map((a) => ({
-    name: a.areaNombre.length > 14 ? a.areaNombre.substring(0, 14) + '.' : a.areaNombre,
-    abiertos: a.abiertos,
-    cerrados: a.cerrados,
-  }))
+  const areasData = areaFiltrada.map((a) => {
+    const nombre = a.areaNombre ?? ''
+    return {
+      name: nombre.length > 14 ? nombre.substring(0, 14) + '.' : nombre,
+      abiertos: a.abiertos ?? 0,
+      cerrados: a.cerrados ?? 0,
+    }
+  })
 
-  const tiposData = (resumen.porTipoServicio ?? []).map((t, i) => ({
-    name:
-      t.tipoServicioNombre.length > 16
-        ? t.tipoServicioNombre.substring(0, 16) + '.'
-        : t.tipoServicioNombre,
-    value: t.total,
-    color: TIPO_COLORS[i % TIPO_COLORS.length],
-  }))
+  const tiposData = r.porTipoServicio.map((t, i) => {
+    const nombre = t.tipoServicioNombre ?? ''
+    return {
+      name: nombre.length > 16 ? nombre.substring(0, 16) + '.' : nombre,
+      value: t.total ?? 0,
+      color: TIPO_COLORS[i % TIPO_COLORS.length],
+    }
+  })
 
-  const responsableData = (resumen.porTecnico ?? []).map((t) => ({
-    name: t.tecnicoNombre.split(' ')[0] ?? t.tecnicoNombre,
-    fullName: t.tecnicoNombre,
-    total: t.total,
-  }))
+  const responsableData = r.porTecnico.map((t) => {
+    const nombre = t.tecnicoNombre ?? ''
+    return {
+      name: nombre.split(' ')[0] || nombre,
+      fullName: nombre,
+      total: t.total ?? 0,
+    }
+  })
 
   // Radar por sucursal (datos del backend)
-  const radarKeys = (resumen.porSucursal ?? []).slice(0, 4).map((s) => {
-    const parts = s.sucursalNombre.split(' ')
-    return parts.length > 1 ? parts[1] : parts[0]
+  const radarKeys = r.porSucursal.slice(0, 4).map((s) => {
+    const parts = (s.sucursalNombre ?? '').split(' ')
+    return (parts.length > 1 ? parts[1] : parts[0]) || s.sucursalId || 'k'
   })
   const radarColors = ['#3b82f6', '#f97316', '#22c55e', '#8b5cf6']
   const radarData = ['Sin asignar', 'En proceso', 'Cerrados', 'Críticos'].map((metric) => {
     const entry: Record<string, string | number> = { metric }
-    ;(resumen.porSucursal ?? []).slice(0, 4).forEach((s, idx) => {
-      const key = radarKeys[idx]
-      const areasSuc = (resumen.porArea ?? []).filter((a) => a.sucursalId === s.sucursalId)
+    r.porSucursal.slice(0, 4).forEach((s, idx) => {
+      const key = radarKeys[idx] ?? `k${idx}`
+      const areasSuc = r.porArea.filter((a) => a.sucursalId === s.sucursalId)
       if (metric === 'Sin asignar') entry[key] = getEstado('SIN_ASIGNAR')
       if (metric === 'En proceso') entry[key] = getEstado('EN_PROCESO')
-      if (metric === 'Cerrados') entry[key] = areasSuc.reduce((acc, a) => acc + a.cerrados, 0)
-      if (metric === 'Críticos') entry[key] = resumen.criticos
+      if (metric === 'Cerrados')
+        entry[key] = areasSuc.reduce((acc, a) => acc + (a.cerrados ?? 0), 0)
+      if (metric === 'Críticos') entry[key] = criticos
     })
     return entry
   })
 
   // ── Datos de tendencias del backend ───────────────────────────────────────────
 
-  const trendData = resumen.tendencia16Dias ?? []
-  const weeklyData = resumen.tendenciaSemanal ?? []
+  const trendData = r.tendencia16Dias
+  const weeklyData = r.tendenciaSemanal
 
   // ── Sparklines del backend ────────────────────────────────────────────────────
 
-  const sparkTrend = resumen.sparkAbiertos ?? []
-  const sparkCriticos = resumen.sparkCriticos ?? []
-  const sparkCerrados = resumen.sparkCerrados ?? []
-  const sparkTasa = (resumen.sparkAbiertos ?? []).map((v, i) => {
-    const cerr = (resumen.sparkCerrados ?? [])[i] ?? 0
+  const sparkTrend = r.sparkAbiertos
+  const sparkCriticos = r.sparkCriticos
+  const sparkCerrados = r.sparkCerrados
+  const sparkTasa = r.sparkAbiertos.map((v, i) => {
+    const cerr = r.sparkCerrados[i] ?? 0
     return v + cerr > 0 ? Math.round((cerr / (v + cerr)) * 100) : 0
   })
 
