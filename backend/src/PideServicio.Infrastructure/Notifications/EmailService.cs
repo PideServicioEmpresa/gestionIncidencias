@@ -32,7 +32,7 @@ public sealed class EmailService : IEmailService
     {
         if (!_options.EmailHabilitado)
         {
-            _logger.LogDebug("Email deshabilitado. Se omite envío a {Destinatario}: {Asunto}", destinatario, asunto);
+            _logger.LogWarning("Email deshabilitado (EmailHabilitado=false en config). Se omite envío a {Destinatario}: {Asunto}", destinatario, asunto);
             return;
         }
 
@@ -317,6 +317,8 @@ public sealed class EmailService : IEmailService
     private async Task EnviarViaBrevoAsync(
         string destinatario, string asunto, string htmlContent, string? cuerpoTexto, CancellationToken ct)
     {
+        _logger.LogWarning("[Brevo] Intentando envío a {Destinatario} — asunto: {Asunto}", destinatario, asunto);
+
         // textContent: nunca vacío para evitar filtros de spam y rechazos de Brevo
         var textoPlano = !string.IsNullOrWhiteSpace(cuerpoTexto)
             ? cuerpoTexto
@@ -344,6 +346,9 @@ public sealed class EmailService : IEmailService
         request.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
         var response = await _httpClient.SendAsync(request, ct);
+
+        _logger.LogWarning("[Brevo] Respuesta {StatusCode} para {Destinatario} — asunto: {Asunto}",
+            (int)response.StatusCode, destinatario, asunto);
 
         if (!response.IsSuccessStatusCode)
         {

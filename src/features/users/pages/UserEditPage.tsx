@@ -7,7 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/card'
 import { Skeleton } from '@shared/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import { FormField } from '@shared/components/FormField'
-import { useUsuario, useActualizarPerfil, useToggleEstadoUsuario } from '../hooks/useUsuarios'
+import {
+  useUsuario,
+  useActualizarPerfil,
+  useToggleEstadoUsuario,
+  useRoles,
+  useCambiarRol,
+} from '../hooks/useUsuarios'
+import { useAuthStore } from '@store/auth.store'
 import { useEmpresa } from '@features/empresas/hooks/useEmpresas'
 import { useSucursal } from '@features/sucursales/hooks/useSucursales'
 import type { UserRole } from '@types-app/index'
@@ -30,9 +37,18 @@ export function UserEditPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
+  const currentUser = useAuthStore((s) => s.user)
+  const isSuperAdmin = currentUser?.rol === 'superadmin'
+
   const { data: user, isLoading, isError } = useUsuario(id ?? '')
   const actualizarPerfil = useActualizarPerfil()
   const toggleEstado = useToggleEstadoUsuario()
+  const cambiarRol = useCambiarRol()
+
+  const { data: rolesData } = useRoles()
+  const roles = (rolesData?.items ?? []).filter(
+    (r) => r.activo && (isSuperAdmin || r.codigo !== 'SUPERADMIN') && r.codigo !== 'SUPERVISOR',
+  )
 
   const { data: empresa } = useEmpresa(user?.empresaId ?? '')
   const { data: sucursal } = useSucursal(user?.sucursalId ?? '')
@@ -75,6 +91,11 @@ export function UserEditPage() {
 
   function handleSave() {
     if (!validate() || !id || !user) return
+
+    const rolOriginal = user.rol.toLowerCase() as UserRole
+    if (form.rol !== rolOriginal) {
+      cambiarRol.mutate({ id, nuevoRol: form.rol.toUpperCase() })
+    }
 
     const estadoCambiado = form.estado !== (user.activo ? 'activo' : 'inactivo')
     if (estadoCambiado) {
@@ -145,7 +166,7 @@ export function UserEditPage() {
     )
   }
 
-  const isSaving = actualizarPerfil.isPending || toggleEstado.isPending
+  const isSaving = actualizarPerfil.isPending || toggleEstado.isPending || cambiarRol.isPending
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -230,22 +251,18 @@ export function UserEditPage() {
           <CardContent className="space-y-4 p-4 pt-0">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FormField label="Rol" required error={errors.rol}>
-                <Select value={form.rol} disabled>
+                <Select value={form.rol} onValueChange={(v) => handleChange('rol', v as UserRole)}>
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="Seleccionar rol" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="superadmin">SuperAdministrador</SelectItem>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="supervisor">Supervisor</SelectItem>
-                    <SelectItem value="tecnico">Técnico</SelectItem>
-                    <SelectItem value="trabajador">Trabajador</SelectItem>
-                    <SelectItem value="usuario">Usuario</SelectItem>
+                    {roles.map((r) => (
+                      <SelectItem key={r.codigo} value={r.codigo.toLowerCase()}>
+                        {r.nombre}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-                <p className="mt-1 text-[10px] text-muted-foreground">
-                  El cambio de rol requiere gestión por superadministrador.
-                </p>
               </FormField>
 
               <FormField label="Estado" required>

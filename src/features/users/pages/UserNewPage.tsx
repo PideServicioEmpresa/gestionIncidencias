@@ -8,7 +8,7 @@ import { Badge } from '@shared/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import { FormField } from '@shared/components/FormField'
-import { useCrearUsuario } from '../hooks/useUsuarios'
+import { useCrearUsuario, useRoles } from '../hooks/useUsuarios'
 import { useEmpresas } from '@features/empresas/hooks/useEmpresas'
 import { useSucursales } from '@features/sucursales/hooks/useSucursales'
 import { useAuthStore } from '@store/auth.store'
@@ -76,6 +76,11 @@ export function UserNewPage() {
   const [showConfirm, setShowConfirm] = useState(false)
 
   // ── Datos externos ──────────────────────────────────────────────────────────
+
+  const { data: rolesData } = useRoles()
+  const roles = (rolesData?.items ?? []).filter(
+    (r) => r.activo && (isSuperAdmin || r.codigo !== 'SUPERADMIN') && r.codigo !== 'SUPERVISOR',
+  )
 
   const { data: empresasData, isLoading: loadingEmpresas } = useEmpresas(
     isSuperAdmin ? { soloActivas: true, tamanoPagina: 100 } : undefined,
@@ -307,11 +312,11 @@ export function UserNewPage() {
                     <SelectValue placeholder="Seleccionar rol" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="trabajador">Trabajador</SelectItem>
-                    <SelectItem value="tecnico">Técnico</SelectItem>
-                    <SelectItem value="supervisor">Supervisor</SelectItem>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    {isSuperAdmin && <SelectItem value="superadmin">SuperAdministrador</SelectItem>}
+                    {roles.map((r) => (
+                      <SelectItem key={r.codigo} value={r.codigo.toLowerCase()}>
+                        {r.nombre}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </FormField>

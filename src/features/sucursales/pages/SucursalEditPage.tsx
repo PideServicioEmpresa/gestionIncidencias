@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, MapPin } from 'lucide-react'
+import { ArrowLeft, MapPin, Building2 } from 'lucide-react'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/card'
 import { Skeleton } from '@shared/ui/skeleton'
 import { FormField } from '@shared/components/FormField'
 import { useSucursal, useActualizarSucursal } from '../hooks/useSucursales'
+import { useEmpresa } from '@features/empresas/hooks/useEmpresas'
 import { ROUTES, sucursalDetailPath } from '@constants/index'
 
 interface FormState {
@@ -20,6 +21,7 @@ export function SucursalEditPage() {
   const navigate = useNavigate()
   const { data: sucursal, isLoading } = useSucursal(id ?? '')
   const actualizarSucursal = useActualizarSucursal(id ?? '')
+  const { data: empresa } = useEmpresa(sucursal?.empresaId ?? '')
 
   const [form, setForm] = useState<FormState>({
     nombre: '',
@@ -116,6 +118,15 @@ export function SucursalEditPage() {
               <CardTitle className="text-sm font-semibold">Información general</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 p-3 pt-0">
+              <div className="flex items-center gap-2.5 rounded-lg border bg-muted/20 px-3 py-2.5">
+                <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <div className="min-w-0">
+                  <p className="text-[10px] text-muted-foreground">Empresa</p>
+                  <p className="truncate text-xs font-medium">
+                    {empresa?.nombreComercial ?? sucursal?.empresaId ?? '—'}
+                  </p>
+                </div>
+              </div>
               <FormField label="Nombre de la sucursal" required error={errors.nombre}>
                 <Input
                   className="h-9 text-sm"

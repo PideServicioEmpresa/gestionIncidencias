@@ -130,7 +130,7 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
     type: ticket?.tipoServicioId ?? '',
     title: ticket?.titulo ?? '',
     sucursalId: ticket?.sucursalId ?? '',
-    areaId: ticket?.areaId ?? '',
+    areaNombre: ticket?.areaNombre ?? '',
     priority: initialPriority,
     tecnicoId: ticket?.tecnicoId ?? '',
   })
@@ -148,7 +148,7 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
         type: ticket.tipoServicioId ?? '',
         title: ticket.titulo,
         sucursalId: ticket.sucursalId,
-        areaId: ticket.areaId,
+        areaNombre: ticket.areaNombre ?? '',
         priority: normalizePrioridad(ticket.prioridadEfectiva),
         tecnicoId: ticket.tecnicoId ?? '',
       })
@@ -161,7 +161,7 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
     setForm((prev) => ({
       ...prev,
       [field]: value,
-      ...(field === 'sucursalId' ? { areaId: '' } : {}),
+      ...(field === 'sucursalId' ? { areaNombre: '' } : {}),
     }))
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }))
   }
@@ -170,7 +170,7 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
     const next: Partial<Record<string, string>> = {}
     if (!form.title.trim()) next.title = 'El título es requerido.'
     if (!form.sucursalId) next.sucursalId = 'Selecciona una sucursal.'
-    if (!form.areaId) next.areaId = 'Selecciona un área.'
+    if (!form.areaNombre.trim()) next.areaNombre = 'Ingresa el área.'
     return Object.keys(next).length === 0 ? null : next
   }
 
@@ -186,7 +186,17 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
       ticketId: ticket.id,
       tieneAsignacion: !!ticket.tecnicoId,
     }
-    if (form.areaId !== ticket.areaId) params.nuevaAreaId = form.areaId
+    const areaNombreTrimmed = form.areaNombre.trim()
+    if (areaNombreTrimmed.toLowerCase() !== (ticket.areaNombre ?? '').toLowerCase()) {
+      const areaEncontrada = areas.find(
+        (a) => a.nombre.toLowerCase() === areaNombreTrimmed.toLowerCase(),
+      )
+      if (!areaEncontrada) {
+        setErrors({ areaNombre: 'Área no encontrada en esta sucursal.' })
+        return
+      }
+      params.nuevaAreaId = areaEncontrada.id
+    }
     if (form.priority !== normalizePrioridad(ticket.prioridadEfectiva))
       params.nuevaPrioridad = form.priority.toUpperCase()
     const tituloTrimmed = form.title.trim()
@@ -272,31 +282,20 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
                 </Select>
               </FormField>
 
-              <FormField label="Área" required error={errors.areaId}>
-                <Select
-                  value={form.areaId}
-                  onValueChange={(v) => handleField('areaId', v)}
-                  disabled={!form.sucursalId || areasQuery.isLoading}
-                >
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue
-                      placeholder={
-                        !form.sucursalId
-                          ? 'Primero sucursal'
-                          : areasQuery.isLoading
-                            ? 'Cargando...'
-                            : 'Selecciona'
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {areas.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.nombre}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <FormField label="Área" required error={errors.areaNombre}>
+                <Input
+                  className="h-9 text-sm"
+                  value={form.areaNombre}
+                  onChange={(e) => handleField('areaNombre', e.target.value)}
+                  placeholder="Ej: Sistemas, Contabilidad..."
+                  disabled={!form.sucursalId}
+                  list="areas-datalist"
+                />
+                <datalist id="areas-datalist">
+                  {areas.map((a) => (
+                    <option key={a.id} value={a.nombre} />
+                  ))}
+                </datalist>
               </FormField>
             </div>
 

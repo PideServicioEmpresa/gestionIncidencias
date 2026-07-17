@@ -3,6 +3,14 @@ import { usuarioService } from '../services/usuarioService'
 import type { UsuarioListParams } from '../services/usuarioService'
 import { toast } from 'sonner'
 
+export function useRoles() {
+  return useQuery({
+    queryKey: ['roles'],
+    queryFn: () => usuarioService.listarRoles(),
+    staleTime: 1000 * 60 * 10,
+  })
+}
+
 const USER_KEYS = {
   all: ['usuarios'] as const,
   list: (params?: UsuarioListParams) => ['usuarios', 'list', params] as const,
@@ -63,6 +71,22 @@ export function useToggleEstadoUsuario() {
     },
     onError: () => {
       toast.error('No se pudo cambiar el estado del usuario.')
+    },
+  })
+}
+
+export function useCambiarRol() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, nuevoRol }: { id: string; nuevoRol: string }) =>
+      usuarioService.cambiarRol(id, nuevoRol),
+    onSuccess: (_data, { id }) => {
+      void qc.invalidateQueries({ queryKey: USER_KEYS.detail(id) })
+      void qc.invalidateQueries({ queryKey: USER_KEYS.all })
+      toast.success('Rol actualizado correctamente.')
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'No se pudo cambiar el rol.')
     },
   })
 }

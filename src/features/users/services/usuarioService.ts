@@ -81,6 +81,11 @@ export const usuarioService = {
 
   eliminar: (id: string) => apiClient.delete(`/usuarios/${id}`),
 
+  cambiarRol: (id: string, nuevoRol: string) => apiClient.put(`/usuarios/${id}/rol`, { nuevoRol }),
+
+  listarRoles: () =>
+    apiClient.get<{ items: { codigo: string; nombre: string; activo: boolean }[] }>('/roles'),
+
   restablecerContrasena: async (correo: string): Promise<void> => {
     const appUrl = import.meta.env.VITE_APP_URL ?? window.location.origin
     const { error } = await supabase.auth.resetPasswordForEmail(correo, {
