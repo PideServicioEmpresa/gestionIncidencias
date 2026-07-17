@@ -72,10 +72,11 @@ public sealed class CreateUsuarioCommandHandler : ICommandHandler<CreateUsuarioC
             }
 
             // 2. Crear el registro en la BD; si falla, revertir en Supabase Auth
+            Usuario usuario;
             Guid nuevoId;
             try
             {
-                var usuario = Usuario.Crear(
+                usuario = Usuario.Crear(
                     authId: authId,
                     empresaId: empresaId,
                     sucursalId: request.SucursalId,
@@ -89,21 +90,6 @@ public sealed class CreateUsuarioCommandHandler : ICommandHandler<CreateUsuarioC
                     creadoPor: actorDb.Id);
 
                 nuevoId = await _usuarioRepository.CrearAsync(usuario, ct);
-
-                await _auditService.RegistrarAsync(
-                    entidad: "Usuario",
-                    entidadId: nuevoId,
-                    accion: "Crear",
-                    antes: null,
-                    despues: new
-                    {
-                        NombreCompleto = usuario.NombreCompleto,
-                        Correo = usuario.Correo.Valor,
-                        Rol = usuario.Rol.ToString(),
-                        EmpresaId = empresaId,
-                        SucursalId = usuario.SucursalId
-                    },
-                    cancellationToken: ct);
             }
             catch
             {
@@ -111,6 +97,23 @@ public sealed class CreateUsuarioCommandHandler : ICommandHandler<CreateUsuarioC
                 await _supabaseAuth.EliminarUsuarioDeAuthAsync(authId, ct);
                 throw;
             }
+
+            // 3. Registrar auditoría fuera del bloque de rollback: si el audit falla,
+            //    el usuario ya fue creado y no corresponde revertir el auth.
+            await _auditService.RegistrarAsync(
+                entidad: "Usuario",
+                entidadId: nuevoId,
+                accion: "Crear",
+                antes: null,
+                despues: new
+                {
+                    NombreCompleto = usuario.NombreCompleto,
+                    Correo = usuario.Correo.Valor,
+                    Rol = usuario.Rol.ToString(),
+                    EmpresaId = empresaId,
+                    SucursalId = usuario.SucursalId
+                },
+                cancellationToken: ct);
 
             return Result.Exito<Guid>(nuevoId);
         }
@@ -129,6 +132,10 @@ public sealed class CreateUsuarioCommandHandler : ICommandHandler<CreateUsuarioC
         catch (DomainException ex)
         {
             return Result.Fallo<Guid>(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return Result.Fallo<Guid>($"Error al crear el usuario: {ex.Message}");
         }
     }
 }
