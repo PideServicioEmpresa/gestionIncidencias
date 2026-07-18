@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -34,7 +34,7 @@ const createTicketSchema = z.object({
     .min(10, 'El titulo debe tener al menos 10 caracteres.')
     .max(150, 'Maximo 150 caracteres.'),
   type: z.string().min(1, 'Selecciona un tipo de servicio.'),
-  categoriaId: z.string().min(1, 'Selecciona una categoría.'),
+  categoriaId: z.string().min(1, 'La categoría del sistema no está disponible.'),
   priority: z.enum(['baja', 'media', 'alta', 'critica'], {
     errorMap: () => ({ message: 'Selecciona una prioridad.' }),
   }),
@@ -91,7 +91,6 @@ export function CreateTicketPage() {
   const tiposServicioQuery = useTiposServicio(user?.empresaId)
   const tiposServicio = (tiposServicioQuery.data ?? []).filter((t) => t.activo)
   const categoriasQuery = useCategorias(user?.empresaId)
-  const categorias = (categoriasQuery.data ?? []).filter((c) => c.activa)
   const sucursalesQuery = useSucursales(user?.empresaId)
   const sucursales = (sucursalesQuery.data ?? []).filter((s) => s.activa)
 
@@ -101,6 +100,7 @@ export function CreateTicketPage() {
     register,
     handleSubmit,
     control,
+    setValue,
     formState: { errors },
   } = useForm<CreateTicketForm>({
     resolver: zodResolver(createTicketSchema),
@@ -109,6 +109,20 @@ export function CreateTicketPage() {
       sucursalId: defaultSucursal,
     },
   })
+
+  const [categoriaError, setCategoriaError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (categoriasQuery.isLoading) return
+    const data = categoriasQuery.data ?? []
+    const sg = data.find((c) => c.activa && c.nombre === 'Servicios Generales')
+    if (sg) {
+      setValue('categoriaId', sg.id)
+      setCategoriaError(null)
+    } else {
+      setCategoriaError('No se encontró la categoría del sistema. Contacte al administrador.')
+    }
+  }, [categoriasQuery.data, categoriasQuery.isLoading, setValue])
 
   const onSubmit = (data: CreateTicketForm) => {
     crearTicket.mutate(
@@ -246,38 +260,21 @@ export function CreateTicketPage() {
                 />
               </FormField>
 
-              {/* Categoría */}
-              <FormField label="Categoría" required error={errors.categoriaId?.message}>
-                <Controller
-                  control={control}
-                  name="categoriaId"
-                  render={({ field }) => (
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={categoriasQuery.isLoading}
-                    >
-                      <SelectTrigger
-                        id="categoriaId"
-                        className="[data-error=true]:ring-1 [data-error=true]:ring-destructive/50 h-8 text-xs"
-                        data-error={!!errors.categoriaId}
-                      >
-                        <SelectValue
-                          placeholder={
-                            categoriasQuery.isLoading ? 'Cargando...' : 'Seleccionar categoría...'
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categorias.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.nombre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+              {/* Categoría — asignada automáticamente por el sistema */}
+              <FormField label="Categoría" error={categoriaError ?? errors.categoriaId?.message}>
+                <div
+                  className="flex h-8 items-center rounded-md border border-input bg-muted/40 px-3 text-xs"
+                  aria-label="Categoría asignada automáticamente"
+                >
+                  {categoriasQuery.isLoading ? (
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Cargando...
+                    </span>
+                  ) : (
+                    <span className="font-medium">Servicios Generales</span>
                   )}
-                />
+                </div>
               </FormField>
 
               {/* Sucursal */}

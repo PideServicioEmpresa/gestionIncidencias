@@ -92,7 +92,7 @@ export const ticketService = {
     sucursalId: string
     areaNombre: string
     tipoServicioId: string
-    categoriaId?: string
+    categoriaId: string
     prioridad: string
     ubicacion?: string
   }) => apiClient.post<string>('/tickets', body),
