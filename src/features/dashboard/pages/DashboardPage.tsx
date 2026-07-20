@@ -91,7 +91,7 @@ function mapTicket(dto: TicketListItemDto): DashboardTicket {
   return {
     id: dto.id ?? '',
     code: dto.codigo ?? '',
-    title: dto.titulo ?? '',
+    title: dto.titulo?.trim() || (dto.codigo ?? ''),
     status: String(dto.estado ?? '').toLowerCase() as TicketStatus,
     priority: String(dto.prioridadEfectiva ?? '').toLowerCase() as TicketPriority,
     sucursalId: dto.sucursalId ?? '',

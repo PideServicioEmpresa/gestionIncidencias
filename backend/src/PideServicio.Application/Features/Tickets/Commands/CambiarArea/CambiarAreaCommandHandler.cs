@@ -87,14 +87,6 @@ public sealed class CambiarAreaCommandHandler : ICommandHandler<CambiarAreaComma
 
             return Result.Exito();
         }
-        catch (TicketCerradoException ex)
-        {
-            return Result.Fallo(ex.Message);
-        }
-        catch (TicketCanceladoException ex)
-        {
-            return Result.Fallo(ex.Message);
-        }
         catch (DomainException ex)
         {
             return Result.Fallo(ex.Message);

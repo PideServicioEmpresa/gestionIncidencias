@@ -120,11 +120,22 @@ export function useActualizarTicket() {
       ticketId,
       nuevoTitulo,
       nuevoTipoServicioId,
+      nuevaDescripcion,
+      nuevaUbicacion,
     }: {
       ticketId: string
       nuevoTitulo?: string
       nuevoTipoServicioId?: string
-    }) => ticketService.actualizar(ticketId, nuevoTitulo, nuevoTipoServicioId),
+      nuevaDescripcion?: string
+      nuevaUbicacion?: string
+    }) =>
+      ticketService.actualizar(
+        ticketId,
+        nuevoTitulo,
+        nuevoTipoServicioId,
+        nuevaDescripcion,
+        nuevaUbicacion,
+      ),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: TICKET_KEYS.all })
     },
@@ -150,6 +161,19 @@ export function useCambiarArea() {
   return useMutation({
     mutationFn: ({ ticketId, nuevaAreaId }: { ticketId: string; nuevaAreaId: string }) =>
       ticketService.cambiarArea(ticketId, nuevaAreaId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: TICKET_KEYS.all })
+      void qc.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useCambiarSucursal() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ticketId, nuevaSucursalId }: { ticketId: string; nuevaSucursalId: string }) =>
+      ticketService.cambiarSucursal(ticketId, nuevaSucursalId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: TICKET_KEYS.all })
       void qc.invalidateQueries({ queryKey: ['dashboard'] })

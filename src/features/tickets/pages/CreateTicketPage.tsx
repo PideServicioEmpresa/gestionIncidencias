@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useQuery } from '@tanstack/react-query'
 import {
   Upload,
   X,
@@ -20,19 +21,18 @@ import { Textarea } from '@shared/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@shared/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import { FormField } from '@shared/components/FormField'
+import { SearchableSelect } from '@shared/components/SearchableSelect'
 import { useAuthStore } from '@store/auth.store'
 import { ROUTES } from '@constants/index'
+import { empresaService } from '@features/empresas/services/empresaService'
 import { useCrearTicket } from '../hooks/useTickets'
+import { ticketService } from '../services/ticketService'
 import { useTiposServicio, useSucursales, useCategorias } from '../hooks/useCatalogos'
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
 const createTicketSchema = z.object({
-  title: z
-    .string()
-    .min(1, 'Ingresa un titulo para la solicitud.')
-    .min(10, 'El titulo debe tener al menos 10 caracteres.')
-    .max(150, 'Maximo 150 caracteres.'),
+  title: z.string().max(150, 'Máximo 150 caracteres.').optional(),
   type: z.string().min(1, 'Selecciona un tipo de servicio.'),
   categoriaId: z.string().min(1, 'La categoría del sistema no está disponible.'),
   priority: z.enum(['baja', 'media', 'alta', 'critica'], {
@@ -41,11 +41,7 @@ const createTicketSchema = z.object({
   sucursalId: z.string().min(1, 'Selecciona una sucursal.'),
   areaNombre: z.string().min(1, 'Ingresa el área.').max(150, 'Máximo 150 caracteres.'),
   location: z.string().max(200, 'Máximo 200 caracteres').optional(),
-  description: z
-    .string()
-    .min(1, 'Describe el problema que deseas reportar.')
-    .min(20, 'Describe el problema con al menos 20 caracteres.')
-    .max(5000, 'Maximo 5000 caracteres.'),
+  description: z.string().max(5000, 'Máximo 5000 caracteres.').optional(),
 })
 
 type CreateTicketForm = z.infer<typeof createTicketSchema>
@@ -87,14 +83,38 @@ export function CreateTicketPage() {
   const [attachments, setAttachments] = useState<AttachedFile[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const isSuperAdmin = user?.rol === 'superadmin'
+  const isAdmin = user?.rol === 'admin'
+
+  // SUPERADMIN empieza sin empresa seleccionada; los demás roles usan la suya
+  const [selectedEmpresaId, setSelectedEmpresaId] = useState<string>(
+    isSuperAdmin ? '' : (user?.empresaId ?? ''),
+  )
+
+  // Solo Admin/SuperAdmin pueden listar empresas (backend devuelve 403 a otros roles)
+  const empresasQuery = useQuery({
+    queryKey: ['empresas', 'ticket-form'],
+    queryFn: () => empresaService.listar({ soloActivas: true, tamanoPagina: 200 }),
+    enabled: isSuperAdmin || isAdmin,
+    staleTime: 1000 * 60 * 5,
+    select: (data) => data.items ?? [],
+  })
+
+  // Auto-seleccionar empresa para SuperAdmin si solo existe una
+  useEffect(() => {
+    if (!isSuperAdmin || selectedEmpresaId) return
+    const items = empresasQuery.data ?? []
+    if (items.length === 1) setSelectedEmpresaId(items[0].id)
+  }, [empresasQuery.data, isSuperAdmin, selectedEmpresaId])
+
   const crearTicket = useCrearTicket()
   const tiposServicioQuery = useTiposServicio(user?.empresaId)
   const tiposServicio = (tiposServicioQuery.data ?? []).filter((t) => t.activo)
   const categoriasQuery = useCategorias(user?.empresaId)
-  const sucursalesQuery = useSucursales(user?.empresaId)
-  const sucursales = (sucursalesQuery.data ?? []).filter((s) => s.activa)
 
-  const defaultSucursal = user?.sucursalId ?? ''
+  // Sucursales filtradas por la empresa seleccionada (useSucursales solo carga si hay empresaId)
+  const sucursalesQuery = useSucursales(selectedEmpresaId || undefined)
+  const sucursales = (sucursalesQuery.data ?? []).filter((s) => s.activa)
 
   const {
     register,
@@ -106,11 +126,12 @@ export function CreateTicketPage() {
     resolver: zodResolver(createTicketSchema),
     defaultValues: {
       priority: 'media',
-      sucursalId: defaultSucursal,
+      sucursalId: isSuperAdmin ? '' : (user?.sucursalId ?? ''),
     },
   })
 
   const [categoriaError, setCategoriaError] = useState<string | null>(null)
+  const [isUploadingEvidencias, setIsUploadingEvidencias] = useState(false)
 
   useEffect(() => {
     if (categoriasQuery.isLoading) return
@@ -124,30 +145,59 @@ export function CreateTicketPage() {
     }
   }, [categoriasQuery.data, categoriasQuery.isLoading, setValue])
 
-  const onSubmit = (data: CreateTicketForm) => {
-    crearTicket.mutate(
-      {
-        titulo: data.title,
-        descripcion: data.description,
+  function handleEmpresaChange(empresaId: string) {
+    setSelectedEmpresaId(empresaId)
+    setValue('sucursalId', '') // limpiar sucursal al cambiar empresa
+  }
+
+  const onSubmit = async (data: CreateTicketForm) => {
+    let ticketId: string
+    try {
+      ticketId = await crearTicket.mutateAsync({
+        titulo: data.title?.trim() || undefined,
+        descripcion: data.description?.trim() || undefined,
         sucursalId: data.sucursalId,
         areaNombre: data.areaNombre,
         tipoServicioId: data.type,
         categoriaId: data.categoriaId,
         prioridad: data.priority.toUpperCase(),
         ubicacion: data.location,
-      },
-      {
-        onSuccess: (ticketCode) => {
-          setCreatedCode(ticketCode ?? '')
-          setSubmitted(true)
-        },
-        onError: (err: Error) => {
-          toast.error(
-            err.message ?? 'No se pudo crear el ticket. Revisa los campos e intenta de nuevo.',
+      })
+    } catch (err) {
+      toast.error(
+        (err as Error).message ??
+          'No se pudo crear el ticket. Revisa los campos e intenta de nuevo.',
+      )
+      return
+    }
+
+    if (attachments.length > 0) {
+      setIsUploadingEvidencias(true)
+      const resultados = await Promise.allSettled(
+        attachments.map((a) => ticketService.subirEvidencia(ticketId, a.file, 'INICIAL')),
+      )
+      setIsUploadingEvidencias(false)
+
+      const fallidas = resultados.filter((r) => r.status === 'rejected').length
+      if (fallidas > 0) {
+        const exitosas = attachments.length - fallidas
+        if (exitosas > 0) {
+          toast.warning(
+            `Ticket creado. ${exitosas} evidencia(s) subida(s), pero ${fallidas} no pudieron guardarse.`,
           )
-        },
-      },
-    )
+        } else {
+          toast.error(
+            'Ticket creado, pero ninguna evidencia pudo guardarse. Puedes subirlas desde el detalle del ticket.',
+          )
+        }
+      }
+    }
+
+    attachments.forEach((a) => {
+      if (a.preview) URL.revokeObjectURL(a.preview)
+    })
+    setCreatedCode(ticketId)
+    setSubmitted(true)
   }
 
   function handleFiles(fileList: FileList) {
@@ -195,6 +245,13 @@ export function CreateTicketPage() {
     )
   }
 
+  const empresaOptions = (empresasQuery.data ?? []).map((e) => ({
+    value: e.id,
+    label: e.nombreComercial,
+  }))
+
+  const sucursalOptions = sucursales.map((s) => ({ value: s.id, label: s.nombre }))
+
   return (
     <div className="space-y-4 p-3 lg:p-5">
       {/* Header */}
@@ -226,6 +283,34 @@ export function CreateTicketPage() {
           </CardHeader>
           <CardContent className="p-3 pt-0">
             <div className="grid gap-3 lg:grid-cols-2">
+              {/* Empresa — solo SuperAdmin (interactivo) y Admin (informativo) */}
+              {isSuperAdmin && (
+                <FormField label="Empresa" required>
+                  <SearchableSelect
+                    options={empresaOptions}
+                    value={selectedEmpresaId}
+                    onChange={handleEmpresaChange}
+                    placeholder="Seleccionar empresa..."
+                    searchPlaceholder="Buscar empresa..."
+                    emptyMessage="No se encontraron empresas."
+                    loading={empresasQuery.isLoading}
+                    hasError={false}
+                  />
+                </FormField>
+              )}
+
+              {isAdmin && (
+                <FormField label="Empresa">
+                  <div className="flex h-8 items-center rounded-md border border-input bg-muted/40 px-3 text-xs">
+                    <span className="font-medium">
+                      {empresasQuery.isLoading
+                        ? 'Cargando...'
+                        : (empresasQuery.data?.[0]?.nombreComercial ?? '—')}
+                    </span>
+                  </div>
+                </FormField>
+              )}
+
               {/* Tipo de Servicio */}
               <FormField label="Tipo de servicio" required error={errors.type?.message}>
                 <Controller
@@ -277,38 +362,27 @@ export function CreateTicketPage() {
                 </div>
               </FormField>
 
-              {/* Sucursal */}
+              {/* Sucursal — con búsqueda por escritura */}
               <FormField label="Sucursal" required error={errors.sucursalId?.message}>
                 <Controller
                   control={control}
                   name="sucursalId"
                   render={({ field }) => (
-                    <Select
-                      onValueChange={(v) => {
-                        field.onChange(v)
-                      }}
+                    <SearchableSelect
+                      options={sucursalOptions}
                       value={field.value}
-                      disabled={sucursalesQuery.isLoading}
-                    >
-                      <SelectTrigger
-                        id="sucursalId"
-                        className="[data-error=true]:ring-1 [data-error=true]:ring-destructive/50 h-8 text-xs"
-                        data-error={!!errors.sucursalId}
-                      >
-                        <SelectValue
-                          placeholder={
-                            sucursalesQuery.isLoading ? 'Cargando...' : 'Seleccionar sucursal...'
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sucursales.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.nombre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      onChange={field.onChange}
+                      placeholder={
+                        isSuperAdmin && !selectedEmpresaId
+                          ? 'Selecciona una empresa primero'
+                          : 'Seleccionar sucursal...'
+                      }
+                      searchPlaceholder="Buscar sucursal..."
+                      emptyMessage="No se encontraron sucursales."
+                      loading={sucursalesQuery.isLoading}
+                      disabled={isSuperAdmin && !selectedEmpresaId}
+                      hasError={!!errors.sucursalId}
+                    />
                   )}
                 />
               </FormField>
@@ -351,7 +425,7 @@ export function CreateTicketPage() {
           </CardContent>
         </Card>
 
-        {/* ── Ubicación específica ──────────────────────────────────────── */}
+        {/* ── Ubicación específica del servicio ────────────────────────── */}
         <Card>
           <CardHeader className="px-3 pb-2 pt-3">
             <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -359,7 +433,7 @@ export function CreateTicketPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <FormField label="Ubicación específica" optional>
+            <FormField label="Ubicación específica del servicio" optional>
               <div className="relative">
                 <MapPin className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -381,7 +455,7 @@ export function CreateTicketPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 p-3 pt-0">
-            <FormField label="Título" required error={errors.title?.message}>
+            <FormField label="Título" error={errors.title?.message}>
               <Input
                 id="title"
                 className="h-8 text-xs"
@@ -389,7 +463,7 @@ export function CreateTicketPage() {
                 {...register('title')}
               />
             </FormField>
-            <FormField label="Descripción completa" required error={errors.description?.message}>
+            <FormField label="Descripción completa" error={errors.description?.message}>
               <Textarea
                 id="description"
                 rows={5}
@@ -493,12 +567,21 @@ export function CreateTicketPage() {
             type="button"
             variant="outline"
             onClick={() => navigate(-1)}
-            disabled={crearTicket.isPending}
+            disabled={crearTicket.isPending || isUploadingEvidencias}
           >
             Cancelar
           </Button>
-          <Button type="submit" disabled={crearTicket.isPending} className="sm:min-w-32">
-            {crearTicket.isPending ? (
+          <Button
+            type="submit"
+            disabled={crearTicket.isPending || isUploadingEvidencias}
+            className="sm:min-w-32"
+          >
+            {isUploadingEvidencias ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Subiendo archivos...
+              </>
+            ) : crearTicket.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Enviando...

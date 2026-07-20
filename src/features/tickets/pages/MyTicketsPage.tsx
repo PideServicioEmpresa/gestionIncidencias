@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Search,
@@ -37,6 +38,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { StatusBadge } from '@shared/components/StatusBadge'
 import { PriorityBadge } from '@shared/components/PriorityBadge'
 import { FormField } from '@shared/components/FormField'
+import { SearchableSelect } from '@shared/components/SearchableSelect'
 import { EmptyState } from '@shared/components/EmptyState'
 import { TicketListSkeleton } from '@shared/components/PageSkeletons'
 import { useAuthStore } from '@store/auth.store'
@@ -46,13 +48,15 @@ import type { TicketStatus, TicketPriority } from '@types-app/index'
 import {
   useTickets,
   useAsignarTicket,
-  useReasignarTicket,
   useActualizarTicket,
   useCambiarPrioridad,
   useCambiarArea,
+  useCambiarSucursal,
   useTicketHistorial,
 } from '../hooks/useTickets'
 import type { TicketListItemDto, TicketListParams } from '../services/ticketService'
+import { ticketService } from '../services/ticketService'
+import { getTituloTicket } from '../utils/ticketHelpers'
 
 // ── Normalizadores de valores backend → frontend ──────────────────────────────
 
@@ -72,8 +76,9 @@ interface EditTicketSaveParams {
   nuevaPrioridad?: string
   nuevoTitulo?: string
   nuevoTipoServicioId?: string
-  nuevoTecnicoId?: string
-  tieneAsignacion: boolean
+  nuevaSucursalId?: string
+  nuevaDescripcion?: string
+  nuevaUbicacion?: string
 }
 
 interface EditTicketSheetProps {
@@ -120,19 +125,26 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
   const tiposServicio = tiposServicioQuery.data ?? []
   const sucursalesQuery = useSucursales(user?.empresaId)
   const sucursales = (sucursalesQuery.data ?? []).filter((s) => s.activa)
-  const tecnicosQuery = useTecnicos(user?.empresaId)
-  const tecnicos = tecnicosQuery.data ?? []
   const initialPriority = ticket
     ? normalizePrioridad(ticket.prioridadEfectiva)
     : ('media' as TicketPriority)
 
+  // Carga el detalle completo del ticket para obtener descripción y ubicación
+  const detalleQuery = useQuery({
+    queryKey: ['tickets', 'detalle-edit', ticket?.id],
+    queryFn: () => ticketService.obtener(ticket!.id),
+    enabled: !!ticket?.id,
+    staleTime: 0,
+  })
+
   const [form, setForm] = useState({
     type: ticket?.tipoServicioId ?? '',
     title: ticket?.titulo ?? '',
+    descripcion: '',
+    ubicacion: '',
     sucursalId: ticket?.sucursalId ?? '',
     areaNombre: ticket?.areaNombre ?? '',
     priority: initialPriority,
-    tecnicoId: ticket?.tecnicoId ?? '',
   })
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({})
 
@@ -142,20 +154,33 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
     [areasQuery.data, ticket?.areaId],
   )
 
+  // Resetea el formulario cuando cambia el ticket
   useEffect(() => {
     if (ticket) {
       setForm({
         type: ticket.tipoServicioId ?? '',
-        title: ticket.titulo,
+        title: ticket.titulo ?? '',
+        descripcion: '',
+        ubicacion: '',
         sucursalId: ticket.sucursalId,
         areaNombre: ticket.areaNombre ?? '',
         priority: normalizePrioridad(ticket.prioridadEfectiva),
-        tecnicoId: ticket.tecnicoId ?? '',
       })
       setErrors({})
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticket?.id])
+
+  // Rellena descripción y ubicación cuando llega el detalle
+  useEffect(() => {
+    if (detalleQuery.data) {
+      setForm((prev) => ({
+        ...prev,
+        descripcion: detalleQuery.data!.descripcion ?? '',
+        ubicacion: detalleQuery.data!.ubicacion ?? '',
+      }))
+    }
+  }, [detalleQuery.data?.id])
 
   function handleField(field: string, value: string) {
     setForm((prev) => ({
@@ -168,7 +193,6 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
 
   function validate() {
     const next: Partial<Record<string, string>> = {}
-    if (!form.title.trim()) next.title = 'El título es requerido.'
     if (!form.sucursalId) next.sucursalId = 'Selecciona una sucursal.'
     if (!form.areaNombre.trim()) next.areaNombre = 'Ingresa el área.'
     return Object.keys(next).length === 0 ? null : next
@@ -182,10 +206,8 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
     }
     if (!ticket) return
 
-    const params: EditTicketSaveParams = {
-      ticketId: ticket.id,
-      tieneAsignacion: !!ticket.tecnicoId,
-    }
+    const params: EditTicketSaveParams = { ticketId: ticket.id }
+
     const areaNombreTrimmed = form.areaNombre.trim()
     if (areaNombreTrimmed.toLowerCase() !== (ticket.areaNombre ?? '').toLowerCase()) {
       const areaEncontrada = areas.find(
@@ -197,16 +219,32 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
       }
       params.nuevaAreaId = areaEncontrada.id
     }
+
     if (form.priority !== normalizePrioridad(ticket.prioridadEfectiva))
       params.nuevaPrioridad = form.priority.toUpperCase()
+
     const tituloTrimmed = form.title.trim()
-    if (tituloTrimmed !== ticket.titulo) params.nuevoTitulo = tituloTrimmed
+    if (tituloTrimmed !== (ticket.titulo ?? '')) params.nuevoTitulo = tituloTrimmed || undefined
+
     if (form.type !== (ticket.tipoServicioId ?? '')) params.nuevoTipoServicioId = form.type
-    if (form.tecnicoId !== (ticket.tecnicoId ?? '')) params.nuevoTecnicoId = form.tecnicoId
+
+    if (form.sucursalId && form.sucursalId !== ticket.sucursalId)
+      params.nuevaSucursalId = form.sucursalId
+
+    const descripcionOriginal = detalleQuery.data?.descripcion ?? ''
+    const descripcionTrimmed = form.descripcion.trim()
+    if (descripcionTrimmed !== descripcionOriginal.trim())
+      params.nuevaDescripcion = descripcionTrimmed
+
+    const ubicacionOriginal = detalleQuery.data?.ubicacion ?? ''
+    const ubicacionTrimmed = form.ubicacion.trim()
+    if (ubicacionTrimmed !== ubicacionOriginal.trim()) params.nuevaUbicacion = ubicacionTrimmed
 
     onSave(params)
     onClose()
   }
+
+  const sucursalOptions = sucursales.map((s) => ({ value: s.id, label: s.nombre }))
 
   return (
     <Sheet open={!!ticket} onOpenChange={(open) => !open && onClose()}>
@@ -226,10 +264,10 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
 
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto">
-          {/* Sección primaria */}
+          {/* Sección: Clasificación */}
           <div className="space-y-3 border-b bg-primary/5 px-5 py-4">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-primary/70">
-              Información principal
+              Clasificación
             </p>
 
             <FormField label="Tipo de servicio">
@@ -251,35 +289,27 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
               </Select>
             </FormField>
 
-            <FormField label="Título" required error={errors.title}>
+            <FormField label="Título" error={errors.title}>
               <Input
                 className="h-9 text-sm"
                 value={form.title}
                 onChange={(e) => handleField('title', e.target.value)}
-                placeholder="Título del ticket"
+                placeholder="Título del ticket (opcional)"
               />
             </FormField>
 
             <div className="grid grid-cols-2 gap-3">
               <FormField label="Sucursal" required error={errors.sucursalId}>
-                <Select
+                <SearchableSelect
+                  options={sucursalOptions}
                   value={form.sucursalId}
-                  onValueChange={(v) => handleField('sucursalId', v)}
-                  disabled={sucursalesQuery.isLoading}
-                >
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue
-                      placeholder={sucursalesQuery.isLoading ? 'Cargando...' : 'Selecciona'}
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sucursales.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.nombre}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(v) => handleField('sucursalId', v)}
+                  placeholder="Seleccionar sucursal..."
+                  searchPlaceholder="Buscar sucursal..."
+                  emptyMessage="Sin sucursales."
+                  loading={sucursalesQuery.isLoading}
+                  hasError={!!errors.sucursalId}
+                />
               </FormField>
 
               <FormField label="Área" required error={errors.areaNombre}>
@@ -289,9 +319,9 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
                   onChange={(e) => handleField('areaNombre', e.target.value)}
                   placeholder="Ej: Sistemas, Contabilidad..."
                   disabled={!form.sucursalId}
-                  list="areas-datalist"
+                  list="areas-datalist-edit"
                 />
-                <datalist id="areas-datalist">
+                <datalist id="areas-datalist-edit">
                   {areas.map((a) => (
                     <option key={a.id} value={a.nombre} />
                   ))}
@@ -322,34 +352,35 @@ function EditTicketSheet({ ticket, onClose, onSave }: EditTicketSheetProps) {
             </FormField>
           </div>
 
-          {/* Sección secundaria */}
+          {/* Sección: Detalle */}
           <div className="space-y-3 px-5 py-4">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Asignación
+              Detalle
             </p>
 
-            <FormField label="Trabajador asignado">
-              <Select
-                value={form.tecnicoId}
-                onValueChange={(v) => handleField('tecnicoId', v)}
-                disabled={tecnicosQuery.isLoading}
-              >
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue
-                    placeholder={tecnicosQuery.isLoading ? 'Cargando...' : 'Sin asignar'}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {tecnicos.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.nombreCompleto}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="mt-1 text-[10px] text-muted-foreground">
-                Solo disponible si el ticket está en estado Asignado.
-              </p>
+            <FormField label="Descripción completa">
+              {detalleQuery.isLoading ? (
+                <div className="flex h-20 items-center justify-center rounded-md border border-input bg-muted/20">
+                  <span className="text-xs text-muted-foreground">Cargando...</span>
+                </div>
+              ) : (
+                <textarea
+                  className="flex min-h-[80px] w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  rows={4}
+                  value={form.descripcion}
+                  onChange={(e) => handleField('descripcion', e.target.value)}
+                  placeholder="Descripción del problema o solicitud (opcional)"
+                />
+              )}
+            </FormField>
+
+            <FormField label="Ubicación específica del servicio">
+              <Input
+                className="h-9 text-sm"
+                value={form.ubicacion}
+                onChange={(e) => handleField('ubicacion', e.target.value)}
+                placeholder="Ej: Piso 3 — Módulo B..."
+              />
             </FormField>
           </div>
         </div>
@@ -447,10 +478,10 @@ export function MyTicketsPage() {
 
   // Mutations
   const asignarTicket = useAsignarTicket()
-  const reasignarTicket = useReasignarTicket()
   const actualizarTicket = useActualizarTicket()
   const cambiarPrioridad = useCambiarPrioridad()
   const cambiarArea = useCambiarArea()
+  const cambiarSucursal = useCambiarSucursal()
 
   // Modal: asignar responsable
   const [assignTicketId, setAssignTicketId] = useState<string | null>(null)
@@ -500,35 +531,35 @@ export function MyTicketsPage() {
     nuevaPrioridad,
     nuevoTitulo,
     nuevoTipoServicioId,
-    nuevoTecnicoId,
-    tieneAsignacion,
+    nuevaSucursalId,
+    nuevaDescripcion,
+    nuevaUbicacion,
   }: EditTicketSaveParams) => {
     const hayCambios =
-      nuevaAreaId || nuevaPrioridad || nuevoTitulo || nuevoTipoServicioId || nuevoTecnicoId
+      nuevaAreaId ||
+      nuevaPrioridad ||
+      nuevoTitulo !== undefined ||
+      nuevoTipoServicioId ||
+      nuevaSucursalId ||
+      nuevaDescripcion !== undefined ||
+      nuevaUbicacion !== undefined
     if (!hayCambios) {
       toast.info('Sin cambios para guardar.')
       return
     }
     if (nuevaAreaId) cambiarArea.mutate({ ticketId, nuevaAreaId })
     if (nuevaPrioridad) cambiarPrioridad.mutate({ ticketId, nuevaPrioridad })
-    if (nuevoTitulo || nuevoTipoServicioId)
+    if (nuevaSucursalId) cambiarSucursal.mutate({ ticketId, nuevaSucursalId })
+    if (
+      nuevoTitulo !== undefined ||
+      nuevoTipoServicioId ||
+      nuevaDescripcion !== undefined ||
+      nuevaUbicacion !== undefined
+    )
       actualizarTicket.mutate(
-        { ticketId, nuevoTitulo, nuevoTipoServicioId },
+        { ticketId, nuevoTitulo, nuevoTipoServicioId, nuevaDescripcion, nuevaUbicacion },
         { onError: (e: Error) => toast.error(e.message) },
       )
-    if (nuevoTecnicoId) {
-      if (tieneAsignacion) {
-        reasignarTicket.mutate(
-          { ticketId, nuevoTecnicoId, motivo: 'Corrección de asignación' },
-          { onError: (e: Error) => toast.error(e.message) },
-        )
-      } else {
-        asignarTicket.mutate(
-          { ticketId, tecnicoId: nuevoTecnicoId },
-          { onError: (e: Error) => toast.error(e.message) },
-        )
-      }
-    }
   }
 
   const assigningTicket = assignTicketId ? tickets.find((t) => t.id === assignTicketId) : null
@@ -740,7 +771,9 @@ export function MyTicketsPage() {
                           showIcon
                         />
                       </div>
-                      <p className="mt-1 text-xs font-medium leading-snug">{ticket.titulo}</p>
+                      <p className="mt-1 text-xs font-medium leading-snug">
+                        {getTituloTicket(ticket)}
+                      </p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         {ticket.sucursalNombre} · {ticket.areaNombre}
                       </p>
@@ -859,7 +892,7 @@ export function MyTicketsPage() {
                       </TableCell>
                       <TableCell className="py-2">
                         <p className="max-w-[220px] truncate text-xs font-medium">
-                          {ticket.titulo}
+                          {getTituloTicket(ticket)}
                         </p>
                         <p className="text-[10px] text-muted-foreground">{ticket.tipo}</p>
                       </TableCell>
@@ -1037,7 +1070,8 @@ export function MyTicketsPage() {
                   <SheetTitle className="text-base font-semibold">Historial de cambios</SheetTitle>
                   {t && (
                     <SheetDescription className="text-xs">
-                      {t.codigo} · {t.titulo}
+                      {t.codigo}
+                      {t.titulo?.trim() ? ` · ${t.titulo}` : ''}
                       {entries.length > 0 && (
                         <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
                           {entries.length} {entries.length === 1 ? 'evento' : 'eventos'}
@@ -1145,7 +1179,7 @@ export function MyTicketsPage() {
               </div>
               <div className="min-w-0 pt-0.5">
                 <p className="truncate text-sm font-semibold leading-tight">
-                  {assigningTicket.titulo}
+                  {getTituloTicket(assigningTicket)}
                 </p>
                 <p className="mt-0.5 text-xs font-medium text-primary/70">
                   {assigningTicket.codigo}

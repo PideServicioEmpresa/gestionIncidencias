@@ -9,8 +9,8 @@ using PideServicio.Domain.ValueObjects;
 public sealed class Ticket : AggregateRoot
 {
     public TicketCodigo Codigo { get; private set; } = null!;
-    public string Titulo { get; private set; } = string.Empty;
-    public string Descripcion { get; private set; } = string.Empty;
+    public string? Titulo { get; private set; }
+    public string? Descripcion { get; private set; }
     public Guid EmpresaId { get; private set; }
     public Guid SucursalId { get; private set; }
     public Guid AreaId { get; private set; }
@@ -47,8 +47,8 @@ public sealed class Ticket : AggregateRoot
 
     public static Ticket Crear(
         string codigo,
-        string titulo,
-        string descripcion,
+        string? titulo,
+        string? descripcion,
         Guid empresaId,
         Guid sucursalId,
         Guid areaId,
@@ -59,13 +59,6 @@ public sealed class Ticket : AggregateRoot
         string? ubicacion = null,
         Guid? creadoPor = null)
     {
-        if (string.IsNullOrWhiteSpace(titulo))
-            throw new ValidationException("Titulo", "El título del ticket es requerido.");
-        if (titulo.Length > 300)
-            throw new ValidationException("Titulo", "El título no puede exceder 300 caracteres.");
-        if (string.IsNullOrWhiteSpace(descripcion))
-            throw new ValidationException("Descripcion", "La descripción del ticket es requerida.");
-
         var codigoVo = TicketCodigo.Crear(codigo);
         var ahora = DateTimeOffset.UtcNow;
 
@@ -73,8 +66,8 @@ public sealed class Ticket : AggregateRoot
         {
             Id = Guid.NewGuid(),
             Codigo = codigoVo,
-            Titulo = titulo.Trim(),
-            Descripcion = descripcion.Trim(),
+            Titulo = titulo?.Trim(),
+            Descripcion = descripcion?.Trim(),
             EmpresaId = empresaId,
             SucursalId = sucursalId,
             AreaId = areaId,
@@ -284,7 +277,6 @@ public sealed class Ticket : AggregateRoot
     /// </summary>
     public void CambiarAreaAdmin(Guid nuevaAreaId, Guid actorId)
     {
-        ValidarNoTerminal("cambiar área");
         var ahora = DateTimeOffset.UtcNow;
         var areaAnteriorId = AreaId;
 
@@ -299,12 +291,36 @@ public sealed class Ticket : AggregateRoot
     }
 
     /// <summary>
-    /// Actualiza título y/o tipo de servicio. Solo Admin/SuperAdmin. Prohibido en estados terminales.
+    /// Cambia la sucursal del ticket. Solo Admin/SuperAdmin. Permite cualquier estado.
+    /// Si el ticket estaba ASIGNADO, desasigna al técnico y retrocede a SIN_ASIGNAR.
     /// </summary>
-    public void ActualizarDatos(string? nuevoTitulo, Guid? nuevoTipoServicioId, Guid actorId)
+    public bool CambiarSucursal(Guid nuevaSucursalId, Guid actorId)
     {
-        ValidarNoTerminal("actualizar datos");
+        var sucursalAnteriorId = SucursalId;
+        var ahora = DateTimeOffset.UtcNow;
 
+        SucursalId = nuevaSucursalId;
+
+        var huboDesasignacion = false;
+        if (Estado == TicketEstadoTipo.ASIGNADO)
+        {
+            TecnicoId = null;
+            FechaAsignacion = null;
+            Estado = TicketEstadoTipo.SIN_ASIGNAR;
+            huboDesasignacion = true;
+        }
+
+        UpdatedAt = ahora;
+        UpdatedBy = actorId;
+
+        return huboDesasignacion;
+    }
+
+    /// <summary>
+    /// Actualiza título, tipo de servicio, descripción y/o ubicación. Solo Admin/SuperAdmin. Permite cualquier estado.
+    /// </summary>
+    public void ActualizarDatos(string? nuevoTitulo, Guid? nuevoTipoServicioId, string? nuevaDescripcion, string? nuevaUbicacion, Guid actorId)
+    {
         if (nuevoTitulo is not null)
         {
             if (string.IsNullOrWhiteSpace(nuevoTitulo))
@@ -316,6 +332,12 @@ public sealed class Ticket : AggregateRoot
 
         if (nuevoTipoServicioId.HasValue)
             TipoServicioId = nuevoTipoServicioId.Value;
+
+        if (nuevaDescripcion is not null)
+            Descripcion = string.IsNullOrWhiteSpace(nuevaDescripcion) ? null : nuevaDescripcion.Trim();
+
+        if (nuevaUbicacion is not null)
+            Ubicacion = string.IsNullOrWhiteSpace(nuevaUbicacion) ? null : nuevaUbicacion.Trim();
 
         UpdatedAt = DateTimeOffset.UtcNow;
         UpdatedBy = actorId;

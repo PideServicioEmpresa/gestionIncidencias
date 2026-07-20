@@ -63,6 +63,7 @@ import {
   useCrearComentario,
   useSubirEvidencia,
 } from '../hooks/useTickets'
+import { getTituloTicket } from '../utils/ticketHelpers'
 
 // ── Constantes ───────────────────────────────────────────────────────────────
 
@@ -346,6 +347,7 @@ export function TicketDetailPage() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.rol === 'admin' || user?.rol === 'superadmin'
+  const isSupervisor = user?.rol === 'supervisor'
 
   // ── Queries — todas antes de cualquier return condicional ─────────────────
   const ticketQuery = useTicket(id ?? '')
@@ -421,6 +423,9 @@ export function TicketDetailPage() {
   const ticket = ticketQuery.data
   const currentStatus = normalizeEstado(ticket.estado)
   const currentPriority = normalizePrioridad(ticket.prioridadEfectiva)
+
+  const canUploadEvidencia =
+    isAdmin || isSupervisor || ticket.tecnicoId === user?.id || ticket.solicitanteId === user?.id
 
   const comentarios = comentariosQuery.data ?? []
   const historial = historialQuery.data ?? []
@@ -582,7 +587,7 @@ export function TicketDetailPage() {
             <DialogTitle className="text-base font-semibold">Asignar trabajador</DialogTitle>
           </DialogHeader>
           <div className="rounded-lg bg-muted p-3 text-xs">
-            <p className="font-medium">{ticket.titulo}</p>
+            <p className="font-medium">{getTituloTicket(ticket)}</p>
             <p className="text-muted-foreground">{ticket.codigo}</p>
           </div>
           <FormField label="Trabajador" required>
@@ -812,7 +817,7 @@ export function TicketDetailPage() {
               <PriorityBadge priority={currentPriority} />
               <StatusBadge status={currentStatus} />
             </div>
-            <h2 className="mt-1 text-base font-semibold leading-snug">{ticket.titulo}</h2>
+            <h2 className="mt-1 text-base font-semibold leading-snug">{getTituloTicket(ticket)}</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
               Creado el {createdDate}
               {updatedDate !== '—' && ` · Fecha límite: ${updatedDate}`}
@@ -999,24 +1004,28 @@ export function TicketDetailPage() {
                     ) : (
                       evidencias.map((ev) => <EvidenciaItem key={ev.id} ev={ev} />)
                     )}
-                    {/* Input de archivo oculto */}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      className="sr-only"
-                      accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx"
-                      onChange={handleFileSelected}
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-1 w-full"
-                      disabled={subirEvidencia.isPending}
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Paperclip className="mr-1.5 h-3.5 w-3.5" />
-                      {subirEvidencia.isPending ? 'Subiendo...' : 'Adjuntar archivo'}
-                    </Button>
+                    {/* Input de archivo oculto + botón — solo para roles con permiso */}
+                    {canUploadEvidencia && (
+                      <>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          className="sr-only"
+                          accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx"
+                          onChange={handleFileSelected}
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-1 w-full"
+                          disabled={subirEvidencia.isPending}
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          <Paperclip className="mr-1.5 h-3.5 w-3.5" />
+                          {subirEvidencia.isPending ? 'Subiendo...' : 'Adjuntar archivo'}
+                        </Button>
+                      </>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -1126,7 +1135,7 @@ export function TicketDetailPage() {
           open={closeDialog}
           onOpenChange={setCloseDialog}
           title="Confirmar cierre de ticket"
-          description={`¿Confirmas que el problema reportado en "${ticket.titulo}" fue resuelto correctamente? Esta acción cerrará el ticket.`}
+          description={`¿Confirmas que el problema reportado en "${getTituloTicket(ticket)}" fue resuelto correctamente? Esta acción cerrará el ticket.`}
           confirmLabel="Sí, cerrar ticket"
           variant="default"
           onConfirm={handleCloseTicket}

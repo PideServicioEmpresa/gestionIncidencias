@@ -58,10 +58,11 @@ public sealed class SubirEvidenciaCommandHandler
             return Result.NoPermitido<SubirEvidenciaResponse>("No tiene acceso a este ticket.");
 
         var esTecnicoAsignado = ticket.TecnicoId == actor.Id;
+        var esSolicitante = ticket.SolicitanteId == actor.Id;
         var tieneAccesoAdministrativo = actor.Rol is RolTipo.ADMIN or RolTipo.SUPERADMIN or RolTipo.SUPERVISOR;
-        if (!esTecnicoAsignado && !tieneAccesoAdministrativo)
+        if (!esTecnicoAsignado && !esSolicitante && !tieneAccesoAdministrativo)
             return Result.NoPermitido<SubirEvidenciaResponse>(
-                "Solo el técnico asignado o un administrador puede subir evidencias.");
+                "Solo el técnico asignado, el solicitante o un administrador puede subir evidencias.");
 
         try
         {
@@ -69,12 +70,21 @@ public sealed class SubirEvidenciaCommandHandler
             var nombreSeguro = Path.GetFileName(request.NombreOriginal);
             var ruta = $"tickets/{request.TicketId}/{Guid.NewGuid()}-{nombreSeguro}";
 
-            var url = await _storageService.SubirAsync(
-                Bucket,
-                ruta,
-                request.Contenido,
-                request.TipoMime,
-                cancellationToken);
+            string url;
+            try
+            {
+                url = await _storageService.SubirAsync(
+                    Bucket,
+                    ruta,
+                    request.Contenido,
+                    request.TipoMime,
+                    cancellationToken);
+            }
+            catch (HttpRequestException ex)
+            {
+                return Result.Fallo<SubirEvidenciaResponse>(
+                    $"Error al subir el archivo al almacenamiento: {ex.Message}. Verifica la configuración del bucket.");
+            }
 
             var evidencia = TicketEvidencia.Crear(
                 request.TicketId,

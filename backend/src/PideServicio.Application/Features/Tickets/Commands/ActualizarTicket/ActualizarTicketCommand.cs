@@ -5,5 +5,7 @@ using PideServicio.Application.Common.CQRS;
 public sealed record ActualizarTicketCommand(
     Guid TicketId,
     string? NuevoTitulo,
-    Guid? NuevoTipoServicioId
+    Guid? NuevoTipoServicioId,
+    string? NuevaDescripcion,
+    string? NuevaUbicacion
 ) : ICommand;

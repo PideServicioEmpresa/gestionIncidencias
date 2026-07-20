@@ -19,6 +19,11 @@ internal static class EmailTemplates
         .footer{background:#f8fafc;padding:16px 32px;font-size:11px;color:#9ca3af;border-top:1px solid #e5e7eb}
         """;
 
+    private static string AsuntoConTitulo(string prefijo, string codigo, string? titulo) =>
+        string.IsNullOrWhiteSpace(titulo)
+            ? $"[{codigo}] {prefijo}"
+            : $"[{codigo}] {prefijo}: {titulo.Trim()}";
+
     private static string Wrap(string titulo, string subtitulo, string cuerpo) => $"""
         <!doctype html><html lang="es"><head><meta charset="utf-8">
         <style>{BaseStyle}</style></head><body>
@@ -30,12 +35,12 @@ internal static class EmailTemplates
         """;
 
     public static (string Asunto, string Html) TicketCreado(
-        string codigo, string titulo, string prioridad, string area, string solicitante)
+        string codigo, string? titulo, string prioridad, string area, string solicitante)
     {
-        var asunto = $"[{codigo}] Nueva solicitud registrada: {titulo}";
+        var asunto = AsuntoConTitulo("Nueva solicitud registrada", codigo, titulo);
         var html = Wrap("Nueva solicitud", "Sistema de gestión de solicitudes e incidencias", $"""
             <span class="badge">Nueva solicitud · {codigo}</span>
-            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="title">{EscapeHtml(string.IsNullOrWhiteSpace(titulo) ? codigo : titulo.Trim())}</p>
             <p class="desc">Se ha registrado una nueva solicitud en el sistema y está en espera de asignación.</p>
             <table class="data">
               <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
@@ -48,10 +53,10 @@ internal static class EmailTemplates
     }
 
     public static (string Asunto, string Html) TicketAsignado(
-        string codigo, string titulo, string tecnico, string prioridad,
+        string codigo, string? titulo, string tecnico, string prioridad,
         string? sucursal = null, string? area = null, string? solicitante = null)
     {
-        var asunto = $"[{codigo}] Solicitud asignada: {titulo}";
+        var asunto = AsuntoConTitulo("Solicitud asignada", codigo, titulo);
 
         var filasOpcionales = new System.Text.StringBuilder();
         if (!string.IsNullOrEmpty(sucursal))
@@ -63,7 +68,7 @@ internal static class EmailTemplates
 
         var html = Wrap("Solicitud asignada", "Se te ha asignado una nueva solicitud", $"""
             <span class="badge">Asignado · {codigo}</span>
-            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="title">{EscapeHtml(string.IsNullOrWhiteSpace(titulo) ? codigo : titulo.Trim())}</p>
             <p class="desc">Se te ha asignado la siguiente solicitud para su atención. Por favor revisa los detalles e inicia el proceso.</p>
             <table class="data">
               <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
@@ -77,10 +82,10 @@ internal static class EmailTemplates
     }
 
     public static (string Asunto, string Html) TicketReasignado(
-        string codigo, string titulo, string tecnico, string prioridad,
+        string codigo, string? titulo, string tecnico, string prioridad,
         string? motivo = null, string? sucursal = null, string? area = null, string? solicitante = null)
     {
-        var asunto = $"[{codigo}] Solicitud reasignada: {titulo}";
+        var asunto = AsuntoConTitulo("Solicitud reasignada", codigo, titulo);
 
         var filasOpcionales = new System.Text.StringBuilder();
         if (!string.IsNullOrEmpty(sucursal))
@@ -94,7 +99,7 @@ internal static class EmailTemplates
 
         var html = Wrap("Solicitud reasignada", "Se te ha reasignado una solicitud", $"""
             <span class="badge">Reasignado · {codigo}</span>
-            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="title">{EscapeHtml(string.IsNullOrWhiteSpace(titulo) ? codigo : titulo.Trim())}</p>
             <p class="desc">Esta solicitud ha sido reasignada y queda bajo tu responsabilidad.</p>
             <table class="data">
               <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
@@ -108,12 +113,12 @@ internal static class EmailTemplates
     }
 
     public static (string Asunto, string Html) TicketAsignadoSolicitante(
-        string codigo, string titulo, string tecnico, string prioridad)
+        string codigo, string? titulo, string tecnico, string prioridad)
     {
-        var asunto = $"[{codigo}] Tu solicitud fue asignada: {titulo}";
+        var asunto = AsuntoConTitulo("Tu solicitud fue asignada", codigo, titulo);
         var html = Wrap("Solicitud en atención", "Tu solicitud ha sido asignada a un técnico", $"""
             <span class="badge">En atención · {codigo}</span>
-            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="title">{EscapeHtml(string.IsNullOrWhiteSpace(titulo) ? codigo : titulo.Trim())}</p>
             <p class="desc">Tu solicitud ha sido asignada y está siendo atendida. Te notificaremos cuando el técnico complete el trabajo.</p>
             <table class="data">
               <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
@@ -125,12 +130,12 @@ internal static class EmailTemplates
     }
 
     public static (string Asunto, string Html) TicketPendienteValidacion(
-        string codigo, string titulo, string tecnico)
+        string codigo, string? titulo, string tecnico)
     {
-        var asunto = $"[{codigo}] Solicitud pendiente de tu validación: {titulo}";
+        var asunto = AsuntoConTitulo("Solicitud pendiente de tu validación", codigo, titulo);
         var html = Wrap("Pendiente de validación", "Tu solicitud requiere validación", $"""
             <span class="badge">Pendiente de validación · {codigo}</span>
-            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="title">{EscapeHtml(string.IsNullOrWhiteSpace(titulo) ? codigo : titulo.Trim())}</p>
             <p class="desc">El técnico ha completado el trabajo en tu solicitud. Por favor revisa e indica si está conforme para poder cerrarla.</p>
             <table class="data">
               <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
@@ -142,13 +147,13 @@ internal static class EmailTemplates
     }
 
     public static (string Asunto, string Html) TicketCerrado(
-        string codigo, string titulo, string? valoracion)
+        string codigo, string? titulo, string? valoracion)
     {
         var valoracionTexto = string.IsNullOrEmpty(valoracion) ? "Sin valoración" : valoracion;
-        var asunto = $"[{codigo}] Solicitud cerrada: {titulo}";
+        var asunto = AsuntoConTitulo("Solicitud cerrada", codigo, titulo);
         var html = Wrap("Solicitud cerrada", "La solicitud ha sido cerrada exitosamente", $"""
             <span class="badge">Cerrado · {codigo}</span>
-            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="title">{EscapeHtml(string.IsNullOrWhiteSpace(titulo) ? codigo : titulo.Trim())}</p>
             <p class="desc">La solicitud ha sido cerrada y marcada como completada.</p>
             <table class="data">
               <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
@@ -159,12 +164,12 @@ internal static class EmailTemplates
     }
 
     public static (string Asunto, string Html) TicketReabierto(
-        string codigo, string titulo, string motivo)
+        string codigo, string? titulo, string motivo)
     {
-        var asunto = $"[{codigo}] Solicitud rechazada / reabierta: {titulo}";
+        var asunto = AsuntoConTitulo("Solicitud rechazada / reabierta", codigo, titulo);
         var html = Wrap("Solicitud reabierta", "La validación fue rechazada", $"""
             <span class="badge">Reabierto · {codigo}</span>
-            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="title">{EscapeHtml(string.IsNullOrWhiteSpace(titulo) ? codigo : titulo.Trim())}</p>
             <p class="desc">El solicitante ha rechazado la atención y la solicitud ha sido reabierta. El administrador la reasignará próximamente.</p>
             <table class="data">
               <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
@@ -175,13 +180,13 @@ internal static class EmailTemplates
     }
 
     public static (string Asunto, string Html) TicketCerradoTecnico(
-        string codigo, string titulo, string? valoracion)
+        string codigo, string? titulo, string? valoracion)
     {
         var valoracionTexto = string.IsNullOrEmpty(valoracion) ? "Sin valoración" : valoracion;
-        var asunto = $"[{codigo}] Solicitud cerrada por el solicitante: {titulo}";
+        var asunto = AsuntoConTitulo("Solicitud cerrada por el solicitante", codigo, titulo);
         var html = Wrap("Solicitud cerrada", "El solicitante ha cerrado la solicitud", $"""
             <span class="badge">Cerrado · {codigo}</span>
-            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="title">{EscapeHtml(string.IsNullOrWhiteSpace(titulo) ? codigo : titulo.Trim())}</p>
             <p class="desc">El solicitante ha validado y cerrado la solicitud. ¡Buen trabajo!</p>
             <table class="data">
               <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
@@ -192,12 +197,12 @@ internal static class EmailTemplates
     }
 
     public static (string Asunto, string Html) TicketCancelado(
-        string codigo, string titulo, string motivo)
+        string codigo, string? titulo, string motivo)
     {
-        var asunto = $"[{codigo}] Solicitud cancelada: {titulo}";
+        var asunto = AsuntoConTitulo("Solicitud cancelada", codigo, titulo);
         var html = Wrap("Solicitud cancelada", "Tu solicitud ha sido cancelada", $"""
             <span class="badge">Cancelado · {codigo}</span>
-            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="title">{EscapeHtml(string.IsNullOrWhiteSpace(titulo) ? codigo : titulo.Trim())}</p>
             <p class="desc">Tu solicitud ha sido cancelada. Si necesitas asistencia, por favor registra una nueva solicitud.</p>
             <table class="data">
               <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
@@ -208,16 +213,16 @@ internal static class EmailTemplates
     }
 
     public static (string Asunto, string Html) TicketEnProceso(
-        string codigo, string titulo, string? tecnico)
+        string codigo, string? titulo, string? tecnico)
     {
-        var asunto = $"[{codigo}] Tu solicitud está siendo atendida: {titulo}";
+        var asunto = AsuntoConTitulo("Tu solicitud está siendo atendida", codigo, titulo);
         var filaTecnico = string.IsNullOrEmpty(tecnico)
             ? string.Empty
             : $"<tr><td>Técnico</td><td>{EscapeHtml(tecnico)}</td></tr>";
 
         var html = Wrap("Solicitud en proceso", "El técnico ya inició la atención de tu solicitud", $"""
             <span class="badge">En proceso · {codigo}</span>
-            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="title">{EscapeHtml(string.IsNullOrWhiteSpace(titulo) ? codigo : titulo.Trim())}</p>
             <p class="desc">El técnico ha comenzado a trabajar en tu solicitud. Te notificaremos cuando esté lista para validación.</p>
             <table class="data">
               <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
@@ -228,16 +233,16 @@ internal static class EmailTemplates
     }
 
     public static (string Asunto, string Html) DesasignacionTecnico(
-        string codigo, string titulo, string? motivo)
+        string codigo, string? titulo, string? motivo)
     {
-        var asunto = $"[{codigo}] Has sido desasignado de una solicitud: {titulo}";
+        var asunto = AsuntoConTitulo("Has sido desasignado de una solicitud", codigo, titulo);
         var filaMotivo = string.IsNullOrEmpty(motivo)
             ? string.Empty
             : $"<tr><td>Motivo</td><td>{EscapeHtml(motivo)}</td></tr>";
 
         var html = Wrap("Desasignado de solicitud", "Has sido removido de una solicitud", $"""
             <span class="badge">Reasignado · {codigo}</span>
-            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="title">{EscapeHtml(string.IsNullOrWhiteSpace(titulo) ? codigo : titulo.Trim())}</p>
             <p class="desc">Has sido desasignado de la siguiente solicitud. Un administrador la reasignó a otro técnico.</p>
             <table class="data">
               <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
@@ -248,12 +253,12 @@ internal static class EmailTemplates
     }
 
     public static (string Asunto, string Html) CambioPrioridadTecnico(
-        string codigo, string titulo, string prioridadAnterior, string prioridadNueva)
+        string codigo, string? titulo, string prioridadAnterior, string prioridadNueva)
     {
-        var asunto = $"[{codigo}] Prioridad modificada: {titulo}";
+        var asunto = AsuntoConTitulo("Prioridad modificada", codigo, titulo);
         var html = Wrap("Prioridad actualizada", "La prioridad de tu solicitud asignada fue modificada", $"""
             <span class="badge">Prioridad cambiada · {codigo}</span>
-            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="title">{EscapeHtml(string.IsNullOrWhiteSpace(titulo) ? codigo : titulo.Trim())}</p>
             <p class="desc">Un administrador ha modificado la prioridad de esta solicitud asignada a ti.</p>
             <table class="data">
               <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
@@ -265,10 +270,10 @@ internal static class EmailTemplates
     }
 
     public static (string Asunto, string Html) TicketCreadoAdmin(
-        string codigo, Guid ticketId, string titulo, string prioridad,
+        string codigo, Guid ticketId, string? titulo, string prioridad,
         string? sucursal, string area, string solicitante, string? urlFrontend)
     {
-        var asunto = $"[{codigo}] Nuevo ticket pendiente de asignación: {titulo}";
+        var asunto = AsuntoConTitulo("Nuevo ticket pendiente de asignación", codigo, titulo);
 
         var filasSucursal = !string.IsNullOrEmpty(sucursal)
             ? $"<tr><td>Sucursal</td><td>{EscapeHtml(sucursal)}</td></tr>"
@@ -283,7 +288,7 @@ internal static class EmailTemplates
 
         var html = Wrap("Nuevo ticket pendiente", "Requiere asignación de técnico", $"""
             <span class="badge">Sin asignar · {EscapeHtml(codigo)}</span>
-            <p class="title">{EscapeHtml(titulo)}</p>
+            <p class="title">{EscapeHtml(string.IsNullOrWhiteSpace(titulo) ? codigo : titulo.Trim())}</p>
             <p class="desc">Se ha registrado un nuevo ticket que está pendiente de asignación. Ingresa al sistema para asignarlo a un técnico.</p>
             <table class="data">
               <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>

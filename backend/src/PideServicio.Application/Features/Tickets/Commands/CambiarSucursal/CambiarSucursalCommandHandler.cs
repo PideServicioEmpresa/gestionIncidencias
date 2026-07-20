@@ -1,4 +1,4 @@
-namespace PideServicio.Application.Features.Tickets.Commands.ActualizarTicket;
+namespace PideServicio.Application.Features.Tickets.Commands.CambiarSucursal;
 
 using PideServicio.Application.Common.CQRS;
 using PideServicio.Application.Common.Interfaces;
@@ -8,7 +8,7 @@ using PideServicio.Domain.Entities;
 using PideServicio.Domain.Enums;
 using PideServicio.Domain.Exceptions;
 
-public sealed class ActualizarTicketCommandHandler : ICommandHandler<ActualizarTicketCommand>
+public sealed class CambiarSucursalCommandHandler : ICommandHandler<CambiarSucursalCommand>
 {
     private readonly ICurrentUserService _currentUser;
     private readonly IUsuarioRepository _usuarioRepository;
@@ -16,7 +16,7 @@ public sealed class ActualizarTicketCommandHandler : ICommandHandler<ActualizarT
     private readonly ITicketHistorialRepository _historialRepo;
     private readonly IAuditService _auditService;
 
-    public ActualizarTicketCommandHandler(
+    public CambiarSucursalCommandHandler(
         ICurrentUserService currentUser,
         IUsuarioRepository usuarioRepository,
         ITicketRepository ticketRepo,
@@ -30,12 +30,8 @@ public sealed class ActualizarTicketCommandHandler : ICommandHandler<ActualizarT
         _auditService = auditService;
     }
 
-    public async Task<Result> Handle(ActualizarTicketCommand request, CancellationToken cancellationToken)
+    public async Task<Result> Handle(CambiarSucursalCommand request, CancellationToken cancellationToken)
     {
-        if (request.NuevoTitulo is null && !request.NuevoTipoServicioId.HasValue
-            && request.NuevaDescripcion is null && request.NuevaUbicacion is null)
-            return Result.Exito();
-
         var claims = _currentUser.UsuarioActual;
         if (claims is null)
             return Result.NoAutorizado();
@@ -46,44 +42,52 @@ public sealed class ActualizarTicketCommandHandler : ICommandHandler<ActualizarT
         if (actor is null || !actor.Activo) return Result.NoAutorizado();
 
         if (actor.Rol is not (RolTipo.ADMIN or RolTipo.SUPERADMIN))
-            return Result.NoPermitido("Solo administradores pueden actualizar el título y tipo de servicio de un ticket.");
+            return Result.NoPermitido("Solo administradores pueden cambiar la sucursal de un ticket.");
 
         var ticket = await _ticketRepo.ObtenerPorIdAsync(request.TicketId, cancellationToken);
         if (ticket is null)
             return Result.NoEncontrado("Ticket", request.TicketId);
 
-        var tituloAnterior = ticket.Titulo;
-        var tipoAnterior = ticket.TipoServicioId;
-        var descripcionAnterior = ticket.Descripcion;
-        var ubicacionAnterior = ticket.Ubicacion;
+        if (ticket.SucursalId == request.NuevaSucursalId)
+            return Result.Exito();
+
+        var sucursalAnteriorId = ticket.SucursalId;
+        var tecnicoAnteriorId = ticket.TecnicoId;
 
         try
         {
-            ticket.ActualizarDatos(request.NuevoTitulo, request.NuevoTipoServicioId, request.NuevaDescripcion, request.NuevaUbicacion, actor.Id);
+            var huboDesasignacion = ticket.CambiarSucursal(request.NuevaSucursalId, actor.Id);
 
             await _ticketRepo.ActualizarAsync(ticket, cancellationToken);
 
             var historial = TicketHistorialEntrada.Crear(
                 ticketId: ticket.Id,
-                tipoEvento: TipoEventoHistorialTipo.DATOS_ACTUALIZADOS,
+                tipoEvento: TipoEventoHistorialTipo.SUCURSAL_CAMBIADA,
                 actorId: actor.Id,
-                metadata: $"{{\"tituloAnterior\":\"{tituloAnterior}\",\"tipoAnterior\":\"{tipoAnterior}\"}}");
+                metadata: $"{{\"sucursalAnterior\":\"{sucursalAnteriorId}\",\"sucursalNueva\":\"{request.NuevaSucursalId}\"}}");
 
             await _historialRepo.CrearAsync(historial, cancellationToken);
+
+            if (huboDesasignacion)
+            {
+                var historialDesasignacion = TicketHistorialEntrada.Crear(
+                    ticketId: ticket.Id,
+                    tipoEvento: TipoEventoHistorialTipo.ESTADO_CAMBIADO,
+                    actorId: actor.Id,
+                    metadata: $"{{\"motivo\":\"Desasignación automática por cambio de sucursal\",\"tecnicoAnterior\":\"{tecnicoAnteriorId}\"}}");
+
+                await _historialRepo.CrearAsync(historialDesasignacion, cancellationToken);
+            }
 
             await _auditService.RegistrarAsync(
                 "tickets",
                 ticket.Id,
-                "ACTUALIZAR_DATOS",
-                new { Titulo = tituloAnterior, TipoServicioId = tipoAnterior, Descripcion = descripcionAnterior, Ubicacion = ubicacionAnterior },
-                new { Titulo = ticket.Titulo, TipoServicioId = ticket.TipoServicioId, Descripcion = ticket.Descripcion, Ubicacion = ticket.Ubicacion },
+                "CAMBIAR_SUCURSAL",
+                new { SucursalId = sucursalAnteriorId, TecnicoId = tecnicoAnteriorId },
+                new { SucursalId = request.NuevaSucursalId, TecnicoId = ticket.TecnicoId },
                 cancellationToken);
 
             return Result.Exito();
-        }
-        catch (ValidationException ex)
-        {
-            return Result.Fallo(ex.Message);
         }
         catch (DomainException ex)
         {

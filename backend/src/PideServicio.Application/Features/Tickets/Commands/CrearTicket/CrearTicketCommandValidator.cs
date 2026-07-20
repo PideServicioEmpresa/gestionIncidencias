@@ -7,11 +7,8 @@ public sealed class CrearTicketCommandValidator : AbstractValidator<CrearTicketC
     public CrearTicketCommandValidator()
     {
         RuleFor(x => x.Titulo)
-            .NotEmpty().WithMessage("El título es requerido.")
-            .MaximumLength(300).WithMessage("El título no puede exceder 300 caracteres.");
-
-        RuleFor(x => x.Descripcion)
-            .NotEmpty().WithMessage("La descripción es requerida.");
+            .MaximumLength(300).WithMessage("El título no puede exceder 300 caracteres.")
+            .When(x => x.Titulo is not null);
 
         RuleFor(x => x.SucursalId)
             .NotEmpty().WithMessage("La sucursal es requerida.");

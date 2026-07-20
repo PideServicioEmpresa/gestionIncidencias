@@ -42,6 +42,7 @@ export function useSucursales(empresaId?: string) {
       return resp.items ?? []
     },
     staleTime: 1000 * 60 * 10,
+    enabled: !!empresaId,
   })
 }
 

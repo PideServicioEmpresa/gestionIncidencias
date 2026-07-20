@@ -10,6 +10,7 @@ import { EmptyState } from '@shared/components/EmptyState'
 import { StatusBadge } from '@shared/components/StatusBadge'
 import { useUsuario, useToggleEstadoUsuario } from '../hooks/useUsuarios'
 import { useTickets } from '@features/tickets/hooks/useTickets'
+import { getTituloTicket } from '@features/tickets/utils/ticketHelpers'
 import { userEditPath, ROUTES } from '@constants/index'
 import type { UserRole, TicketStatus } from '@types-app/index'
 
@@ -249,7 +250,7 @@ export function UserDetailPage() {
                       className="flex w-full items-start gap-2 rounded-lg border px-3 py-2 text-left text-xs transition-colors hover:bg-muted/50"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{t.titulo}</p>
+                        <p className="truncate font-medium">{getTituloTicket(t)}</p>
                         <p className="font-mono text-[10px] text-muted-foreground">{t.codigo}</p>
                       </div>
                       <StatusBadge status={t.estado.toLowerCase() as TicketStatus} />

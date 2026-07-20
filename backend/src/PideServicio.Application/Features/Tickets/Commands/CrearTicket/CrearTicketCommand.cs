@@ -4,8 +4,8 @@ using PideServicio.Application.Common.CQRS;
 using PideServicio.Domain.Enums;
 
 public sealed record CrearTicketCommand(
-    string Titulo,
-    string Descripcion,
+    string? Titulo,
+    string? Descripcion,
     Guid SucursalId,
     string AreaNombre,
     Guid TipoServicioId,

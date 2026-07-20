@@ -26,7 +26,7 @@ public interface IEmailService
         IReadOnlyList<string> correosAdmins,
         string codigo,
         Guid ticketId,
-        string titulo,
+        string? titulo,
         string prioridad,
         string? sucursal,
         string area,
@@ -36,7 +36,7 @@ public interface IEmailService
     Task NotificarTicketCreadoAsync(
         string correoSolicitante,
         string codigo,
-        string titulo,
+        string? titulo,
         string prioridad,
         string area,
         string solicitante,
@@ -49,7 +49,7 @@ public interface IEmailService
     Task NotificarTicketAsignadoAsync(
         string correoTecnico,
         string codigo,
-        string titulo,
+        string? titulo,
         string tecnico,
         string prioridad,
         string? sucursal = null,
@@ -63,7 +63,7 @@ public interface IEmailService
     Task NotificarTicketReasignadoAsync(
         string correoTecnico,
         string codigo,
-        string titulo,
+        string? titulo,
         string tecnico,
         string prioridad,
         string? motivo = null,
@@ -75,7 +75,7 @@ public interface IEmailService
     Task NotificarAsignacionASolicitanteAsync(
         string correoSolicitante,
         string codigo,
-        string titulo,
+        string? titulo,
         string tecnico,
         string prioridad,
         CancellationToken cancellationToken = default);
@@ -83,7 +83,7 @@ public interface IEmailService
     Task NotificarTicketPendienteValidacionAsync(
         string correoSolicitante,
         string codigo,
-        string titulo,
+        string? titulo,
         string tecnico,
         CancellationToken cancellationToken = default);
 
@@ -91,7 +91,7 @@ public interface IEmailService
     Task NotificarTicketCerradoAsync(
         string correoSolicitante,
         string codigo,
-        string titulo,
+        string? titulo,
         string? valoracion,
         CancellationToken cancellationToken = default);
 
@@ -99,14 +99,14 @@ public interface IEmailService
     Task NotificarTicketCerradoTecnicoAsync(
         string correoTecnico,
         string codigo,
-        string titulo,
+        string? titulo,
         string? valoracion,
         CancellationToken cancellationToken = default);
 
     Task NotificarTicketReabiertoAsync(
         string correoTecnico,
         string codigo,
-        string titulo,
+        string? titulo,
         string motivo,
         CancellationToken cancellationToken = default);
 
@@ -114,7 +114,7 @@ public interface IEmailService
     Task NotificarTicketCanceladoAsync(
         string correoSolicitante,
         string codigo,
-        string titulo,
+        string? titulo,
         string motivo,
         CancellationToken cancellationToken = default);
 
@@ -122,7 +122,7 @@ public interface IEmailService
     Task NotificarTicketEnProcesoAsync(
         string correoSolicitante,
         string codigo,
-        string titulo,
+        string? titulo,
         string? tecnico = null,
         CancellationToken cancellationToken = default);
 
@@ -130,7 +130,7 @@ public interface IEmailService
     Task NotificarDesasignacionTecnicoAsync(
         string correoTecnico,
         string codigo,
-        string titulo,
+        string? titulo,
         string? motivo = null,
         CancellationToken cancellationToken = default);
 
@@ -138,7 +138,7 @@ public interface IEmailService
     Task NotificarCambioPrioridadTecnicoAsync(
         string correoTecnico,
         string codigo,
-        string titulo,
+        string? titulo,
         string prioridadAnterior,
         string prioridadNueva,
         CancellationToken cancellationToken = default);

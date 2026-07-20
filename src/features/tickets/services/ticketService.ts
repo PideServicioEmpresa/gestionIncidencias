@@ -6,7 +6,7 @@ import type { PagedBackendResponse } from '@services/apiClient'
 export interface TicketListItemDto {
   id: string
   codigo: string
-  titulo: string
+  titulo: string | null
   estado: string
   prioridadEfectiva: string
   sucursalId: string
@@ -26,7 +26,7 @@ export interface TicketListItemDto {
 }
 
 export interface TicketDetalleDto extends TicketListItemDto {
-  descripcion: string
+  descripcion: string | null
   ubicacion: string | null
   tecnicoNombre: string | null
   empresaId: string
@@ -87,8 +87,8 @@ export const ticketService = {
   obtener: (id: string) => apiClient.get<TicketDetalleDto>(`/tickets/${id}`),
 
   crear: (body: {
-    titulo: string
-    descripcion: string
+    titulo?: string
+    descripcion?: string
     sucursalId: string
     areaNombre: string
     tipoServicioId: string
@@ -103,14 +103,28 @@ export const ticketService = {
   reasignar: (ticketId: string, nuevoTecnicoId: string, motivo?: string) =>
     apiClient.post(`/tickets/${ticketId}/reasignar`, { nuevoTecnicoId, motivo }),
 
-  actualizar: (ticketId: string, nuevoTitulo?: string, nuevoTipoServicioId?: string) =>
-    apiClient.patch(`/tickets/${ticketId}/actualizar`, { nuevoTitulo, nuevoTipoServicioId }),
+  actualizar: (
+    ticketId: string,
+    nuevoTitulo?: string,
+    nuevoTipoServicioId?: string,
+    nuevaDescripcion?: string,
+    nuevaUbicacion?: string,
+  ) =>
+    apiClient.patch(`/tickets/${ticketId}/actualizar`, {
+      nuevoTitulo,
+      nuevoTipoServicioId,
+      nuevaDescripcion,
+      nuevaUbicacion,
+    }),
 
   cambiarPrioridad: (ticketId: string, nuevaPrioridad: string) =>
     apiClient.patch(`/tickets/${ticketId}/prioridad`, { nuevaPrioridad }),
 
   cambiarArea: (ticketId: string, nuevaAreaId: string) =>
     apiClient.patch(`/tickets/${ticketId}/area`, { nuevaAreaId }),
+
+  cambiarSucursal: (ticketId: string, nuevaSucursalId: string) =>
+    apiClient.patch(`/tickets/${ticketId}/sucursal`, { nuevaSucursalId }),
 
   iniciarProceso: (ticketId: string) => apiClient.patch(`/tickets/${ticketId}/iniciar`),
 

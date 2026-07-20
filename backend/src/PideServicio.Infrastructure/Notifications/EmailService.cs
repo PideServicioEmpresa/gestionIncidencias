@@ -73,7 +73,7 @@ public sealed class EmailService : IEmailService
         IReadOnlyList<string> correosAdmins,
         string codigo,
         Guid ticketId,
-        string titulo,
+        string? titulo,
         string prioridad,
         string? sucursal,
         string area,
@@ -98,7 +98,7 @@ public sealed class EmailService : IEmailService
     }
 
     public Task NotificarTicketCreadoAsync(
-        string correoSolicitante, string codigo, string titulo,
+        string correoSolicitante, string codigo, string? titulo,
         string prioridad, string area, string solicitante,
         CancellationToken cancellationToken = default)
     {
@@ -115,7 +115,7 @@ public sealed class EmailService : IEmailService
     }
 
     public Task NotificarTicketAsignadoAsync(
-        string correoTecnico, string codigo, string titulo,
+        string correoTecnico, string codigo, string? titulo,
         string tecnico, string prioridad,
         string? sucursal = null, string? area = null, string? solicitante = null,
         CancellationToken cancellationToken = default)
@@ -133,7 +133,7 @@ public sealed class EmailService : IEmailService
     }
 
     public Task NotificarTicketReasignadoAsync(
-        string correoTecnico, string codigo, string titulo,
+        string correoTecnico, string codigo, string? titulo,
         string tecnico, string prioridad,
         string? motivo = null, string? sucursal = null, string? area = null, string? solicitante = null,
         CancellationToken cancellationToken = default)
@@ -151,7 +151,7 @@ public sealed class EmailService : IEmailService
     }
 
     public Task NotificarAsignacionASolicitanteAsync(
-        string correoSolicitante, string codigo, string titulo,
+        string correoSolicitante, string codigo, string? titulo,
         string tecnico, string prioridad,
         CancellationToken cancellationToken = default)
     {
@@ -168,7 +168,7 @@ public sealed class EmailService : IEmailService
     }
 
     public Task NotificarTicketPendienteValidacionAsync(
-        string correoSolicitante, string codigo, string titulo,
+        string correoSolicitante, string codigo, string? titulo,
         string tecnico,
         CancellationToken cancellationToken = default)
     {
@@ -185,7 +185,7 @@ public sealed class EmailService : IEmailService
     }
 
     public Task NotificarTicketCerradoAsync(
-        string correoSolicitante, string codigo, string titulo,
+        string correoSolicitante, string codigo, string? titulo,
         string? valoracion,
         CancellationToken cancellationToken = default)
     {
@@ -202,7 +202,7 @@ public sealed class EmailService : IEmailService
     }
 
     public Task NotificarTicketCerradoTecnicoAsync(
-        string correoTecnico, string codigo, string titulo,
+        string correoTecnico, string codigo, string? titulo,
         string? valoracion,
         CancellationToken cancellationToken = default)
     {
@@ -219,7 +219,7 @@ public sealed class EmailService : IEmailService
     }
 
     public Task NotificarTicketReabiertoAsync(
-        string correoTecnico, string codigo, string titulo,
+        string correoTecnico, string codigo, string? titulo,
         string motivo,
         CancellationToken cancellationToken = default)
     {
@@ -236,7 +236,7 @@ public sealed class EmailService : IEmailService
     }
 
     public Task NotificarTicketCanceladoAsync(
-        string correoSolicitante, string codigo, string titulo,
+        string correoSolicitante, string codigo, string? titulo,
         string motivo,
         CancellationToken cancellationToken = default)
     {
@@ -253,7 +253,7 @@ public sealed class EmailService : IEmailService
     }
 
     public Task NotificarTicketEnProcesoAsync(
-        string correoSolicitante, string codigo, string titulo,
+        string correoSolicitante, string codigo, string? titulo,
         string? tecnico = null,
         CancellationToken cancellationToken = default)
     {
@@ -270,7 +270,7 @@ public sealed class EmailService : IEmailService
     }
 
     public Task NotificarDesasignacionTecnicoAsync(
-        string correoTecnico, string codigo, string titulo,
+        string correoTecnico, string codigo, string? titulo,
         string? motivo = null,
         CancellationToken cancellationToken = default)
     {
@@ -287,7 +287,7 @@ public sealed class EmailService : IEmailService
     }
 
     public Task NotificarCambioPrioridadTecnicoAsync(
-        string correoTecnico, string codigo, string titulo,
+        string correoTecnico, string codigo, string? titulo,
         string prioridadAnterior, string prioridadNueva,
         CancellationToken cancellationToken = default)
     {
