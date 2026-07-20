@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PideServicio.Application")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8c479fb5f05370899f7180045cedf71523ae356b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+83ed911a23d7bd550169d5d442cd825cf2afed9c")]
 [assembly: System.Reflection.AssemblyProductAttribute("PideServicio.Application")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PideServicio.Application")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

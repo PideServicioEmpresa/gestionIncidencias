@@ -259,8 +259,8 @@ public sealed class TicketsController : ApiControllerBase
 
 /// <summary>Payload para crear un nuevo ticket.</summary>
 public sealed record CrearTicketRequest(
-    string Titulo,
-    string Descripcion,
+    string? Titulo,
+    string? Descripcion,
     Guid SucursalId,
     string AreaNombre,
     Guid TipoServicioId,
