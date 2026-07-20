@@ -94,7 +94,7 @@ export function CreateTicketPage() {
   // Solo Admin/SuperAdmin pueden listar empresas (backend devuelve 403 a otros roles)
   const empresasQuery = useQuery({
     queryKey: ['empresas', 'ticket-form'],
-    queryFn: () => empresaService.listar({ soloActivas: true, tamanoPagina: 200 }),
+    queryFn: () => empresaService.listar({ soloActivas: true, tamanoPagina: 100 }),
     enabled: isSuperAdmin || isAdmin,
     staleTime: 1000 * 60 * 5,
     select: (data) => data.items ?? [],

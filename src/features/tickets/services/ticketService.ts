@@ -147,7 +147,7 @@ export const ticketService = {
 
   listarComentarios: (ticketId: string) =>
     apiClient.get<PagedBackendResponse<ComentarioDto>>(`/tickets/${ticketId}/comentarios`, {
-      tamanoPagina: 200,
+      tamanoPagina: 100,
     }),
 
   crearComentario: (ticketId: string, body: { cuerpo: string; esInterno: boolean }) =>
@@ -167,6 +167,6 @@ export const ticketService = {
 
   listarHistorial: (ticketId: string) =>
     apiClient.get<PagedBackendResponse<TicketHistorialDto>>(`/tickets/${ticketId}/historial`, {
-      tamanoPagina: 200,
+      tamanoPagina: 100,
     }),
 }
