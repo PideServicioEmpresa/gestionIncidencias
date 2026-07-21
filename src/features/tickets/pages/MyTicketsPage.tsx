@@ -698,7 +698,7 @@ export function MyTicketsPage() {
               <CalendarDays className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="date"
-                className="h-8 w-full pl-7 text-xs lg:h-8 lg:w-[148px]"
+                className="h-6 w-full pl-7 text-xs lg:h-8 lg:w-[148px]"
                 value={dateFrom}
                 onChange={(e) => {
                   setDateFrom(e.target.value)
@@ -715,7 +715,7 @@ export function MyTicketsPage() {
               <CalendarDays className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="date"
-                className="h-8 w-full pl-7 text-xs lg:h-8 lg:w-[148px]"
+                className="h-6 w-full pl-7 text-xs lg:h-8 lg:w-[148px]"
                 value={dateTo}
                 onChange={(e) => {
                   setDateTo(e.target.value)

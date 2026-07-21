@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import {
   FileBarChart,
   Download,
@@ -11,7 +12,6 @@ import {
   ArrowRight,
   RefreshCw,
 } from 'lucide-react'
-import { toast } from 'sonner'
 import { useDashboardResumen } from '@features/dashboard/hooks/useDashboard'
 import {
   exportarDatosGeneralesPDF,
@@ -24,7 +24,10 @@ import { Button } from '@shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@shared/ui/card'
 import { Badge } from '@shared/ui/badge'
 import { Input } from '@shared/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
+import { SearchableSelect } from '@shared/components/SearchableSelect'
+import { useAuthStore } from '@store/auth.store'
+import { empresaService } from '@features/empresas/services/empresaService'
+import { useSucursales } from '@features/tickets/hooks/useCatalogos'
 import {
   ResponsiveContainer,
   BarChart,
@@ -89,40 +92,82 @@ const AVAILABLE_REPORTS = [
     title: 'Reporte mensual de tickets',
     description: 'Resumen completo de todos los tickets del mes con estadísticas de resolución.',
     icon: Calendar,
-    badge: 'Junio 2026',
+    badge: new Date().toLocaleDateString('es-PE', { month: 'long', year: 'numeric' }),
   },
   {
-    title: 'Rendimiento por trabajador',
-    description: 'Métricas de tickets resueltos, tiempo promedio y satisfacción por trabajador.',
+    title: 'Rendimiento por técnico',
+    description: 'Métricas de tickets asignados por técnico y distribución por sucursal.',
     icon: TrendingUp,
     badge: 'Disponible',
   },
   {
-    title: 'Análisis de incidencias críticas',
-    description: 'Detalle de todos los tickets críticos y su tiempo de resolución.',
+    title: 'Resumen de tickets críticos',
+    description: 'Indicadores de tickets con prioridad crítica y su estado actual.',
     icon: AlertTriangle,
     badge: 'Disponible',
   },
   {
     title: 'Índice de cierre por sucursal',
-    description:
-      'Porcentaje de tickets cerrados por sucursal y empresa en el período seleccionado.',
+    description: 'Porcentaje de tickets cerrados por sucursal con detalle por área.',
     icon: CheckCircle2,
     badge: 'Disponible',
   },
 ]
 
 export function ReportsPage() {
-  const { data: resumen, isFetching, refetch } = useDashboardResumen()
+  const user = useAuthStore((s) => s.user)
+  const isSuperAdmin = user?.rol === 'superadmin'
+  const isAdmin = user?.rol === 'admin'
+
+  // ── Filtros UI (pendientes, aún no aplicados) ─────────────────────────────
+  const [selEmpresaId, setSelEmpresaId] = useState('')
+  const [selEmpresaLabel, setSelEmpresaLabel] = useState('')
+  const [selSucursalId, setSelSucursalId] = useState('')
+  const [selSucursalLabel, setSelSucursalLabel] = useState('')
+  const [filterDesde, setFilterDesde] = useState('')
+  const [filterHasta, setFilterHasta] = useState('')
+
+  // ── Filtros aplicados (los que va al backend) ─────────────────────────────
+  const [appliedEmpresaId, setAppliedEmpresaId] = useState<string | undefined>(
+    isAdmin ? (user?.empresaId ?? undefined) : undefined,
+  )
+  const [appliedEmpresaLabel, setAppliedEmpresaLabel] = useState('')
+  const [appliedSucursalId, setAppliedSucursalId] = useState<string | undefined>(undefined)
+  const [appliedSucursalLabel, setAppliedSucursalLabel] = useState('')
+
+  // ── Queries de catálogos ──────────────────────────────────────────────────
+  const empresasQuery = useQuery({
+    queryKey: ['empresas', 'reports-filter'],
+    queryFn: () => empresaService.listar({ soloActivas: true, tamanoPagina: 100 }),
+    enabled: isSuperAdmin || isAdmin,
+    staleTime: 1000 * 60 * 5,
+    select: (data) => data.items ?? [],
+  })
+  const empresas = empresasQuery.data ?? []
+
+  // Para Admin: empresa fija (la suya)
+  const empresaIdForSucursales = isSuperAdmin
+    ? selEmpresaId || undefined
+    : (user?.empresaId ?? undefined)
+  const sucursalesQuery = useSucursales(empresaIdForSucursales)
+  const sucursales = (sucursalesQuery.data ?? []).filter((s) => s.activa)
+
+  // ── Hook de datos con filtros aplicados ───────────────────────────────────
+  const dashboardParams = useMemo(
+    () =>
+      appliedEmpresaId || appliedSucursalId
+        ? { empresaId: appliedEmpresaId, sucursalId: appliedSucursalId }
+        : undefined,
+    [appliedEmpresaId, appliedSucursalId],
+  )
+
+  const { data: resumen, isFetching, refetch } = useDashboardResumen(dashboardParams)
 
   const [downloading, setDownloading] = useState<string | null>(null)
 
-  const handleRefresh = () => {
-    void refetch()
-  }
+  const handleRefresh = () => void refetch()
 
-  // ── Datos reales del backend ──────────────────────────────────────────────────
-
+  // ── Transformaciones para gráficos ────────────────────────────────────────
   const byType = (resumen?.porTipoServicio ?? []).map((t) => ({
     tipo: t.tipoServicioNombre,
     cantidad: t.total,
@@ -154,38 +199,71 @@ export function ReportsPage() {
     tickets: s.creados,
   }))
 
-  const [filterDesde, setFilterDesde] = useState('')
-  const [filterHasta, setFilterHasta] = useState('')
-  const [filterEmpresa, setFilterEmpresa] = useState('all')
-  const [filterEstado, setFilterEstado] = useState('all')
+  // ── Opciones para SearchableSelect ───────────────────────────────────────
+  const empresaOptions = empresas.map((e) => ({ value: e.id, label: e.nombreComercial }))
+  const sucursalOptions = sucursales.map((s) => ({ value: s.id, label: s.nombre }))
 
+  // ── Filtros ───────────────────────────────────────────────────────────────
   const hasFilters = useMemo(
-    () =>
-      filterDesde !== '' || filterHasta !== '' || filterEmpresa !== 'all' || filterEstado !== 'all',
-    [filterDesde, filterHasta, filterEmpresa, filterEstado],
+    () => !!appliedEmpresaId || !!appliedSucursalId || filterDesde !== '' || filterHasta !== '',
+    [appliedEmpresaId, appliedSucursalId, filterDesde, filterHasta],
   )
 
+  function handleEmpresaChange(id: string) {
+    const label = empresas.find((e) => e.id === id)?.nombreComercial ?? ''
+    setSelEmpresaId(id)
+    setSelEmpresaLabel(label)
+    setSelSucursalId('')
+    setSelSucursalLabel('')
+  }
+
+  function handleSucursalChange(id: string) {
+    const label = sucursales.find((s) => s.id === id)?.nombre ?? ''
+    setSelSucursalId(id)
+    setSelSucursalLabel(label)
+  }
+
   function handleApplyFilters() {
-    toast.success('Filtros aplicados')
+    const empresaId = isSuperAdmin ? selEmpresaId || undefined : (user?.empresaId ?? undefined)
+    const empresaLabel = isSuperAdmin
+      ? selEmpresaLabel
+      : (empresas.find((e) => e.id === user?.empresaId)?.nombreComercial ?? '')
+    setAppliedEmpresaId(empresaId)
+    setAppliedEmpresaLabel(empresaLabel)
+    setAppliedSucursalId(selSucursalId || undefined)
+    setAppliedSucursalLabel(selSucursalLabel)
   }
 
   function handleClearFilters() {
+    setSelEmpresaId('')
+    setSelEmpresaLabel('')
+    setSelSucursalId('')
+    setSelSucursalLabel('')
     setFilterDesde('')
     setFilterHasta('')
-    setFilterEmpresa('all')
-    setFilterEstado('all')
-    toast.info('Filtros eliminados')
+    setAppliedEmpresaId(isAdmin ? (user?.empresaId ?? undefined) : undefined)
+    setAppliedEmpresaLabel('')
+    setAppliedSucursalId(undefined)
+    setAppliedSucursalLabel('')
+  }
+
+  // ── Exportaciones ─────────────────────────────────────────────────────────
+  const filtrosPDF = {
+    desde: filterDesde || undefined,
+    hasta: filterHasta || undefined,
+    empresa: appliedEmpresaLabel || undefined,
+    sucursal: appliedSucursalLabel || undefined,
   }
 
   const GENERADORES: Record<string, () => void> = {
-    'Reporte mensual de tickets': exportarReporteMensualPDF,
-    'Rendimiento por trabajador': exportarRendimientoPDF,
-    'Análisis de incidencias críticas': exportarIncidenciasCriticasPDF,
-    'Índice de cierre por sucursal': exportarCierrePorSucursalPDF,
+    'Reporte mensual de tickets': () => exportarReporteMensualPDF(resumen!),
+    'Rendimiento por técnico': () => exportarRendimientoPDF(resumen!),
+    'Resumen de tickets críticos': () => exportarIncidenciasCriticasPDF(resumen!),
+    'Índice de cierre por sucursal': () => exportarCierrePorSucursalPDF(resumen!),
   }
 
   const handleDownload = (reportTitle: string) => {
-    if (downloading) return
+    if (downloading || !resumen) return
     setDownloading(reportTitle)
     const promise = new Promise<void>((resolve, reject) => {
       try {
@@ -193,26 +271,27 @@ export function ReportsPage() {
         if (generador) {
           generador()
         } else {
-          exportarDatosGeneralesPDF({
-            desde: filterDesde,
-            hasta: filterHasta,
-            empresa: filterEmpresa,
-            estado: filterEstado,
-          })
+          exportarDatosGeneralesPDF(resumen, filtrosPDF)
         }
         resolve()
       } catch (err) {
         reject(err)
       }
-    }).finally(() => {
-      setDownloading(null)
-    })
-    toast.promise(promise, {
-      loading: 'Generando PDF...',
-      success: 'PDF descargado correctamente',
-      error: 'Error al generar el PDF',
+    }).finally(() => setDownloading(null))
+
+    void import('sonner').then(({ toast }) => {
+      toast.promise(promise, {
+        loading: 'Generando PDF...',
+        success: 'PDF descargado correctamente',
+        error: 'Error al generar el PDF',
+      })
     })
   }
+
+  // ── Empresa bloqueada para Admin ──────────────────────────────────────────
+  const adminEmpresaNombre = isAdmin
+    ? (empresas.find((e) => e.id === user?.empresaId)?.nombreComercial ?? user?.empresaId ?? '')
+    : ''
 
   return (
     <div className="space-y-4 p-3 lg:p-5">
@@ -238,7 +317,7 @@ export function ReportsPage() {
           </Button>
           <Button
             variant="outline"
-            disabled={downloading !== null}
+            disabled={downloading !== null || !resumen}
             onClick={() => handleDownload('exportar-datos-generales')}
           >
             <Download className="mr-2 h-4 w-4" />
@@ -268,6 +347,42 @@ export function ReportsPage() {
         </CardHeader>
         <CardContent className="p-3 pt-0">
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+            {/* Empresa */}
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-medium text-muted-foreground">Empresa</span>
+              {isSuperAdmin ? (
+                <SearchableSelect
+                  options={empresaOptions}
+                  value={selEmpresaId}
+                  onChange={handleEmpresaChange}
+                  placeholder="Todas las empresas"
+                  searchPlaceholder="Buscar empresa..."
+                  emptyMessage="Sin empresas."
+                  loading={empresasQuery.isLoading}
+                />
+              ) : (
+                <div className="flex h-8 items-center rounded-md border border-input bg-muted/40 px-3 text-xs text-muted-foreground">
+                  {adminEmpresaNombre || 'Tu empresa'}
+                </div>
+              )}
+            </div>
+
+            {/* Sucursal */}
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-medium text-muted-foreground">Sucursal</span>
+              <SearchableSelect
+                options={sucursalOptions}
+                value={selSucursalId}
+                onChange={handleSucursalChange}
+                placeholder="Todas las sucursales"
+                searchPlaceholder="Buscar sucursal..."
+                emptyMessage="Sin sucursales."
+                loading={sucursalesQuery.isLoading}
+                disabled={isSuperAdmin && !selEmpresaId}
+              />
+            </div>
+
+            {/* Desde */}
             <div className="flex flex-col gap-1">
               <span className="text-[10px] font-medium text-muted-foreground">Desde</span>
               <Input
@@ -277,6 +392,8 @@ export function ReportsPage() {
                 onChange={(e) => setFilterDesde(e.target.value)}
               />
             </div>
+
+            {/* Hasta */}
             <div className="flex flex-col gap-1">
               <span className="text-[10px] font-medium text-muted-foreground">Hasta</span>
               <Input
@@ -286,42 +403,16 @@ export function ReportsPage() {
                 onChange={(e) => setFilterHasta(e.target.value)}
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-medium text-muted-foreground">Empresa</span>
-              <Select value={filterEmpresa} onValueChange={setFilterEmpresa}>
-                <SelectTrigger className="h-10 text-xs">
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las empresas</SelectItem>
-                  {(resumen?.porSucursal ?? []).map((s) => (
-                    <SelectItem key={s.sucursalId} value={s.sucursalId}>
-                      {s.sucursalNombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-medium text-muted-foreground">Estado</span>
-              <Select value={filterEstado} onValueChange={setFilterEstado}>
-                <SelectTrigger className="h-10 text-xs">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los estados</SelectItem>
-                  <SelectItem value="sin_asignar">Sin asignar</SelectItem>
-                  <SelectItem value="asignado">Asignado</SelectItem>
-                  <SelectItem value="en_proceso">En proceso</SelectItem>
-                  <SelectItem value="cerrado">Cerrado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
           <div className="mt-2 flex justify-end">
-            <Button size="sm" className="h-7 gap-1.5 text-xs" onClick={handleApplyFilters}>
+            <Button
+              size="sm"
+              className="h-7 gap-1.5 text-xs"
+              onClick={handleApplyFilters}
+              disabled={isFetching}
+            >
               <Filter className="h-3 w-3" />
-              Aplicar filtros
+              {isFetching ? 'Actualizando...' : 'Aplicar filtros'}
             </Button>
           </div>
         </CardContent>
@@ -335,9 +426,9 @@ export function ReportsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-                  Tickets por empresa
+                  Tickets por sucursal
                 </CardTitle>
-                <CardDescription>Comparativo resueltos vs. pendientes</CardDescription>
+                <CardDescription>Comparativo cerrados vs. abiertos</CardDescription>
               </div>
               <Button
                 variant="ghost"
@@ -372,13 +463,13 @@ export function ReportsPage() {
                 <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
                 <Bar
                   dataKey="resueltos"
-                  name="Resueltos"
+                  name="Cerrados"
                   fill="hsl(var(--success))"
                   radius={[4, 4, 0, 0]}
                 />
                 <Bar
                   dataKey="pendientes"
-                  name="Pendientes"
+                  name="Abiertos"
                   fill="hsl(var(--primary))"
                   radius={[4, 4, 0, 0]}
                 />
@@ -650,7 +741,7 @@ export function ReportsPage() {
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7 shrink-0"
-                  disabled={downloading === report.title}
+                  disabled={downloading === report.title || !resumen}
                   onClick={() => handleDownload(report.title)}
                   aria-label={`Descargar ${report.title}`}
                 >

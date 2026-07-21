@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import type { DashboardResumenDto } from '@features/dashboard/hooks/useDashboard'
 
 // ─── Paleta ──────────────────────────────────────────────────────────────────
 const C_AZUL: [number, number, number] = [37, 99, 235]
@@ -11,7 +12,8 @@ const C_FONDO: [number, number, number] = [248, 250, 252]
 export interface FiltrosPDF {
   desde?: string
   hasta?: string
-  empresa?: string
+  empresa?: string // etiqueta de display (nombre de empresa)
+  sucursal?: string // etiqueta de display (nombre de sucursal)
   estado?: string
 }
 
@@ -24,6 +26,50 @@ function fechaLegible(iso?: string): string {
 
 function fechaHoy(): string {
   return new Date().toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })
+}
+
+function pct(n: number, total: number): string {
+  if (!total || !n) return '0%'
+  return `${Math.round((n / total) * 100)}%`
+}
+
+function totalGeneral(resumen: DashboardResumenDto): number {
+  return resumen.porEstado.reduce((s, e) => s + e.total, 0)
+}
+
+function cerradosGeneral(resumen: DashboardResumenDto): number {
+  return resumen.porEstado.find((e) => e.estado === 'CERRADO')?.total ?? 0
+}
+
+function estadoLabel(e: string): string {
+  const map: Record<string, string> = {
+    NUEVO: 'Nuevo',
+    SIN_ASIGNAR: 'Sin asignar',
+    ASIGNADO: 'Asignado',
+    EN_PROCESO: 'En proceso',
+    EN_ESPERA: 'En espera',
+    PENDIENTE_VALIDACION: 'Pend. validación',
+    REABIERTO: 'Reabierto',
+    CERRADO: 'Cerrado',
+    CANCELADO: 'Cancelado',
+  }
+  return map[e] ?? e
+}
+
+function prioridadLabel(p: string): string {
+  const map: Record<string, string> = {
+    BAJA: 'Baja',
+    MEDIA: 'Media',
+    ALTA: 'Alta',
+    CRITICA: 'Crítica',
+  }
+  return map[p] ?? p
+}
+
+function sinDatos(cols: number): (string | number)[][] {
+  const row: (string | number)[] = Array(cols).fill('')
+  row[0] = 'Sin datos disponibles'
+  return [row]
 }
 
 function crearEncabezado(doc: jsPDF, titulo: string, subtitulo?: string): number {
@@ -93,10 +139,11 @@ function tablaBase(
   columnas: string[],
   filas: (string | number)[][],
 ): number {
+  const body = filas.length > 0 ? filas : sinDatos(columnas.length)
   autoTable(doc, {
     startY: y,
     head: [columnas],
-    body: filas,
+    body,
     styles: { fontSize: 8, cellPadding: 3, textColor: C_TEXTO },
     headStyles: { fillColor: C_AZUL, textColor: [255, 255, 255], fontSize: 8, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: C_FONDO },
@@ -107,73 +154,9 @@ function tablaBase(
   return (doc as any).lastAutoTable.finalY + 8
 }
 
-function etiquetaFiltros(filtros: FiltrosPDF): string {
-  const partes: string[] = []
-  if (filtros.desde) partes.push(`Desde: ${fechaLegible(filtros.desde)}`)
-  if (filtros.hasta) partes.push(`Hasta: ${fechaLegible(filtros.hasta)}`)
-  if (filtros.empresa && filtros.empresa !== 'all') partes.push(`Empresa: ${filtros.empresa}`)
-  if (filtros.estado && filtros.estado !== 'all') partes.push(`Estado: ${filtros.estado}`)
-  return partes.length ? partes.join('   |   ') : 'Sin filtros aplicados'
-}
-
-// ─── Datos placeholder (reflejo de los gráficos de la vista) ─────────────────
-const DATA_POR_EMPRESA = [
-  { sucursal: 'Sede Central', resueltos: 7, pendientes: 5 },
-  { sucursal: 'Sucursal Norte', resueltos: 3, pendientes: 2 },
-  { sucursal: 'Sucursal Sur', resueltos: 2, pendientes: 3 },
-]
-
-const DATA_POR_TIPO = [
-  { tipo: 'Incidencia Hardware', cantidad: 5 },
-  { tipo: 'Incidencia Software', cantidad: 4 },
-  { tipo: 'Incidencia Red', cantidad: 3 },
-  { tipo: 'Mantenimiento', cantidad: 3 },
-  { tipo: 'Solicitud de servicio', cantidad: 2 },
-  { tipo: 'Riesgo', cantidad: 1 },
-]
-
-const DATA_POR_PRIORIDAD = [
-  { nombre: 'Baja', cantidad: 2 },
-  { nombre: 'Media', cantidad: 4 },
-  { nombre: 'Alta', cantidad: 5 },
-  { nombre: 'Crítica', cantidad: 4 },
-]
-
-const DATA_POR_ESTADO = [
-  { nombre: 'Sin asignar', cantidad: 3 },
-  { nombre: 'Asignado', cantidad: 2 },
-  { nombre: 'En proceso', cantidad: 4 },
-  { nombre: 'Pend. validación', cantidad: 2 },
-  { nombre: 'Cerrado', cantidad: 4 },
-]
-
-const DATA_TENDENCIA = [
-  { semana: 'Semana 1', tickets: 3 },
-  { semana: 'Semana 2', tickets: 5 },
-  { semana: 'Semana 3', tickets: 4 },
-  { semana: 'Semana 4', tickets: 7 },
-  { semana: 'Semana 5', tickets: 6 },
-  { semana: 'Semana 6', tickets: 9 },
-]
-
-// ─── Exportar datos generales ─────────────────────────────────────────────────
-export function exportarDatosGeneralesPDF(filtros: FiltrosPDF = {}): void {
-  const doc = new jsPDF({ format: 'a4', unit: 'mm' })
-  let y = crearEncabezado(doc, 'Exportación de datos generales', etiquetaFiltros(filtros))
-
-  const totalTickets = DATA_POR_EMPRESA.reduce((s, r) => s + r.resueltos + r.pendientes, 0)
-  const totalResueltos = DATA_POR_EMPRESA.reduce((s, r) => s + r.resueltos, 0)
-  const totalPendientes = DATA_POR_EMPRESA.reduce((s, r) => s + r.pendientes, 0)
-
-  // Tarjetas de resumen
-  const tarjetas = [
-    ['Total de tickets', String(totalTickets)],
-    ['Resueltos', String(totalResueltos)],
-    ['Pendientes', String(totalPendientes)],
-    ['Tasa de resolución', `${Math.round((totalResueltos / totalTickets) * 100)}%`],
-  ]
-  const cw = (196 - 14) / tarjetas.length
-  tarjetas.forEach(([etiq, val], i) => {
+function tarjetas(doc: jsPDF, y: number, items: { etiq: string; val: string }[]): number {
+  const cw = (196 - 14) / items.length
+  items.forEach(({ etiq, val }, i) => {
     const x = 14 + i * cw
     doc.setFillColor(...C_FONDO)
     doc.roundedRect(x, y, cw - 3, 16, 2, 2, 'F')
@@ -186,285 +169,238 @@ export function exportarDatosGeneralesPDF(filtros: FiltrosPDF = {}): void {
     doc.setTextColor(...C_GRIS)
     doc.text(etiq, x + (cw - 3) / 2, y + 13, { align: 'center' })
   })
-  y += 22
+  return y + 22
+}
 
-  y = seccion(doc, 'Tickets por empresa / sucursal', y)
-  y = tablaBase(
-    doc,
-    y,
-    ['Empresa / Sucursal', 'Resueltos', 'Pendientes', 'Total'],
-    DATA_POR_EMPRESA.map((r) => [
-      r.sucursal,
-      r.resueltos,
-      r.pendientes,
-      r.resueltos + r.pendientes,
-    ]),
-  )
+function etiquetaFiltros(filtros: FiltrosPDF): string {
+  const partes: string[] = []
+  if (filtros.desde) partes.push(`Desde: ${fechaLegible(filtros.desde)}`)
+  if (filtros.hasta) partes.push(`Hasta: ${fechaLegible(filtros.hasta)}`)
+  if (filtros.empresa) partes.push(`Empresa: ${filtros.empresa}`)
+  if (filtros.sucursal) partes.push(`Sucursal: ${filtros.sucursal}`)
+  if (filtros.estado && filtros.estado !== 'all') partes.push(`Estado: ${filtros.estado}`)
+  return partes.length ? partes.join('   |   ') : 'Sin filtros aplicados'
+}
 
+// ─── Exportar datos generales ─────────────────────────────────────────────────
+export function exportarDatosGeneralesPDF(
+  resumen: DashboardResumenDto,
+  filtros: FiltrosPDF = {},
+): void {
+  const doc = new jsPDF({ format: 'a4', unit: 'mm' })
+  let y = crearEncabezado(doc, 'Exportación de datos generales', etiquetaFiltros(filtros))
+
+  const total = totalGeneral(resumen)
+  const cerrados = cerradosGeneral(resumen)
+  const abiertos = resumen.totalAbiertos
+
+  y = tarjetas(doc, y, [
+    { etiq: 'Total de tickets', val: String(total) },
+    { etiq: 'Cerrados', val: String(cerrados) },
+    { etiq: 'Abiertos', val: String(abiertos) },
+    { etiq: 'Tasa de resolución', val: `${resumen.tasaResolucionPct}%` },
+  ])
+
+  // Sucursales: cruza porSucursal + porArea para obtener cerrados/abiertos
+  const filasSucursal = resumen.porSucursal.map((s) => {
+    const areas = resumen.porArea.filter((a) => a.sucursalId === s.sucursalId)
+    const c = areas.reduce((acc, a) => acc + a.cerrados, 0)
+    const ab = areas.reduce((acc, a) => acc + a.abiertos, 0)
+    return [s.sucursalNombre, c, ab, s.total]
+  })
+  y = seccion(doc, 'Tickets por sucursal', y)
+  y = tablaBase(doc, y, ['Sucursal', 'Cerrados', 'Abiertos', 'Total'], filasSucursal)
+
+  // Tipo de servicio
+  const filasTipo = resumen.porTipoServicio.map((t) => [
+    t.tipoServicioNombre,
+    t.total,
+    pct(t.total, total),
+  ])
   y = seccion(doc, 'Tickets por tipo de servicio', y)
-  y = tablaBase(
-    doc,
-    y,
-    ['Tipo de servicio', 'Cantidad', '% del total'],
-    DATA_POR_TIPO.map((r) => [
-      r.tipo,
-      r.cantidad,
-      `${Math.round((r.cantidad / totalTickets) * 100)}%`,
-    ]),
-  )
+  y = tablaBase(doc, y, ['Tipo de servicio', 'Cantidad', '% del total'], filasTipo)
 
+  // Prioridad
+  const filasPrioridad = resumen.porPrioridad.map((p) => [
+    prioridadLabel(p.prioridad),
+    p.total,
+    pct(p.total, total),
+  ])
   y = seccion(doc, 'Distribución por prioridad', y)
-  y = tablaBase(
-    doc,
-    y,
-    ['Prioridad', 'Cantidad', '% del total'],
-    DATA_POR_PRIORIDAD.map((r) => [
-      r.nombre,
-      r.cantidad,
-      `${Math.round((r.cantidad / totalTickets) * 100)}%`,
-    ]),
-  )
+  y = tablaBase(doc, y, ['Prioridad', 'Cantidad', '% del total'], filasPrioridad)
 
+  // Estado
+  const filasEstado = resumen.porEstado.map((e) => [
+    estadoLabel(e.estado),
+    e.total,
+    pct(e.total, total),
+  ])
   y = seccion(doc, 'Distribución por estado', y)
-  y = tablaBase(
-    doc,
-    y,
-    ['Estado', 'Cantidad', '% del total'],
-    DATA_POR_ESTADO.map((r) => [
-      r.nombre,
-      r.cantidad,
-      `${Math.round((r.cantidad / totalTickets) * 100)}%`,
-    ]),
-  )
+  y = tablaBase(doc, y, ['Estado', 'Cantidad', '% del total'], filasEstado)
 
-  y = seccion(doc, 'Tendencia semanal de tickets registrados', y)
-  tablaBase(
-    doc,
-    y,
-    ['Período', 'Tickets registrados'],
-    DATA_TENDENCIA.map((r) => [r.semana, r.tickets]),
-  )
+  // Tendencia semanal
+  const filasTendencia = resumen.tendenciaSemanal.map((s) => [s.semana, s.creados, s.resueltos])
+  y = seccion(doc, 'Tendencia semanal', y)
+  tablaBase(doc, y, ['Período', 'Tickets creados', 'Tickets resueltos'], filasTendencia)
 
   piePagina(doc)
   doc.save(`pide-servicio-datos-${new Date().toISOString().slice(0, 10)}.pdf`)
 }
 
 // ─── Reporte mensual de tickets ───────────────────────────────────────────────
-export function exportarReporteMensualPDF(): void {
+export function exportarReporteMensualPDF(resumen: DashboardResumenDto): void {
   const doc = new jsPDF({ format: 'a4', unit: 'mm' })
   const mes = new Date().toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })
   let y = crearEncabezado(doc, 'Reporte mensual de tickets', `Período: ${mes}`)
 
-  const totalTickets = 18
-  const cerrados = 13
-  const pendientes = 5
+  const total = totalGeneral(resumen)
+  const cerrados = cerradosGeneral(resumen)
+  const abiertos = resumen.totalAbiertos
 
-  const tarjetas = [
-    ['Registrados', String(totalTickets)],
-    ['Cerrados', String(cerrados)],
-    ['Pendientes', String(pendientes)],
-    ['% Resolución', `${Math.round((cerrados / totalTickets) * 100)}%`],
-  ]
-  const cw = (196 - 14) / tarjetas.length
-  tarjetas.forEach(([etiq, val], i) => {
-    const x = 14 + i * cw
-    doc.setFillColor(...C_FONDO)
-    doc.roundedRect(x, y, cw - 3, 16, 2, 2, 'F')
-    doc.setFontSize(15)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(...C_AZUL)
-    doc.text(val, x + (cw - 3) / 2, y + 8, { align: 'center' })
-    doc.setFontSize(7)
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor(...C_GRIS)
-    doc.text(etiq, x + (cw - 3) / 2, y + 13, { align: 'center' })
-  })
-  y += 22
+  y = tarjetas(doc, y, [
+    { etiq: 'Registrados', val: String(total) },
+    { etiq: 'Cerrados', val: String(cerrados) },
+    { etiq: 'Abiertos', val: String(abiertos) },
+    { etiq: '% Resolución', val: `${resumen.tasaResolucionPct}%` },
+  ])
 
+  const filasTipo = resumen.porTipoServicio.map((t) => [t.tipoServicioNombre, t.total])
   y = seccion(doc, 'Resumen por tipo de servicio', y)
-  y = tablaBase(
-    doc,
-    y,
-    ['Tipo de servicio', 'Registrados', 'Cerrados', 'Pendientes'],
-    [
-      ['Incidencia Hardware', 5, 4, 1],
-      ['Incidencia Software', 4, 3, 1],
-      ['Incidencia Red', 3, 2, 1],
-      ['Mantenimiento', 3, 3, 0],
-      ['Solicitud de servicio', 2, 1, 1],
-      ['Riesgo', 1, 0, 1],
-    ],
-  )
+  y = tablaBase(doc, y, ['Tipo de servicio', 'Total'], filasTipo)
 
-  y = seccion(doc, 'Resumen por prioridad y estado', y)
-  tablaBase(
-    doc,
-    y,
-    ['Prioridad', 'Total', 'Cerrados', 'En proceso', 'Pendientes'],
-    [
-      ['Crítica', 4, 2, 1, 1],
-      ['Alta', 5, 4, 1, 0],
-      ['Media', 4, 3, 0, 1],
-      ['Baja', 2, 2, 0, 0],
-    ],
-  )
+  const filasPrioridad = resumen.porPrioridad.map((p) => [prioridadLabel(p.prioridad), p.total])
+  y = seccion(doc, 'Resumen por prioridad', y)
+  y = tablaBase(doc, y, ['Prioridad', 'Total'], filasPrioridad)
+
+  const filasEstado = resumen.porEstado.map((e) => [estadoLabel(e.estado), e.total])
+  y = seccion(doc, 'Distribución por estado', y)
+  tablaBase(doc, y, ['Estado', 'Total'], filasEstado)
 
   piePagina(doc)
   doc.save(`reporte-mensual-${new Date().toISOString().slice(0, 7)}.pdf`)
 }
 
-// ─── Rendimiento por trabajador ───────────────────────────────────────────────
-export function exportarRendimientoPDF(): void {
+// ─── Rendimiento por técnico ──────────────────────────────────────────────────
+export function exportarRendimientoPDF(resumen: DashboardResumenDto): void {
+  const doc = new jsPDF({ format: 'a4', unit: 'mm' })
+  let y = crearEncabezado(doc, 'Rendimiento por técnico', 'Tickets asociados por técnico asignado')
+
+  const totalTecnicos = resumen.porTecnico.reduce((s, t) => s + t.total, 0)
+  const filasTecnico = resumen.porTecnico
+    .sort((a, b) => b.total - a.total)
+    .map((t) => [t.tecnicoNombre, t.total, pct(t.total, totalTecnicos)])
+
+  y = seccion(doc, 'Carga por técnico', y)
+  y = tablaBase(doc, y, ['Técnico', 'Tickets asignados', '% del total'], filasTecnico)
+
+  const filasSucursal = resumen.porSucursal.map((s) => {
+    const areas = resumen.porArea.filter((a) => a.sucursalId === s.sucursalId)
+    const c = areas.reduce((acc, a) => acc + a.cerrados, 0)
+    const ab = areas.reduce((acc, a) => acc + a.abiertos, 0)
+    return [s.sucursalNombre, s.total, c, ab]
+  })
+  y = seccion(doc, 'Carga por sucursal', y)
+  tablaBase(doc, y, ['Sucursal', 'Total', 'Cerrados', 'Abiertos'], filasSucursal)
+
+  piePagina(doc)
+  doc.save(`rendimiento-tecnicos-${new Date().toISOString().slice(0, 10)}.pdf`)
+}
+
+// ─── Resumen de tickets críticos ──────────────────────────────────────────────
+export function exportarIncidenciasCriticasPDF(resumen: DashboardResumenDto): void {
   const doc = new jsPDF({ format: 'a4', unit: 'mm' })
   let y = crearEncabezado(
     doc,
-    'Rendimiento por trabajador',
-    'Métricas de resolución por técnico asignado',
+    'Resumen de tickets críticos',
+    'Indicadores de tickets con prioridad CRÍTICA',
   )
 
-  y = seccion(doc, 'Indicadores por trabajador', y)
-  y = tablaBase(
-    doc,
-    y,
-    ['Trabajador', 'Asignados', 'Resueltos', 'Pendientes', '% Cierre', 'Tiempo prom.'],
-    [
-      ['Carlos Mendoza', 8, 7, 1, '88%', '4.2 h'],
-      ['Ana Torres', 6, 5, 1, '83%', '3.8 h'],
-      ['Luis Ramos', 5, 4, 1, '80%', '5.1 h'],
-      ['María Quispe', 4, 3, 1, '75%', '6.0 h'],
-    ],
-  )
+  const total = totalGeneral(resumen)
+  const cerrados = cerradosGeneral(resumen)
 
-  y = seccion(doc, 'Distribución de tickets asignados por sucursal', y)
-  tablaBase(
-    doc,
-    y,
-    ['Sucursal', 'Trabajador', 'Tickets asignados'],
-    [
-      ['Sede Central', 'Carlos Mendoza', 5],
-      ['Sede Central', 'Ana Torres', 3],
-      ['Sucursal Norte', 'Luis Ramos', 4],
-      ['Sucursal Sur', 'María Quispe', 3],
-      ['Sucursal Sur', 'Ana Torres', 2],
-    ],
-  )
+  y = tarjetas(doc, y, [
+    { etiq: 'Total tickets', val: String(total) },
+    { etiq: 'Críticos', val: String(resumen.criticos) },
+    { etiq: 'Cerrados hoy', val: String(resumen.cerradosHoy) },
+    { etiq: 'Cerrados total', val: String(cerrados) },
+  ])
 
-  piePagina(doc)
-  doc.save(`rendimiento-trabajadores-${new Date().toISOString().slice(0, 10)}.pdf`)
-}
+  const filasEstado = resumen.porEstado.map((e) => [
+    estadoLabel(e.estado),
+    e.total,
+    pct(e.total, total),
+  ])
+  y = seccion(doc, 'Distribución por estado', y)
+  y = tablaBase(doc, y, ['Estado', 'Cantidad', '% del total'], filasEstado)
 
-// ─── Análisis de incidencias críticas ────────────────────────────────────────
-export function exportarIncidenciasCriticasPDF(): void {
-  const doc = new jsPDF({ format: 'a4', unit: 'mm', orientation: 'landscape' })
-  let y = crearEncabezado(
-    doc,
-    'Análisis de incidencias críticas',
-    'Tickets con prioridad CRÍTICA — tiempo de respuesta y resolución',
-  )
+  const filasTecnico = resumen.porTecnico
+    .sort((a, b) => b.total - a.total)
+    .map((t) => [t.tecnicoNombre, t.total])
+  y = seccion(doc, 'Carga por técnico', y)
+  y = tablaBase(doc, y, ['Técnico', 'Tickets asignados'], filasTecnico)
 
-  y = seccion(doc, 'Detalle de incidencias críticas', y)
-  y = tablaBase(
-    doc,
-    y,
-    ['Código', 'Título', 'Área', 'Técnico', 'Estado', 'Registrado', 'Resuelto', 'Tiempo'],
-    [
-      [
-        'PS-000003',
-        'Servidor caído en sede central',
-        'Sistemas',
-        'Carlos Mendoza',
-        'Cerrado',
-        '01/06/2026',
-        '01/06/2026',
-        '2.5 h',
-      ],
-      [
-        'PS-000007',
-        'Caída del sistema de facturación',
-        'Contabilidad',
-        'Ana Torres',
-        'Cerrado',
-        '05/06/2026',
-        '06/06/2026',
-        '18 h',
-      ],
-      [
-        'PS-000012',
-        'Red inoperativa sucursal sur',
-        'Redes',
-        'Luis Ramos',
-        'En proceso',
-        '10/06/2026',
-        '—',
-        '—',
-      ],
-      [
-        'PS-000015',
-        'Pérdida de datos en base de datos',
-        'Sistemas',
-        'Carlos Mendoza',
-        'Cerrado',
-        '14/06/2026',
-        '14/06/2026',
-        '4 h',
-      ],
-    ],
-  )
-
-  y = seccion(doc, 'Resumen de tiempos de respuesta', y)
-  tablaBase(
-    doc,
-    y,
-    ['Métrica', 'Valor'],
-    [
-      ['Total incidencias críticas', '4'],
-      ['Incidencias resueltas', '3'],
-      ['Incidencias pendientes', '1'],
-      ['Tiempo promedio de resolución', '8.2 horas'],
-      ['Incidencia más rápida', '2.5 horas (PS-000003)'],
-      ['Incidencia más lenta', '18 horas (PS-000007)'],
-    ],
-  )
+  const filasSucursal = resumen.porSucursal.map((s) => {
+    const areas = resumen.porArea.filter((a) => a.sucursalId === s.sucursalId)
+    const c = areas.reduce((acc, a) => acc + a.cerrados, 0)
+    const ab = areas.reduce((acc, a) => acc + a.abiertos, 0)
+    return [s.sucursalNombre, s.total, c, ab]
+  })
+  y = seccion(doc, 'Estado por sucursal', y)
+  tablaBase(doc, y, ['Sucursal', 'Total', 'Cerrados', 'Abiertos'], filasSucursal)
 
   piePagina(doc)
   doc.save(`incidencias-criticas-${new Date().toISOString().slice(0, 10)}.pdf`)
 }
 
 // ─── Índice de cierre por sucursal ────────────────────────────────────────────
-export function exportarCierrePorSucursalPDF(): void {
+export function exportarCierrePorSucursalPDF(resumen: DashboardResumenDto): void {
   const doc = new jsPDF({ format: 'a4', unit: 'mm' })
   let y = crearEncabezado(
     doc,
     'Índice de cierre por sucursal',
-    'Porcentaje de tickets cerrados por empresa y sucursal',
+    'Porcentaje de tickets cerrados por sucursal',
   )
+
+  const filasSucursal = resumen.porSucursal.map((s) => {
+    const areas = resumen.porArea.filter((a) => a.sucursalId === s.sucursalId)
+    const c = areas.reduce((acc, a) => acc + a.cerrados, 0)
+    const ab = areas.reduce((acc, a) => acc + a.abiertos, 0)
+    return { nombre: s.sucursalNombre, total: s.total, cerrados: c, abiertos: ab }
+  })
+
+  const totalGlobal = filasSucursal.reduce((s, r) => s + r.total, 0)
+  const cerradosGlobal = filasSucursal.reduce((s, r) => s + r.cerrados, 0)
+  const abiertosGlobal = filasSucursal.reduce((s, r) => s + r.abiertos, 0)
+
+  const filasTabla: (string | number)[][] = [
+    ...filasSucursal.map((r) => [
+      r.nombre,
+      r.total,
+      r.cerrados,
+      r.abiertos,
+      pct(r.cerrados, r.total),
+    ]),
+    ['TOTAL', totalGlobal, cerradosGlobal, abiertosGlobal, pct(cerradosGlobal, totalGlobal)],
+  ]
 
   y = seccion(doc, 'Cierre por sucursal', y)
-  y = tablaBase(
-    doc,
-    y,
-    ['Sucursal', 'Total', 'Cerrados', 'En proceso', 'Pendientes', '% Cierre'],
-    [
-      ['Sede Central', 12, 7, 3, 2, '58%'],
-      ['Sucursal Norte', 5, 3, 1, 1, '60%'],
-      ['Sucursal Sur', 5, 2, 2, 1, '40%'],
-      ['TOTAL', 22, 12, 6, 4, '55%'],
-    ],
-  )
+  y = tablaBase(doc, y, ['Sucursal', 'Total', 'Cerrados', 'Abiertos', '% Cierre'], filasTabla)
 
-  y = seccion(doc, 'Cierre por tipo de servicio y sucursal', y)
-  tablaBase(
-    doc,
-    y,
-    ['Tipo de servicio', 'Sede Central', 'Suc. Norte', 'Suc. Sur', 'Total cerrados'],
-    [
-      ['Incidencia Hardware', '4/5', '2/2', '1/2', '7/9'],
-      ['Incidencia Software', '2/3', '1/1', '0/1', '3/5'],
-      ['Incidencia Red', '1/2', '0/1', '1/1', '2/4'],
-      ['Mantenimiento', '0/1', '0/0', '0/1', '0/2'],
-      ['Solicitud', '0/1', '0/1', '0/0', '0/2'],
-    ],
-  )
+  if (resumen.porArea.length > 0) {
+    const filasArea = resumen.porArea.map((a) => {
+      const suc = resumen.porSucursal.find((s) => s.sucursalId === a.sucursalId)
+      return [
+        suc?.sucursalNombre ?? '—',
+        a.areaNombre,
+        a.cerrados + a.abiertos,
+        a.cerrados,
+        a.abiertos,
+        pct(a.cerrados, a.cerrados + a.abiertos),
+      ]
+    })
+    y = seccion(doc, 'Detalle por área', y)
+    tablaBase(doc, y, ['Sucursal', 'Área', 'Total', 'Cerrados', 'Abiertos', '% Cierre'], filasArea)
+  }
 
   piePagina(doc)
   doc.save(`cierre-por-sucursal-${new Date().toISOString().slice(0, 10)}.pdf`)
