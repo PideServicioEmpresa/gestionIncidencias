@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Plus, ExternalLink, Power, PowerOff, MapPin } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { Link } from 'react-router-dom'
 import { sucursalService } from '@features/sucursales/services/sucursalService'
+import { empresaService } from '@features/empresas/services/empresaService'
 import { useAuthStore } from '@store/auth.store'
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/card'
 import { Button } from '@shared/ui/button'
@@ -15,10 +16,12 @@ import { Input } from '@shared/ui/input'
 import { Textarea } from '@shared/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@shared/ui/dialog'
 import { FormField } from '@shared/components/FormField'
+import { SearchableSelect } from '@shared/components/SearchableSelect'
 import { Skeleton } from '@shared/ui/skeleton'
 import { ROUTES } from '@constants/index'
 
 const schema = z.object({
+  empresaId: z.string().min(1, 'Selecciona una empresa.'),
   nombre: z.string().min(1, 'Requerido').max(100, 'Máximo 100 caracteres'),
   descripcion: z.string().max(300, 'Máximo 300 caracteres').optional(),
   direccion: z.string().max(200, 'Máximo 200 caracteres').optional(),
@@ -28,6 +31,7 @@ type FormValues = z.infer<typeof schema>
 export function SeccionSucursales() {
   const qc = useQueryClient()
   const user = useAuthStore((s) => s.user)
+  const isSuperAdmin = user?.rol === 'superadmin'
   const empresaId = user?.empresaId
 
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -38,22 +42,32 @@ export function SeccionSucursales() {
       sucursalService.listar({ tamanoPagina: 100, ...(empresaId ? { empresaId } : {}) }),
   })
 
+  const empresasQuery = useQuery({
+    queryKey: ['empresas', 'settings-sucursal'],
+    queryFn: () => empresaService.listar({ soloActivas: true, tamanoPagina: 100 }),
+    enabled: isSuperAdmin,
+    staleTime: 1000 * 60 * 5,
+    select: (d) => d.items ?? [],
+  })
+  const empresas = empresasQuery.data ?? []
+
   const items = data?.items ?? []
 
   const {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { nombre: '', descripcion: '', direccion: '' },
+    defaultValues: { empresaId: '', nombre: '', descripcion: '', direccion: '' },
   })
 
   const { mutateAsync: crear } = useMutation({
     mutationFn: (v: FormValues) =>
       sucursalService.crear({
-        empresaId: empresaId!,
+        empresaId: v.empresaId,
         nombre: v.nombre.trim(),
         descripcion: v.descripcion?.trim() || undefined,
         direccion: v.direccion?.trim() || undefined,
@@ -79,7 +93,12 @@ export function SeccionSucursales() {
   })
 
   function openCreate() {
-    reset({ nombre: '', descripcion: '', direccion: '' })
+    reset({
+      empresaId: isSuperAdmin ? '' : (empresaId ?? ''),
+      nombre: '',
+      descripcion: '',
+      direccion: '',
+    })
     setDialogOpen(true)
   }
 
@@ -186,6 +205,28 @@ export function SeccionSucursales() {
             <DialogTitle>Nueva sucursal</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 pt-1">
+            {isSuperAdmin ? (
+              <FormField label="Empresa" required error={errors.empresaId?.message}>
+                <Controller
+                  name="empresaId"
+                  control={control}
+                  render={({ field }) => (
+                    <SearchableSelect
+                      options={empresas.map((e) => ({ value: e.id, label: e.nombreComercial }))}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Seleccionar empresa"
+                      searchPlaceholder="Buscar empresa..."
+                      emptyMessage="Sin empresas."
+                      hasError={!!errors.empresaId}
+                      loading={empresasQuery.isLoading}
+                    />
+                  )}
+                />
+              </FormField>
+            ) : (
+              <input type="hidden" {...register('empresaId')} />
+            )}
             <FormField label="Nombre" required error={errors.nombre?.message}>
               <Input
                 className="h-8 text-sm"
