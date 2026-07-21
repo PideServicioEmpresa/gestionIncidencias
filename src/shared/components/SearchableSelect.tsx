@@ -53,7 +53,7 @@ export function SearchableSelect({
           aria-expanded={open}
           disabled={disabled || loading}
           className={cn(
-            'h-8 w-full justify-between px-3 text-xs font-normal',
+            'h-10 w-full justify-between px-3 text-xs font-normal',
             !selected && 'text-muted-foreground',
             hasError && 'border-destructive/50 ring-1 ring-destructive/50',
           )}

@@ -473,7 +473,7 @@ export function MyTicketsPage() {
     return [...base, ...extra]
   }, [data?.items, assignedData?.items, isAdmin])
 
-  const totalRegistros = (data?.totalRegistros ?? 0) + (assignedData?.totalRegistros ?? 0)
+  const totalRegistros = data?.totalRegistros ?? 0
   const totalPages = data?.totalPaginas ?? 1
 
   // Mutations
@@ -630,7 +630,7 @@ export function MyTicketsPage() {
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar por título, código o sucursal..."
-            className="h-8 w-full pl-9 text-xs"
+            className="h-10 w-full pl-9 text-xs"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value)
@@ -651,7 +651,7 @@ export function MyTicketsPage() {
                 handleFilterChange()
               }}
             >
-              <SelectTrigger className="h-8 w-full text-xs lg:w-36">
+              <SelectTrigger className="h-10 w-full text-xs lg:w-36">
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
               <SelectContent>
@@ -678,7 +678,7 @@ export function MyTicketsPage() {
                 handleFilterChange()
               }}
             >
-              <SelectTrigger className="h-8 w-full text-xs lg:w-32">
+              <SelectTrigger className="h-10 w-full text-xs lg:w-32">
                 <SelectValue placeholder="Prioridad" />
               </SelectTrigger>
               <SelectContent>
@@ -698,7 +698,7 @@ export function MyTicketsPage() {
               <CalendarDays className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="date"
-                className="h-6 w-full pl-7 text-xs lg:h-8 lg:w-[148px]"
+                className="h-8 w-full pl-7 text-xs lg:h-8 lg:w-[148px]"
                 value={dateFrom}
                 onChange={(e) => {
                   setDateFrom(e.target.value)
@@ -715,7 +715,7 @@ export function MyTicketsPage() {
               <CalendarDays className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="date"
-                className="h-6 w-full pl-7 text-xs lg:h-8 lg:w-[148px]"
+                className="h-8 w-full pl-7 text-xs lg:h-8 lg:w-[148px]"
                 value={dateTo}
                 onChange={(e) => {
                   setDateTo(e.target.value)
@@ -729,7 +729,7 @@ export function MyTicketsPage() {
         {/* Limpiar */}
         <Button
           size="sm"
-          className="h-8 w-full text-xs lg:w-auto lg:shrink-0"
+          className="h-10 w-full text-xs lg:w-auto lg:shrink-0"
           onClick={clearFilters}
         >
           <X className="mr-1 h-3 w-3" />
