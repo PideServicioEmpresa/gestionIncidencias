@@ -8,12 +8,6 @@ public sealed class UsuarioMappingProfile : IRegister
 {
     public void Register(TypeAdapterConfig config)
     {
-        config.NewConfig<Usuario, UsuarioDto>()
-            .Map(dest => dest.Correo, src => src.Correo.Valor)
-            .Map(dest => dest.Rol, src => src.Rol.ToString())
-            .Map(dest => dest.EstadoLaboral, src => src.EstadoLaboral.ToString())
-            .Ignore(dest => dest.Sucursales);  // El handler la rellena manualmente
-
         config.NewConfig<Usuario, UsuarioResumenDto>()
             .Map(dest => dest.Correo, src => src.Correo.Valor)
             .Map(dest => dest.Rol, src => src.Rol.ToString())

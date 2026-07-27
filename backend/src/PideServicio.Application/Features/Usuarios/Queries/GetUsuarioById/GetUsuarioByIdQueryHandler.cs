@@ -1,6 +1,5 @@
 namespace PideServicio.Application.Features.Usuarios.Queries.GetUsuarioById;
 
-using Mapster;
 using PideServicio.Application.Common.CQRS;
 using PideServicio.Application.Common.Interfaces;
 using PideServicio.Application.Common.Interfaces.Repositories;
@@ -46,9 +45,29 @@ public sealed class GetUsuarioByIdQueryHandler : IQueryHandler<GetUsuarioByIdQue
         if (!puedeVer)
             return Result.NoPermitido<UsuarioDto>("No tiene permisos para ver este usuario.");
 
-        var dto      = usuario.Adapt<UsuarioDto>();
         var sucursales = await _usuarioSucursalRepository.ListarPorUsuarioAsync(usuario.Id, ct);
-        dto = dto with { Sucursales = sucursales };
+
+        var dto = new UsuarioDto(
+            usuario.Id,
+            usuario.EmpresaId,
+            usuario.SucursalId,
+            usuario.AreaId,
+            usuario.Nombre,
+            usuario.Apellido,
+            usuario.NombreCompleto,
+            usuario.Correo.Valor,
+            usuario.NombreUsuario,
+            usuario.Telefono,
+            usuario.Rol.ToString(),
+            usuario.EstadoLaboral.ToString(),
+            usuario.Activo,
+            usuario.FotoUrl,
+            usuario.UltimoAcceso,
+            usuario.CreatedAt)
+        {
+            Sucursales = sucursales
+        };
+
         return Result.Exito<UsuarioDto>(dto);
     }
 }
