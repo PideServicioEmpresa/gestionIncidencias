@@ -9,7 +9,7 @@ using PideServicio.Domain.Entities;
 
 /// <summary>
 /// Repositorio de la relación Usuario-Sucursal. Tabla: usuario_sucursales.
-/// La columna DB es 'activa' (bool); se mapea a la propiedad 'Activo' de la entidad.
+/// La columna DB es 'activo' (bool); se mapea a la propiedad 'Activo' de la entidad.
 /// El invariante de única sucursal principal por Usuario es responsabilidad
 /// del trigger trg_usuario_sucursales_guard_principal en la BD.
 /// </summary>
@@ -26,7 +26,7 @@ public sealed class UsuarioSucursalRepository : IUsuarioSucursalRepository
             SELECT us.sucursal_id  AS "SucursalId",
                    s.nombre        AS "SucursalNombre",
                    us.es_principal AS "EsPrincipal",
-                   us.activa       AS "Activo"
+                   us.activo       AS "Activo"
             FROM   usuario_sucursales us
             JOIN   sucursales s ON s.id = us.sucursal_id
             WHERE  us.usuario_id = @UsuarioId
@@ -42,7 +42,7 @@ public sealed class UsuarioSucursalRepository : IUsuarioSucursalRepository
     {
         const string sql = """
             INSERT INTO usuario_sucursales
-                (id, usuario_id, sucursal_id, es_principal, activa,
+                (id, usuario_id, sucursal_id, es_principal, activo,
                  created_at, updated_at, created_by)
             VALUES
                 (@Id, @UsuarioId, @SucursalId, @EsPrincipal, @Activa,
@@ -82,7 +82,7 @@ public sealed class UsuarioSucursalRepository : IUsuarioSucursalRepository
             // 2. Insertar las nuevas — no-principales primero, principal al final (trigger-safe)
             const string insertSql = """
                 INSERT INTO usuario_sucursales
-                    (id, usuario_id, sucursal_id, es_principal, activa,
+                    (id, usuario_id, sucursal_id, es_principal, activo,
                      created_at, updated_at, created_by)
                 VALUES
                     (@Id, @UsuarioId, @SucursalId, @EsPrincipal, @Activa,
