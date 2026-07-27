@@ -1,5 +1,7 @@
 namespace PideServicio.Application.Features.Auth.DTOs;
 
+using PideServicio.Application.Features.Usuarios.DTOs;
+
 public sealed record PerfilUsuarioDto(
     Guid Id,
     Guid AuthId,
@@ -17,7 +19,8 @@ public sealed record PerfilUsuarioDto(
     string EstadoLaboral,
     bool Activo,
     DateTimeOffset? UltimoAcceso,
-    PermisosDto Permisos);
+    PermisosDto Permisos,
+    IReadOnlyList<SucursalAsignacionDto> Sucursales);
 
 public sealed record PermisosDto(
     bool EsSuperAdmin,

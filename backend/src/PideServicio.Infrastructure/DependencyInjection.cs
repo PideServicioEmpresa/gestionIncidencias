@@ -19,6 +19,7 @@ public static class DependencyInjection
 
         // Servicios base
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<ISucursalActivaService, SucursalActivaService>();
         services.AddSingleton<IDateTimeService, DateTimeService>();
 
         // Opciones de configuración

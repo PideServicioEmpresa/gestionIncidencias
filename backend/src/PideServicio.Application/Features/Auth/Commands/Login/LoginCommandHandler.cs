@@ -5,6 +5,7 @@ using PideServicio.Application.Common.Interfaces;
 using PideServicio.Application.Common.Interfaces.Repositories;
 using PideServicio.Application.Common.Models;
 using PideServicio.Application.Features.Auth.DTOs;
+using PideServicio.Application.Features.Usuarios.DTOs;
 using PideServicio.Domain.Enums;
 
 public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, LoginResponseDto>
@@ -70,7 +71,9 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, LoginRes
         EstadoLaboral: u.EstadoLaboral.ToString(),
         Activo: u.Activo,
         UltimoAcceso: u.UltimoAcceso,
-        Permisos: BuildPermisos(u.Rol));
+        Permisos: BuildPermisos(u.Rol),
+        // El login devuelve la lista vacía; el frontend llama a /auth/me para obtenerla completa.
+        Sucursales: Array.Empty<SucursalAsignacionDto>());
 
     private static PermisosDto BuildPermisos(RolTipo rol) => new(
         EsSuperAdmin: rol == RolTipo.SUPERADMIN,

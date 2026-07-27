@@ -5,17 +5,25 @@ using PideServicio.Application.Common.Interfaces;
 using PideServicio.Application.Common.Interfaces.Repositories;
 using PideServicio.Application.Common.Models;
 using PideServicio.Application.Features.Auth.DTOs;
+using PideServicio.Application.Features.Usuarios.DTOs;
 using PideServicio.Domain.Enums;
 
 public sealed class GetMeQueryHandler : IQueryHandler<GetMeQuery, PerfilUsuarioDto>
 {
+    private static readonly RolTipo[] _rolesMultiSucursal = [RolTipo.TECNICO, RolTipo.TRABAJADOR, RolTipo.USUARIO];
+
     private readonly ICurrentUserService _currentUser;
     private readonly IUsuarioRepository _usuarios;
+    private readonly IUsuarioSucursalRepository _usuarioSucursales;
 
-    public GetMeQueryHandler(ICurrentUserService currentUser, IUsuarioRepository usuarios)
+    public GetMeQueryHandler(
+        ICurrentUserService currentUser,
+        IUsuarioRepository usuarios,
+        IUsuarioSucursalRepository usuarioSucursales)
     {
         _currentUser = currentUser;
         _usuarios = usuarios;
+        _usuarioSucursales = usuarioSucursales;
     }
 
     public async Task<Result<PerfilUsuarioDto>> Handle(GetMeQuery request, CancellationToken ct)
@@ -24,14 +32,18 @@ public sealed class GetMeQueryHandler : IQueryHandler<GetMeQuery, PerfilUsuarioD
         if (actor is null)
             return Result.NoAutorizado<PerfilUsuarioDto>();
 
-        // Si los claims del hook están presentes busca por Id interno;
-        // si solo está el sub estándar (sin hook activo) busca por auth_id.
         var usuario = actor.Id != Guid.Empty
             ? await _usuarios.ObtenerPorIdAsync(actor.Id, ct)
             : await _usuarios.ObtenerPorAuthIdAsync(actor.AuthId, ct);
         if (usuario is null)
             return Result.NoEncontrado<PerfilUsuarioDto>(
                 "No se encontró el perfil del usuario. Contacte al administrador.");
+
+        // Los roles multi-sucursal tienen asignaciones en usuario_sucursales;
+        // Admin y SuperAdmin tienen la lista vacía (sus sucursales se limpian al cambiar de rol).
+        IReadOnlyList<SucursalAsignacionDto> sucursales = _rolesMultiSucursal.Contains(usuario.Rol)
+            ? await _usuarioSucursales.ListarPorUsuarioAsync(usuario.Id, ct)
+            : [];
 
         return Result.Exito(new PerfilUsuarioDto(
             Id: usuario.Id,
@@ -50,7 +62,8 @@ public sealed class GetMeQueryHandler : IQueryHandler<GetMeQuery, PerfilUsuarioD
             EstadoLaboral: usuario.EstadoLaboral.ToString(),
             Activo: usuario.Activo,
             UltimoAcceso: usuario.UltimoAcceso,
-            Permisos: BuildPermisos(usuario.Rol)));
+            Permisos: BuildPermisos(usuario.Rol),
+            Sucursales: sucursales));
     }
 
     private static PermisosDto BuildPermisos(RolTipo rol) => new(
