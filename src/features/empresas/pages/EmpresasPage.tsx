@@ -1,6 +1,15 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Plus, MoreHorizontal, Building2, Power, Pencil, Eye } from 'lucide-react'
+import {
+  Search,
+  Plus,
+  MoreHorizontal,
+  Building2,
+  Power,
+  Pencil,
+  Eye,
+  ArrowLeft,
+} from 'lucide-react'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { Badge } from '@shared/ui/badge'
@@ -40,13 +49,24 @@ export function EmpresasPage() {
     <div className="px-3 py-3 lg:px-5">
       {/* Header */}
       <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold tracking-tight">Empresas</h2>
-          <p className="text-xs text-muted-foreground">
-            {isLoading
-              ? 'Cargando...'
-              : `${data?.totalRegistros ?? 0} empresa${(data?.totalRegistros ?? 0) !== 1 ? 's' : ''} registrada${(data?.totalRegistros ?? 0) !== 1 ? 's' : ''}`}
-          </p>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={() => navigate(ROUTES.SETTINGS)}
+            aria-label="Volver a configuración"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h2 className="text-base font-semibold tracking-tight">Empresas</h2>
+            <p className="text-xs text-muted-foreground">
+              {isLoading
+                ? 'Cargando...'
+                : `${data?.totalRegistros ?? 0} empresa${(data?.totalRegistros ?? 0) !== 1 ? 's' : ''} registrada${(data?.totalRegistros ?? 0) !== 1 ? 's' : ''}`}
+            </p>
+          </div>
         </div>
         <Button size="sm" className="gap-1.5" onClick={() => navigate(ROUTES.EMPRESAS_NEW)}>
           <Plus className="h-3.5 w-3.5" />

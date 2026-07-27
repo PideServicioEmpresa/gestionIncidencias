@@ -7,15 +7,16 @@ import {
   ChevronRight,
   HelpCircle,
   AlertTriangle,
+  MapPin,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@store/auth.store'
+import { ROUTES } from '@constants/index'
 import { configuracionService } from '../services/configuracionService'
 import { SeccionTiposServicio } from '../components/SeccionTiposServicio'
 import { SeccionCategorias } from '../components/SeccionCategorias'
-import { SeccionEmpresas } from '../components/SeccionEmpresas'
-import { SeccionSucursales } from '../components/SeccionSucursales'
 import { SeccionRoles } from '../components/SeccionRoles'
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/card'
 import { Switch } from '@shared/ui/switch'
@@ -90,6 +91,7 @@ function DangerRow({
 // ─── Main page ──────────────────────────────────────────────────────────────
 
 export function SettingsPage() {
+  const navigate = useNavigate()
   const qc = useQueryClient()
   const user = useAuthStore((s) => s.user)
 
@@ -557,11 +559,51 @@ export function SettingsPage() {
         {/* ── CATEGORÍAS ────────────────────────────────────────────────────── */}
         <SeccionCategorias />
 
-        {/* ── EMPRESAS (solo superadmin) ─────────────────────────────────────── */}
-        <SeccionEmpresas />
-
-        {/* ── SUCURSALES ────────────────────────────────────────────────────── */}
-        <SeccionSucursales />
+        {/* ── ORGANIZACIÓN ────────────────────────────────────────────────── */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="px-3 pb-2 pt-3">
+            <CardTitle className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+              <Building2 className="h-3.5 w-3.5 text-blue-500" />
+              Organización
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 p-3 pt-0 sm:grid-cols-2">
+            {user?.rol === 'superadmin' && (
+              <button
+                type="button"
+                onClick={() => navigate(ROUTES.EMPRESAS)}
+                className="flex items-center justify-between gap-4 rounded-md border border-border bg-muted/30 px-4 py-3 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <div className="flex items-center gap-3">
+                  <Building2 className="h-5 w-5 shrink-0 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Gestionar empresas</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Crear, editar y activar empresas del sistema
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => navigate(ROUTES.SUCURSALES)}
+              className="flex items-center justify-between gap-4 rounded-md border border-border bg-muted/30 px-4 py-3 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <div className="flex items-center gap-3">
+                <MapPin className="h-5 w-5 shrink-0 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Gestionar sucursales</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Crear, editar y administrar sucursales
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </button>
+          </CardContent>
+        </Card>
 
         {/* ── ZONA DE PELIGRO (ocupa las 2 columnas en desktop) ───────────── */}
         <Card className="border-red-200 lg:col-span-2">

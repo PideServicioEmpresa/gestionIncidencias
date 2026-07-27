@@ -8,8 +8,6 @@ import {
   FileBarChart,
   Shield,
   Plus,
-  Building2,
-  MapPin,
 } from 'lucide-react'
 import { cn } from '@lib/utils'
 import { ROUTES } from '@constants/index'
@@ -36,8 +34,6 @@ const adminNav: NavItem[] = [
   { label: 'Dashboard', to: ROUTES.DASHBOARD, icon: LayoutDashboard },
   { label: 'Tickets', to: ROUTES.TICKETS, icon: Ticket },
   { label: 'Usuarios', to: ROUTES.USERS, icon: Users },
-  { label: 'Empresas', to: ROUTES.EMPRESAS, icon: Building2 },
-  { label: 'Sucursales', to: ROUTES.SUCURSALES, icon: MapPin },
   { label: 'Notificaciones', to: ROUTES.NOTIFICATIONS, icon: Bell },
   { label: 'Reportes', to: ROUTES.REPORTS, icon: FileBarChart },
   { label: 'Auditoría', to: ROUTES.AUDIT, icon: Shield },
@@ -48,8 +44,6 @@ const superAdminNav: NavItem[] = [
   { label: 'Dashboard', to: ROUTES.DASHBOARD, icon: LayoutDashboard },
   { label: 'Tickets', to: ROUTES.TICKETS, icon: Ticket },
   { label: 'Usuarios', to: ROUTES.USERS, icon: Users },
-  { label: 'Empresas', to: ROUTES.EMPRESAS, icon: Building2 },
-  { label: 'Sucursales', to: ROUTES.SUCURSALES, icon: MapPin },
   { label: 'Notificaciones', to: ROUTES.NOTIFICATIONS, icon: Bell },
   { label: 'Reportes', to: ROUTES.REPORTS, icon: FileBarChart },
   { label: 'Auditoría', to: ROUTES.AUDIT, icon: Shield },
