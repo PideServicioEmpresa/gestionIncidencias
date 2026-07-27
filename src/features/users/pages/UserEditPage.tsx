@@ -341,9 +341,7 @@ export function UserEditPage() {
               <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
               <div className="min-w-0">
                 <p className="text-[10px] text-muted-foreground">Empresa</p>
-                <p className="truncate text-xs font-medium">
-                  {empresa?.nombreComercial ?? user.empresaId}
-                </p>
+                <p className="truncate text-xs font-medium">{empresa?.nombreComercial ?? '—'}</p>
               </div>
             </div>
 

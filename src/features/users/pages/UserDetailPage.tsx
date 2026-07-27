@@ -9,6 +9,7 @@ import { Skeleton } from '@shared/ui/skeleton'
 import { EmptyState } from '@shared/components/EmptyState'
 import { StatusBadge } from '@shared/components/StatusBadge'
 import { useUsuario, useToggleEstadoUsuario } from '../hooks/useUsuarios'
+import { useEmpresa } from '@features/empresas/hooks/useEmpresas'
 import { useTickets } from '@features/tickets/hooks/useTickets'
 import { getTituloTicket } from '@features/tickets/utils/ticketHelpers'
 import { userEditPath, ROUTES } from '@constants/index'
@@ -45,6 +46,7 @@ export function UserDetailPage() {
   const [showHistory, setShowHistory] = useState(false)
 
   const { data: user, isLoading, isError } = useUsuario(id ?? '')
+  const { data: empresa } = useEmpresa(user?.empresaId ?? '')
   const toggleEstado = useToggleEstadoUsuario()
   const ticketsQuery = useTickets(id ? { tecnicoId: id, tamanoPagina: 10 } : undefined)
 
@@ -325,24 +327,30 @@ export function UserDetailPage() {
             <CardContent className="space-y-2 p-3 pt-0 text-xs">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Empresa</span>
-                {/* TODO: Mostrar nombre de empresa cuando el endpoint /empresas/{id} esté disponible */}
-                <span className="font-mono text-[10px] font-medium text-muted-foreground">
-                  {user.empresaId}
-                </span>
+                <span className="font-medium">{empresa?.nombreComercial ?? '—'}</span>
               </div>
-              {user.areaId && (
+
+              {user.sucursales.length === 1 ? (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Sucursal</span>
-                  {/* TODO: Mostrar nombre de sucursal cuando el endpoint esté disponible */}
-                  <span className="font-mono text-[10px] font-medium text-muted-foreground">
-                    {user.areaId}
-                  </span>
+                  <span className="font-medium">{user.sucursales[0].sucursalNombre}</span>
                 </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">ID</span>
-                <span className="font-mono font-medium text-muted-foreground">{user.id}</span>
-              </div>
+              ) : user.sucursales.length > 1 ? (
+                <div className="space-y-1">
+                  <span className="text-muted-foreground">Sucursales</span>
+                  {user.sucursales.map((s) => (
+                    <div key={s.sucursalId} className="flex items-center justify-between pl-2">
+                      <span className="font-medium">{s.sucursalNombre}</span>
+                      {s.esPrincipal && (
+                        <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                          Principal
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Estado</span>
                 {user.activo ? (
