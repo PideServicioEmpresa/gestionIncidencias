@@ -90,6 +90,7 @@ public sealed class UsuariosController : ApiControllerBase
             request.Contrasena,
             request.Telefono,
             request.Rol,
+            request.EmpresaId,
             request.Sucursales);
 
         var result = await Mediator.Send(command, ct);
@@ -237,6 +238,7 @@ public sealed record CreateUsuarioRequest(
     string Contrasena,
     string? Telefono,
     RolTipo Rol,
+    Guid? EmpresaId = null,
     IReadOnlyList<SucursalAsignacion>? Sucursales = null);
 
 /// <summary>Payload para reemplazar las sucursales de un usuario.</summary>

@@ -1,13 +1,21 @@
 namespace PideServicio.Application.Features.Usuarios.Commands.CreateUsuario;
 
 using FluentValidation;
+using PideServicio.Domain.Enums;
 
 public sealed class CreateUsuarioCommandValidator : AbstractValidator<CreateUsuarioCommand>
 {
+    private static readonly RolTipo[] _rolesMultiSucursal = [RolTipo.TECNICO, RolTipo.TRABAJADOR, RolTipo.USUARIO];
+
     public CreateUsuarioCommandValidator()
     {
         RuleFor(x => x.SucursalId)
-            .NotEmpty().WithMessage("La sucursal es requerida.");
+            .NotEmpty().WithMessage("La sucursal es requerida.")
+            .When(x => _rolesMultiSucursal.Contains(x.Rol));
+
+        RuleFor(x => x.EmpresaId)
+            .NotEmpty().WithMessage("La empresa es requerida para el rol Administrador.")
+            .When(x => x.Rol == RolTipo.ADMIN);
 
         RuleFor(x => x.Nombre)
             .NotEmpty().WithMessage("El nombre es requerido.")

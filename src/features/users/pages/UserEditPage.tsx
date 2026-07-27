@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, List, Building2, MapPin } from 'lucide-react'
+import { ArrowLeft, List, Building2, MapPin, AlertTriangle } from 'lucide-react'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/card'
@@ -325,6 +325,27 @@ export function UserEditPage() {
                 </Select>
               </FormField>
             </div>
+
+            {/* Aviso: pérdida de sucursales al cambiar a rol administrativo */}
+            {(() => {
+              const rolOriginal = user.rol.toLowerCase()
+              const cambiandoARolAdmin = form.rol === 'admin' && rolOriginal !== 'admin'
+              const cambiandoARolSuperAdmin =
+                form.rol === 'superadmin' && rolOriginal !== 'superadmin'
+              const tieneSucursales = (user.sucursales?.length ?? 0) > 0
+              if (!(cambiandoARolAdmin || cambiandoARolSuperAdmin) || !tieneSucursales) return null
+              return (
+                <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />
+                  <p className="text-xs text-destructive">
+                    Al asignar el rol {cambiandoARolAdmin ? 'Administrador' : 'SuperAdministrador'},
+                    las sucursales asignadas a este usuario se eliminarán. Este rol administra{' '}
+                    {cambiandoARolAdmin ? 'la empresa completa' : 'todo el sistema'} y no se asigna
+                    a sucursales individuales.
+                  </p>
+                </div>
+              )
+            })()}
           </CardContent>
         </Card>
 

@@ -9,18 +9,23 @@ using PideServicio.Domain.Exceptions;
 
 public sealed class CambiarRolCommandHandler : ICommandHandler<CambiarRolCommand>
 {
-    private readonly IUsuarioRepository _usuarioRepository;
-    private readonly ICurrentUserService _currentUserService;
-    private readonly IAuditService _auditService;
+    private static readonly RolTipo[] _rolesAdministrativos = [RolTipo.ADMIN, RolTipo.SUPERADMIN];
+
+    private readonly IUsuarioRepository         _usuarioRepository;
+    private readonly IUsuarioSucursalRepository _usuarioSucursalRepository;
+    private readonly ICurrentUserService        _currentUserService;
+    private readonly IAuditService              _auditService;
 
     public CambiarRolCommandHandler(
-        IUsuarioRepository usuarioRepository,
-        ICurrentUserService currentUserService,
-        IAuditService auditService)
+        IUsuarioRepository         usuarioRepository,
+        IUsuarioSucursalRepository usuarioSucursalRepository,
+        ICurrentUserService        currentUserService,
+        IAuditService              auditService)
     {
-        _usuarioRepository = usuarioRepository;
-        _currentUserService = currentUserService;
-        _auditService = auditService;
+        _usuarioRepository         = usuarioRepository;
+        _usuarioSucursalRepository = usuarioSucursalRepository;
+        _currentUserService        = currentUserService;
+        _auditService              = auditService;
     }
 
     public async Task<Result> Handle(CambiarRolCommand request, CancellationToken ct)
@@ -56,6 +61,11 @@ public sealed class CambiarRolCommandHandler : ICommandHandler<CambiarRolCommand
             usuario.CambiarRol(request.NuevoRol, actorDb.Id);
 
             await _usuarioRepository.ActualizarAsync(usuario, ct);
+
+            // Al cambiar a rol administrativo, eliminar asignaciones de sucursal:
+            // esos roles controlan empresa/sistema completo y no se atan a sucursales.
+            if (_rolesAdministrativos.Contains(request.NuevoRol))
+                await _usuarioSucursalRepository.ReemplazarAsync(usuario.Id, [], ct);
 
             await _auditService.RegistrarAsync(
                 entidad: "Usuario",

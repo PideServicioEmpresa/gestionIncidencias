@@ -52,7 +52,10 @@ public sealed class CreateUsuarioCommandHandler : ICommandHandler<CreateUsuarioC
         if (request.Rol == RolTipo.SUPERADMIN && actorDb.Rol != RolTipo.SUPERADMIN)
             return Result.NoPermitido<Guid>("Solo un SuperAdministrador puede asignar el rol SUPERADMIN.");
 
-        var empresaId = actorDb.EmpresaId;
+        // Para Admin, se usa la empresa explícitamente seleccionada; para los demás, la del actor
+        var empresaId = request.Rol == RolTipo.ADMIN && request.EmpresaId.HasValue
+            ? request.EmpresaId.Value
+            : actorDb.EmpresaId;
 
         try
         {

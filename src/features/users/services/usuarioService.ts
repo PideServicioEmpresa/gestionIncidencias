@@ -61,6 +61,7 @@ export const usuarioService = {
 
   crear: (body: {
     sucursalId: string
+    empresaId?: string
     nombre: string
     apellido: string
     correo: string

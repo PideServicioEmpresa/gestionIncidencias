@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, User, Eye, EyeOff, Building2 } from 'lucide-react'
+import { ArrowLeft, User, Eye, EyeOff, Building2, AlertTriangle } from 'lucide-react'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { Badge } from '@shared/ui/badge'
@@ -81,8 +81,13 @@ export function UserNewPage() {
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({})
   const [showPw, setShowPw] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [hadSucursalesWarning, setHadSucursalesWarning] = useState(false)
+  // Guardamos el último valor de sucursalId antes de cambiar el rol
+  const prevSucursalDataRef = useRef({ sucursalId: '', sucursalesMulti: [] as SucursalItem[] })
 
   const isMultiSucursal = ROLES_MULTI_SUCURSAL.includes(form.rol as UserRole)
+  const isAdminRol = form.rol === 'admin'
+  const isSuperAdminRol = form.rol === 'superadmin'
 
   // ── Datos externos ──────────────────────────────────────────────────────────
 
@@ -119,7 +124,17 @@ export function UserNewPage() {
         next.sucursalId = ''
         next.sucursalesMulti = []
       }
-      if (field === 'rol') next.sucursalesMulti = []
+      if (field === 'rol') {
+        const switchingToAdminOrSuperAdmin = value === 'admin' || value === 'superadmin'
+        const hadAssignedSucursales = prev.sucursalesMulti.length > 0 || !!prev.sucursalId
+        setHadSucursalesWarning(switchingToAdminOrSuperAdmin && hadAssignedSucursales)
+        prevSucursalDataRef.current = {
+          sucursalId: prev.sucursalId,
+          sucursalesMulti: prev.sucursalesMulti,
+        }
+        next.sucursalesMulti = []
+        next.sucursalId = ''
+      }
       return next
     })
     setErrors((prev) => ({ ...prev, [field]: undefined }))
@@ -140,12 +155,14 @@ export function UserNewPage() {
     if (form.confirmarContrasena !== form.contrasena)
       next.confirmarContrasena = 'Las contraseñas no coinciden.'
     if (!form.rol) next.rol = 'Selecciona un rol.'
-    if (!form.empresaId) next.empresaId = 'Selecciona una empresa.'
+    // Empresa: solo requerida si el actor es SuperAdmin creando un Admin
+    if (isSuperAdmin && isAdminRol && !form.empresaId) next.empresaId = 'Selecciona una empresa.'
+    // Sucursal: no aplica para Admin ni SuperAdmin
     if (isMultiSucursal) {
       if (form.sucursalesMulti.length === 0) next.sucursalId = 'Agrega al menos una sucursal.'
       else if (!form.sucursalesMulti.some((s) => s.esPrincipal))
         next.sucursalId = 'Marca una sucursal como principal.'
-    } else {
+    } else if (!isAdminRol && !isSuperAdminRol) {
       if (!form.sucursalId) next.sucursalId = 'Selecciona una sucursal.'
     }
     setErrors(next)
@@ -164,11 +181,12 @@ export function UserNewPage() {
 
     const principalSucursalId = isMultiSucursal
       ? (form.sucursalesMulti.find((s) => s.esPrincipal)?.sucursalId ?? '')
-      : form.sucursalId
+      : ''
 
     crearUsuario.mutate(
       {
         sucursalId: principalSucursalId,
+        empresaId: isAdminRol ? form.empresaId : undefined,
         nombre: form.name.trim(),
         apellido: form.apellido.trim(),
         correo: form.correo.trim(),
@@ -358,8 +376,9 @@ export function UserNewPage() {
               <CardTitle className="text-sm font-semibold">Asignación</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 p-3 pt-0">
-              {isSuperAdmin ? (
-                <FormField label="Empresa" required error={errors.empresaId}>
+              {/* ── Empresa ─────────────────────────────────────── */}
+              {isSuperAdminRol ? null : isSuperAdmin ? (
+                <FormField label="Empresa" required={isAdminRol} error={errors.empresaId}>
                   <SearchableSelect
                     options={empresas.map((e) => ({ value: e.id, label: e.nombreComercial }))}
                     value={form.empresaId}
@@ -382,7 +401,22 @@ export function UserNewPage() {
                 </div>
               )}
 
-              {isMultiSucursal ? (
+              {/* ── Sucursales / info por rol ────────────────────── */}
+              {isSuperAdminRol ? (
+                <div className="rounded-lg border border-purple-200 bg-purple-50 px-3 py-2.5 dark:border-purple-800 dark:bg-purple-950/30">
+                  <p className="text-xs text-purple-700 dark:text-purple-400">
+                    Este rol tiene acceso a todas las empresas y sucursales del sistema. No se
+                    asigna a ninguna empresa ni sucursal individual.
+                  </p>
+                </div>
+              ) : isAdminRol ? (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 dark:border-blue-800 dark:bg-blue-950/30">
+                  <p className="text-xs text-blue-700 dark:text-blue-400">
+                    El Administrador gestiona la empresa completa. No se asigna a sucursales
+                    individuales.
+                  </p>
+                </div>
+              ) : isMultiSucursal ? (
                 <FormField label="Sucursales" required error={errors.sucursalId}>
                   <SucursalMultiSelector
                     value={form.sucursalesMulti}
@@ -413,6 +447,19 @@ export function UserNewPage() {
                     disabled={!form.empresaId || loadingSucursales}
                   />
                 </FormField>
+              )}
+
+              {/* ── Aviso: pérdida de sucursales al cambiar rol ── */}
+              {hadSucursalesWarning && (isAdminRol || isSuperAdminRol) && (
+                <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />
+                  <p className="text-xs text-destructive">
+                    Al asignar el rol {isAdminRol ? 'Administrador' : 'SuperAdministrador'}, las
+                    sucursales seleccionadas se descartarán. Este rol administra{' '}
+                    {isAdminRol ? 'la empresa completa' : 'todo el sistema'} y no se asigna a
+                    sucursales individuales.
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>

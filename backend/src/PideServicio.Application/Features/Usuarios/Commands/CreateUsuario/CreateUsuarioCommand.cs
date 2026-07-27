@@ -14,4 +14,5 @@ public sealed record CreateUsuarioCommand(
     string Contrasena,
     string? Telefono,
     RolTipo Rol,
+    Guid? EmpresaId = null,
     IReadOnlyList<SucursalAsignacion>? Sucursales = null) : ICommand<Guid>;
