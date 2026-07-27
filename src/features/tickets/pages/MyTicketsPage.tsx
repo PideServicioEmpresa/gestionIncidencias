@@ -752,7 +752,7 @@ export function MyTicketsPage() {
       ) : (
         <>
           {/* ── MOBILE: card list ─────────────────────────────────────────── */}
-          <div className="grid gap-2 lg:hidden">
+          <div className="grid gap-2 xl:hidden">
             {tickets.map((ticket) => (
               <Card
                 key={ticket.id}
@@ -786,6 +786,13 @@ export function MyTicketsPage() {
                           </p>
                         </div>
                       )}
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">
+                        {new Date(ticket.fechaCreacion).toLocaleDateString('es-PE', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: '2-digit',
+                        })}
+                      </p>
                     </div>
                     <div className="flex flex-col items-end gap-1.5">
                       <div className="flex items-center gap-1.5">
@@ -861,18 +868,20 @@ export function MyTicketsPage() {
           </div>
 
           {/* ── DESKTOP: table ────────────────────────────────────────────── */}
-          <div className="hidden lg:block">
-            <div className="rounded-lg border">
+          <div className="hidden xl:block">
+            <div className="overflow-x-auto rounded-lg border">
               <Table>
                 <TableHeader>
                   <TableRow className="text-[10px] uppercase tracking-wide text-muted-foreground">
                     <TableHead className="h-8 font-semibold">Código</TableHead>
                     <TableHead className="h-8 font-semibold">Tipo de Servicio</TableHead>
-                    <TableHead className="h-8 font-semibold">Empresa</TableHead>
+                    <TableHead className="hidden h-8 font-semibold 2xl:table-cell">
+                      Empresa
+                    </TableHead>
                     <TableHead className="h-8 text-center font-semibold">Prioridad</TableHead>
                     <TableHead className="h-8 text-center font-semibold">Estado</TableHead>
                     <TableHead className="h-8 text-center font-semibold">Asignado a</TableHead>
-                    <TableHead className="h-8 whitespace-nowrap font-semibold">
+                    <TableHead className="hidden h-8 whitespace-nowrap font-semibold 2xl:table-cell">
                       F. creación
                     </TableHead>
                     <TableHead className="h-8 whitespace-nowrap font-semibold">Acciones</TableHead>
@@ -896,7 +905,7 @@ export function MyTicketsPage() {
                         </p>
                         <p className="text-[10px] text-muted-foreground">{ticket.tipo}</p>
                       </TableCell>
-                      <TableCell className="py-2">
+                      <TableCell className="hidden py-2 2xl:table-cell">
                         <p className="text-xs">{ticket.sucursalNombre}</p>
                         <p className="text-[10px] text-muted-foreground">{ticket.areaNombre}</p>
                       </TableCell>
@@ -933,7 +942,7 @@ export function MyTicketsPage() {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="py-2">
+                      <TableCell className="hidden py-2 2xl:table-cell">
                         <span className="text-xs text-muted-foreground">
                           {new Date(ticket.fechaCreacion).toLocaleDateString('es-PE', {
                             day: '2-digit',

@@ -1,14 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import {
-  LayoutDashboard,
-  Ticket,
-  Bell,
-  Users,
-  Settings,
-  FileBarChart,
-  Shield,
-  Plus,
-} from 'lucide-react'
+import { LayoutDashboard, Ticket, Bell, Users, Settings, FileBarChart, Plus } from 'lucide-react'
 import { cn } from '@lib/utils'
 import { ROUTES } from '@constants/index'
 import { useAuthStore } from '@store/auth.store'
@@ -36,7 +27,6 @@ const adminNav: NavItem[] = [
   { label: 'Usuarios', to: ROUTES.USERS, icon: Users },
   { label: 'Notificaciones', to: ROUTES.NOTIFICATIONS, icon: Bell },
   { label: 'Reportes', to: ROUTES.REPORTS, icon: FileBarChart },
-  { label: 'Auditoría', to: ROUTES.AUDIT, icon: Shield },
   { label: 'Configuración', to: ROUTES.SETTINGS, icon: Settings },
 ]
 
@@ -46,7 +36,6 @@ const superAdminNav: NavItem[] = [
   { label: 'Usuarios', to: ROUTES.USERS, icon: Users },
   { label: 'Notificaciones', to: ROUTES.NOTIFICATIONS, icon: Bell },
   { label: 'Reportes', to: ROUTES.REPORTS, icon: FileBarChart },
-  { label: 'Auditoría', to: ROUTES.AUDIT, icon: Shield },
   { label: 'Configuración', to: ROUTES.SETTINGS, icon: Settings },
 ]
 
