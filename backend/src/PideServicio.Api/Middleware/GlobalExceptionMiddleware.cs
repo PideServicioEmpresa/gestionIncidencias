@@ -37,9 +37,25 @@ public sealed class GlobalExceptionMiddleware(
         // Solo los errores 5xx son verdaderos errores inesperados y se registran como Error.
         if ((int)codigoHttp >= 500)
         {
+            // Render muestra los logs línea a línea; {Exception} queda en líneas
+            // subsiguientes que se pierden en el viewer. Incluimos el tipo y el
+            // inner exception en el mensaje estructurado para que aparezcan en la
+            // primera línea, y escribimos también a stderr para captura garantizada.
+            var innerMsg = excepcion.InnerException is { } inner
+                ? $"{inner.GetType().Name}: {inner.Message}"
+                : "(sin inner exception)";
+
             logger.LogError(excepcion,
-                "Excepción no controlada [{CodigoEstado}] {TraceId}: {Mensaje}",
-                (int)codigoHttp, traceId, excepcion.Message);
+                "Excepción no controlada [{CodigoEstado}] {TraceId} | Tipo={TipoExcepcion} | Inner={InnerExcepcion} | {Mensaje}",
+                (int)codigoHttp, traceId,
+                excepcion.GetType().FullName,
+                innerMsg,
+                excepcion.Message);
+
+            // Garantía de último recurso: stderr siempre aparece en Render
+            // independientemente del output template de Serilog.
+            await Console.Error.WriteLineAsync(
+                $"[500] TraceId={traceId} | {excepcion.GetType().FullName}: {excepcion.Message}{Environment.NewLine}{excepcion}");
         }
         else
         {
