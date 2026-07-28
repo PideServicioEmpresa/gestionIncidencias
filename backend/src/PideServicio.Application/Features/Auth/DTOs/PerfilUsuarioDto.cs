@@ -20,7 +20,8 @@ public sealed record PerfilUsuarioDto(
     bool Activo,
     DateTimeOffset? UltimoAcceso,
     PermisosDto Permisos,
-    IReadOnlyList<SucursalAsignacionDto> Sucursales);
+    IReadOnlyList<SucursalAsignacionDto> Sucursales,
+    Guid? SucursalActivaResuelta);
 
 public sealed record PermisosDto(
     bool EsSuperAdmin,

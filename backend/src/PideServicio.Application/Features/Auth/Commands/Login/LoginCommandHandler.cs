@@ -73,7 +73,8 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, LoginRes
         UltimoAcceso: u.UltimoAcceso,
         Permisos: BuildPermisos(u.Rol),
         // El login devuelve la lista vacía; el frontend llama a /auth/me para obtenerla completa.
-        Sucursales: Array.Empty<SucursalAsignacionDto>());
+        Sucursales: Array.Empty<SucursalAsignacionDto>(),
+        SucursalActivaResuelta: null);
 
     private static PermisosDto BuildPermisos(RolTipo rol) => new(
         EsSuperAdmin: rol == RolTipo.SUPERADMIN,

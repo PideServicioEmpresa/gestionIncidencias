@@ -15,15 +15,18 @@ public sealed class GetMeQueryHandler : IQueryHandler<GetMeQuery, PerfilUsuarioD
     private readonly ICurrentUserService _currentUser;
     private readonly IUsuarioRepository _usuarios;
     private readonly IUsuarioSucursalRepository _usuarioSucursales;
+    private readonly ISucursalActivaService _sucursalActiva;
 
     public GetMeQueryHandler(
         ICurrentUserService currentUser,
         IUsuarioRepository usuarios,
-        IUsuarioSucursalRepository usuarioSucursales)
+        IUsuarioSucursalRepository usuarioSucursales,
+        ISucursalActivaService sucursalActiva)
     {
         _currentUser = currentUser;
         _usuarios = usuarios;
         _usuarioSucursales = usuarioSucursales;
+        _sucursalActiva = sucursalActiva;
     }
 
     public async Task<Result<PerfilUsuarioDto>> Handle(GetMeQuery request, CancellationToken ct)
@@ -39,11 +42,14 @@ public sealed class GetMeQueryHandler : IQueryHandler<GetMeQuery, PerfilUsuarioD
             return Result.NoEncontrado<PerfilUsuarioDto>(
                 "No se encontró el perfil del usuario. Contacte al administrador.");
 
-        // Los roles multi-sucursal tienen asignaciones en usuario_sucursales;
-        // Admin y SuperAdmin tienen la lista vacía (sus sucursales se limpian al cambiar de rol).
         IReadOnlyList<SucursalAsignacionDto> sucursales = _rolesMultiSucursal.Contains(usuario.Rol)
             ? await _usuarioSucursales.ListarPorUsuarioAsync(usuario.Id, ct)
             : [];
+
+        // Campo de diagnóstico temporal: muestra la sucursal que el servicio resuelve
+        // dada la combinación de header X-Sucursal-Activa + validación de usuario_sucursales.
+        var sucursalActivaResuelta = await _sucursalActiva.ObtenerAsync(
+            usuario.Id, usuario.SucursalId, usuario.Rol, ct);
 
         return Result.Exito(new PerfilUsuarioDto(
             Id: usuario.Id,
@@ -63,7 +69,8 @@ public sealed class GetMeQueryHandler : IQueryHandler<GetMeQuery, PerfilUsuarioD
             Activo: usuario.Activo,
             UltimoAcceso: usuario.UltimoAcceso,
             Permisos: BuildPermisos(usuario.Rol),
-            Sucursales: sucursales));
+            Sucursales: sucursales,
+            SucursalActivaResuelta: sucursalActivaResuelta));
     }
 
     private static PermisosDto BuildPermisos(RolTipo rol) => new(
