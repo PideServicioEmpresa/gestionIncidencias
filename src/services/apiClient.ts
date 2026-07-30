@@ -68,15 +68,19 @@ function httpErrorMessage(status: number): string {
 // ── Función base de request ───────────────────────────────────────────────────
 
 async function request<T>(endpoint: string, init: RequestInit = {}): Promise<T> {
-  const token = useAuthStore.getState().accessToken
+  const { accessToken, sucursalActiva } = useAuthStore.getState()
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...((init.headers as Record<string, string>) ?? {}),
   }
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`
+  }
+
+  if (sucursalActiva) {
+    headers['X-Sucursal-Activa'] = sucursalActiva
   }
 
   let response: Response
@@ -181,9 +185,10 @@ export const apiClient = {
 
   /** POST multipart/form-data (upload de archivos) */
   async upload<T>(endpoint: string, formData: FormData): Promise<T> {
-    const token = useAuthStore.getState().accessToken
+    const { accessToken, sucursalActiva } = useAuthStore.getState()
     const headers: Record<string, string> = {}
-    if (token) headers['Authorization'] = `Bearer ${token}`
+    if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+    if (sucursalActiva) headers['X-Sucursal-Activa'] = sucursalActiva
 
     let response: Response
     try {

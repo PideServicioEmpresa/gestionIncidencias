@@ -4,6 +4,9 @@ import { useAuthStore } from '@store/auth.store'
 import type { AppUser, PerfilBackend, UserRole, LaborStatus } from '@types-app/index'
 import { ROL_MAP } from '@types-app/index'
 
+// Roles que operan sobre sucursales individuales (resto ignora sucursalActiva)
+const ROLES_MULTI_SUCURSAL: UserRole[] = ['tecnico', 'trabajador', 'usuario']
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function mapPerfilToAppUser(perfil: PerfilBackend, authUserId: string): AppUser {
@@ -11,6 +14,11 @@ function mapPerfilToAppUser(perfil: PerfilBackend, authUserId: string): AppUser 
   const nombre = partes[0] ?? ''
   const apellido = partes.slice(1).join(' ')
   const rol: UserRole = (ROL_MAP[perfil.rol.toUpperCase()] ?? 'usuario') as UserRole
+
+  // Construir lista completa de IDs a partir de las sucursales asignadas.
+  // Para Admin/SuperAdmin la lista estará vacía y sucursalIds cae al id principal.
+  const sucursalIds =
+    perfil.sucursales?.length > 0 ? perfil.sucursales.map((s) => s.sucursalId) : [perfil.sucursalId]
 
   return {
     id: perfil.id,
@@ -23,11 +31,19 @@ function mapPerfilToAppUser(perfil: PerfilBackend, authUserId: string): AppUser 
     rol,
     empresaId: perfil.empresaId,
     sucursalId: perfil.sucursalId,
-    sucursalIds: [perfil.sucursalId],
+    sucursalIds,
     estadoLaboral: 'activo' as LaborStatus,
     activo: perfil.activo,
     permisos: perfil.permisos,
   }
+}
+
+function resolverSucursalActiva(perfil: PerfilBackend): string | null {
+  const rol = (ROL_MAP[perfil.rol.toUpperCase()] ?? 'usuario') as UserRole
+  if (!ROLES_MULTI_SUCURSAL.includes(rol)) return null
+
+  // Buscar la sucursal marcada como principal; si no hay, usar la del campo sucursalId
+  return perfil.sucursales?.find((s) => s.esPrincipal)?.sucursalId ?? perfil.sucursalId ?? null
 }
 
 // ── Auth service ──────────────────────────────────────────────────────────────
@@ -63,6 +79,7 @@ export const authService = {
 
     const user = mapPerfilToAppUser(perfil, data.user.id)
     useAuthStore.getState().setAuth(user, data.session.access_token)
+    useAuthStore.getState().setSucursales(perfil.sucursales ?? [], resolverSucursalActiva(perfil))
 
     return user
   },
@@ -92,6 +109,7 @@ export const authService = {
       const perfil = await apiClient.get<PerfilBackend>('/auth/me')
       const user = mapPerfilToAppUser(perfil, data.session.user.id)
       useAuthStore.getState().setAuth(user, data.session.access_token)
+      useAuthStore.getState().setSucursales(perfil.sucursales ?? [], resolverSucursalActiva(perfil))
       return user
     } catch {
       // Si el backend no responde o el usuario no existe, limpiar sesión

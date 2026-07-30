@@ -91,6 +91,13 @@ export interface PaginationParams {
 
 // ── DTOs del backend (alineados con PideServicio.Application DTOs) ─────────────
 
+export interface SucursalPerfil {
+  sucursalId: string
+  sucursalNombre: string
+  esPrincipal: boolean
+  activo: boolean
+}
+
 export interface PerfilBackend {
   id: string
   correo: string
@@ -99,6 +106,7 @@ export interface PerfilBackend {
   empresaId: string
   sucursalId: string
   activo: boolean
+  sucursales: SucursalPerfil[]
   permisos: {
     esSuperAdmin: boolean
     esAdmin: boolean
