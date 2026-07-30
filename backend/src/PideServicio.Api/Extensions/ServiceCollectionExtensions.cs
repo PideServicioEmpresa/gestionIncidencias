@@ -145,7 +145,7 @@ public static class ServiceCollectionExtensions
             opts.AddPolicy("PideServicioPolicy", policy =>
                 policy.WithOrigins(origenesPermitidos)
                       .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-                      .WithHeaders("Authorization", "Content-Type", "X-Correlation-Id", "X-Trace-Id")
+                      .WithHeaders("Authorization", "Content-Type", "X-Correlation-Id", "X-Trace-Id", "X-Sucursal-Activa")
                       .AllowCredentials());
         });
 
