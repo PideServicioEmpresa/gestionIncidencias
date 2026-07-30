@@ -1,5 +1,14 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Ticket, Bell, Users, Settings, FileBarChart, Plus } from 'lucide-react'
+import {
+  LayoutDashboard,
+  Ticket,
+  Bell,
+  Users,
+  Settings,
+  FileBarChart,
+  Plus,
+  Building2,
+} from 'lucide-react'
 import { cn } from '@lib/utils'
 import { ROUTES } from '@constants/index'
 import { useAuthStore } from '@store/auth.store'
@@ -79,14 +88,23 @@ function NavItemRow({ item, unread }: { item: NavItem; unread: number }) {
   )
 }
 
+const ROLES_MULTI_SUCURSAL = ['tecnico', 'trabajador', 'usuario']
+
 export function AppSidebar() {
   const user = useAuthStore((s) => s.user)
+  const sucursalActiva = useAuthStore((s) => s.sucursalActiva)
+  const sucursalesDisponibles = useAuthStore((s) => s.sucursalesDisponibles)
   const isSuperAdmin = user?.rol === 'superadmin'
   const isAdmin = user?.rol === 'admin' || isSuperAdmin
   const navItems = isSuperAdmin ? superAdminNav : isAdmin ? adminNav : workerNav
   const unreadCount = useNotificationsStore(
     (state) => state.notifications.filter((n) => !n.read).length,
   )
+
+  const esMultiSucursal = user?.rol ? ROLES_MULTI_SUCURSAL.includes(user.rol) : false
+  const nombreSucursalActiva = esMultiSucursal
+    ? (sucursalesDisponibles.find((s) => s.sucursalId === sucursalActiva)?.sucursalNombre ?? null)
+    : null
 
   return (
     <aside className="bg-sidebar flex h-full w-sidebar flex-col border-r">
@@ -134,6 +152,12 @@ export function AppSidebar() {
                 {user.nombre} {user.apellido}
               </p>
               <p className="truncate text-xs capitalize text-muted-foreground">{user.rol}</p>
+              {nombreSucursalActiva && (
+                <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-muted-foreground/70">
+                  <Building2 className="h-2.5 w-2.5 shrink-0" />
+                  <span className="truncate">{nombreSucursalActiva}</span>
+                </p>
+              )}
             </div>
           </NavLink>
         </div>

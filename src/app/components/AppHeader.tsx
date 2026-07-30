@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Menu,
   Bell,
@@ -10,6 +11,7 @@ import {
   AlertCircle,
   Ticket,
   MessageSquare,
+  Building2,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@shared/ui/button'
@@ -22,6 +24,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@shared/ui/dropdown-menu'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@shared/ui/sheet'
 import { ROUTES, ticketDetailPath } from '@constants/index'
 import { useAuthStore } from '@store/auth.store'
 import {
@@ -30,7 +40,10 @@ import {
   useMarcarLeida,
 } from '@features/notifications/hooks/useNotificaciones'
 import { authService } from '@features/auth/services/authService'
+import { SearchableSelect } from '@shared/components/SearchableSelect'
 import { cn } from '@lib/utils'
+
+const ROLES_MULTI_SUCURSAL = ['tecnico', 'trabajador', 'usuario']
 
 interface AppHeaderProps {
   onMenuClick?: () => void
@@ -59,7 +72,33 @@ function timeAgoShort(dateStr: string): string {
 export function AppHeader({ onMenuClick, title, onCommandOpen }: AppHeaderProps) {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
+  const sucursalActiva = useAuthStore((s) => s.sucursalActiva)
+  const sucursalesDisponibles = useAuthStore((s) => s.sucursalesDisponibles)
+  const cambiarSucursalActiva = useAuthStore((s) => s.cambiarSucursalActiva)
+
   const isAdmin = user?.rol === 'admin' || user?.rol === 'superadmin'
+  const esMultiSucursal = user?.rol ? ROLES_MULTI_SUCURSAL.includes(user.rol) : false
+
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [sucursalSeleccionada, setSucursalSeleccionada] = useState<string>(sucursalActiva ?? '')
+
+  const opcionesSucursal = sucursalesDisponibles
+    .filter((s) => s.activo)
+    .map((s) => ({ value: s.sucursalId, label: s.sucursalNombre }))
+
+  const nombreSucursalActiva =
+    sucursalesDisponibles.find((s) => s.sucursalId === sucursalActiva)?.sucursalNombre ?? null
+
+  const handleAbrirSheet = () => {
+    setSucursalSeleccionada(sucursalActiva ?? '')
+    setSheetOpen(true)
+  }
+
+  const handleConfirmarSucursal = () => {
+    if (!sucursalSeleccionada) return
+    cambiarSucursalActiva(sucursalSeleccionada)
+    setSheetOpen(false)
+  }
 
   const { data: conteoData } = useConteoNotificaciones()
   const unreadCount = conteoData?.sinLeer ?? 0
@@ -224,18 +263,30 @@ export function AppHeader({ onMenuClick, title, onCommandOpen }: AppHeaderProps)
                 </span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="font-normal">
                 <p className="text-sm font-semibold">
                   {user.nombre} {user.apellido}
                 </p>
                 <p className="text-xs text-muted-foreground">{user.correo}</p>
+                {esMultiSucursal && nombreSucursalActiva && (
+                  <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                    <Building2 className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{nombreSucursalActiva}</span>
+                  </p>
+                )}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => navigate(ROUTES.PROFILE)}>
                 <User className="mr-2 h-4 w-4" />
                 Mi perfil
               </DropdownMenuItem>
+              {esMultiSucursal && (
+                <DropdownMenuItem onClick={handleAbrirSheet}>
+                  <Building2 className="mr-2 h-4 w-4" />
+                  Cambiar sucursal
+                </DropdownMenuItem>
+              )}
               {isAdmin && (
                 <DropdownMenuItem onClick={() => navigate(ROUTES.SETTINGS)}>
                   <Settings className="mr-2 h-4 w-4" />
@@ -251,6 +302,36 @@ export function AppHeader({ onMenuClick, title, onCommandOpen }: AppHeaderProps)
           </DropdownMenu>
         )}
       </div>
+
+      {/* Sheet de cambio de sucursal — solo roles multi-sucursal */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent side="bottom" className="mx-auto max-w-sm rounded-t-xl pb-8">
+          <SheetHeader className="mb-4 text-left">
+            <SheetTitle>Cambiar sucursal</SheetTitle>
+            <SheetDescription>Selecciona la sucursal en la que vas a operar.</SheetDescription>
+          </SheetHeader>
+          <SearchableSelect
+            options={opcionesSucursal}
+            value={sucursalSeleccionada}
+            onChange={setSucursalSeleccionada}
+            placeholder="Seleccionar sucursal..."
+            searchPlaceholder="Buscar sucursal..."
+            emptyMessage="No se encontró la sucursal."
+          />
+          <SheetFooter className="mt-4 flex-col gap-2 sm:flex-col">
+            <Button
+              className="w-full"
+              disabled={!sucursalSeleccionada || sucursalSeleccionada === sucursalActiva}
+              onClick={handleConfirmarSucursal}
+            >
+              Confirmar
+            </Button>
+            <Button variant="outline" className="w-full" onClick={() => setSheetOpen(false)}>
+              Cancelar
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </header>
   )
 }

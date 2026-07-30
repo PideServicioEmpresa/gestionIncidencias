@@ -38,12 +38,23 @@ function mapPerfilToAppUser(perfil: PerfilBackend, authUserId: string): AppUser 
   }
 }
 
-function resolverSucursalActiva(perfil: PerfilBackend): string | null {
+function resolverSucursalActiva(
+  perfil: PerfilBackend,
+  sucursalActivaActual: string | null,
+): string | null {
   const rol = (ROL_MAP[perfil.rol.toUpperCase()] ?? 'usuario') as UserRole
   if (!ROLES_MULTI_SUCURSAL.includes(rol)) return null
 
-  // Buscar la sucursal marcada como principal; si no hay, usar la del campo sucursalId
-  return perfil.sucursales?.find((s) => s.esPrincipal)?.sucursalId ?? perfil.sucursalId ?? null
+  const sucursales = perfil.sucursales ?? []
+
+  // Preservar la sucursal activa persistida si sigue siendo válida para este usuario
+  if (sucursalActivaActual) {
+    const todaviaValida = sucursales.some((s) => s.sucursalId === sucursalActivaActual && s.activo)
+    if (todaviaValida) return sucursalActivaActual
+  }
+
+  // Fallback: sucursal principal activa, o primer campo sucursalId del perfil
+  return sucursales.find((s) => s.esPrincipal && s.activo)?.sucursalId ?? perfil.sucursalId ?? null
 }
 
 // ── Auth service ──────────────────────────────────────────────────────────────
@@ -79,7 +90,10 @@ export const authService = {
 
     const user = mapPerfilToAppUser(perfil, data.user.id)
     useAuthStore.getState().setAuth(user, data.session.access_token)
-    useAuthStore.getState().setSucursales(perfil.sucursales ?? [], resolverSucursalActiva(perfil))
+    // En login nuevo no hay sucursal previa que preservar
+    useAuthStore
+      .getState()
+      .setSucursales(perfil.sucursales ?? [], resolverSucursalActiva(perfil, null))
 
     return user
   },
@@ -109,7 +123,11 @@ export const authService = {
       const perfil = await apiClient.get<PerfilBackend>('/auth/me')
       const user = mapPerfilToAppUser(perfil, data.session.user.id)
       useAuthStore.getState().setAuth(user, data.session.access_token)
-      useAuthStore.getState().setSucursales(perfil.sucursales ?? [], resolverSucursalActiva(perfil))
+      // Preservar la sucursal activa si sigue siendo válida para el usuario
+      const sucursalPrevia = useAuthStore.getState().sucursalActiva
+      useAuthStore
+        .getState()
+        .setSucursales(perfil.sucursales ?? [], resolverSucursalActiva(perfil, sucursalPrevia))
       return user
     } catch {
       // Si el backend no responde o el usuario no existe, limpiar sesión

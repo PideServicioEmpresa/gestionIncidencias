@@ -27,6 +27,7 @@ export const ROUTES = {
   REPORTS: '/reportes',
   AUDIT: '/auditoria',
   DESIGN_SYSTEM: '/ui',
+  SELECT_SUCURSAL: '/seleccionar-sucursal',
 } as const
 
 export function ticketDetailPath(id: string) {

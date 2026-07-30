@@ -13,6 +13,9 @@ import { LoginPage } from '@features/auth/pages/LoginPage'
 // ResetPasswordPage se carga eager — Supabase la visita sin sesión activa vía token en hash
 import { ResetPasswordPage } from '@features/auth/pages/ResetPasswordPage'
 
+// SucursalSelectorPage se carga eager — pantalla de transición post-login
+import { SucursalSelectorPage } from '@features/auth/pages/SucursalSelectorPage'
+
 // Resto de páginas con lazy loading para reducir el bundle inicial
 const DashboardPage = lazy(() =>
   import('@features/dashboard/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
@@ -137,6 +140,25 @@ function RequireSuperAdminRole() {
   return <Outlet />
 }
 
+const ROLES_MULTI_SUCURSAL = ['tecnico', 'trabajador', 'usuario']
+
+function RequireSucursalActiva() {
+  const user = useAuthStore((s) => s.user)
+  const sucursalActiva = useAuthStore((s) => s.sucursalActiva)
+  const sucursalesDisponibles = useAuthStore((s) => s.sucursalesDisponibles)
+
+  if (user?.rol && ROLES_MULTI_SUCURSAL.includes(user.rol)) {
+    const esValida =
+      sucursalActiva !== null &&
+      sucursalesDisponibles.some((s) => s.sucursalId === sucursalActiva && s.activo)
+    if (!esValida) {
+      return <Navigate to={ROUTES.SELECT_SUCURSAL} replace />
+    }
+  }
+
+  return <Outlet />
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 
 const router = createBrowserRouter([
@@ -167,196 +189,206 @@ const router = createBrowserRouter([
   {
     element: <RequireAuth />,
     children: [
+      // Pantalla de selección de sucursal — sin AppLayout para evitar bucle de redirect
       {
-        element: <AppLayout />,
+        path: ROUTES.SELECT_SUCURSAL,
+        element: <SucursalSelectorPage />,
+      },
+      {
+        element: <RequireSucursalActiva />,
         children: [
           {
-            path: ROUTES.DASHBOARD,
-            element: (
-              <LazyPage>
-                <DashboardPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: ROUTES.TICKETS,
-            element: (
-              <LazyPage>
-                <MyTicketsPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: ROUTES.TICKETS_NEW,
-            element: (
-              <LazyPage>
-                <CreateTicketPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: '/tickets/:id',
-            element: (
-              <LazyPage>
-                <TicketDetailPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: ROUTES.NOTIFICATIONS,
-            element: (
-              <LazyPage>
-                <NotificationsPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: ROUTES.PROFILE,
-            element: (
-              <LazyPage>
-                <ProfilePage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: ROUTES.REPORTS,
-            element: (
-              <LazyPage>
-                <ReportsPage />
-              </LazyPage>
-            ),
-          },
-          // Design system showcase
-          {
-            path: ROUTES.DESIGN_SYSTEM,
-            element: (
-              <LazyPage>
-                <DesignSystemPage />
-              </LazyPage>
-            ),
-          },
-          // Rutas exclusivas para admin y superadmin
-          {
-            element: <RequireAdminRole />,
+            element: <AppLayout />,
             children: [
               {
-                path: ROUTES.USERS,
+                path: ROUTES.DASHBOARD,
                 element: (
                   <LazyPage>
-                    <UsersPage />
+                    <DashboardPage />
                   </LazyPage>
                 ),
               },
               {
-                path: ROUTES.USERS_NEW,
+                path: ROUTES.TICKETS,
                 element: (
                   <LazyPage>
-                    <UserNewPage />
+                    <MyTicketsPage />
                   </LazyPage>
                 ),
               },
               {
-                path: ROUTES.USERS_DETAIL,
+                path: ROUTES.TICKETS_NEW,
                 element: (
                   <LazyPage>
-                    <UserDetailPage />
+                    <CreateTicketPage />
                   </LazyPage>
                 ),
               },
               {
-                path: ROUTES.USERS_EDIT,
+                path: '/tickets/:id',
                 element: (
                   <LazyPage>
-                    <UserEditPage />
+                    <TicketDetailPage />
                   </LazyPage>
                 ),
               },
               {
-                path: ROUTES.AUDIT,
+                path: ROUTES.NOTIFICATIONS,
                 element: (
                   <LazyPage>
-                    <AuditPage />
+                    <NotificationsPage />
                   </LazyPage>
                 ),
               },
               {
-                path: ROUTES.SETTINGS,
+                path: ROUTES.PROFILE,
                 element: (
                   <LazyPage>
-                    <SettingsPage />
-                  </LazyPage>
-                ),
-              },
-              // Sucursales — admin y superadmin
-              {
-                path: ROUTES.SUCURSALES,
-                element: (
-                  <LazyPage>
-                    <SucursalesPage />
+                    <ProfilePage />
                   </LazyPage>
                 ),
               },
               {
-                path: ROUTES.SUCURSALES_NEW,
+                path: ROUTES.REPORTS,
                 element: (
                   <LazyPage>
-                    <SucursalNewPage />
+                    <ReportsPage />
                   </LazyPage>
                 ),
               },
+              // Design system showcase
               {
-                path: ROUTES.SUCURSALES_DETAIL,
+                path: ROUTES.DESIGN_SYSTEM,
                 element: (
                   <LazyPage>
-                    <SucursalDetailPage />
+                    <DesignSystemPage />
                   </LazyPage>
                 ),
               },
+              // Rutas exclusivas para admin y superadmin
               {
-                path: ROUTES.SUCURSALES_EDIT,
-                element: (
-                  <LazyPage>
-                    <SucursalEditPage />
-                  </LazyPage>
-                ),
+                element: <RequireAdminRole />,
+                children: [
+                  {
+                    path: ROUTES.USERS,
+                    element: (
+                      <LazyPage>
+                        <UsersPage />
+                      </LazyPage>
+                    ),
+                  },
+                  {
+                    path: ROUTES.USERS_NEW,
+                    element: (
+                      <LazyPage>
+                        <UserNewPage />
+                      </LazyPage>
+                    ),
+                  },
+                  {
+                    path: ROUTES.USERS_DETAIL,
+                    element: (
+                      <LazyPage>
+                        <UserDetailPage />
+                      </LazyPage>
+                    ),
+                  },
+                  {
+                    path: ROUTES.USERS_EDIT,
+                    element: (
+                      <LazyPage>
+                        <UserEditPage />
+                      </LazyPage>
+                    ),
+                  },
+                  {
+                    path: ROUTES.AUDIT,
+                    element: (
+                      <LazyPage>
+                        <AuditPage />
+                      </LazyPage>
+                    ),
+                  },
+                  {
+                    path: ROUTES.SETTINGS,
+                    element: (
+                      <LazyPage>
+                        <SettingsPage />
+                      </LazyPage>
+                    ),
+                  },
+                  // Sucursales — admin y superadmin
+                  {
+                    path: ROUTES.SUCURSALES,
+                    element: (
+                      <LazyPage>
+                        <SucursalesPage />
+                      </LazyPage>
+                    ),
+                  },
+                  {
+                    path: ROUTES.SUCURSALES_NEW,
+                    element: (
+                      <LazyPage>
+                        <SucursalNewPage />
+                      </LazyPage>
+                    ),
+                  },
+                  {
+                    path: ROUTES.SUCURSALES_DETAIL,
+                    element: (
+                      <LazyPage>
+                        <SucursalDetailPage />
+                      </LazyPage>
+                    ),
+                  },
+                  {
+                    path: ROUTES.SUCURSALES_EDIT,
+                    element: (
+                      <LazyPage>
+                        <SucursalEditPage />
+                      </LazyPage>
+                    ),
+                  },
+                ],
               },
-            ],
-          },
-          // Empresas — solo superadmin
-          {
-            element: <RequireSuperAdminRole />,
-            children: [
+              // Empresas — solo superadmin
               {
-                path: ROUTES.EMPRESAS,
-                element: (
-                  <LazyPage>
-                    <EmpresasPage />
-                  </LazyPage>
-                ),
-              },
-              {
-                path: ROUTES.EMPRESAS_NEW,
-                element: (
-                  <LazyPage>
-                    <EmpresaNewPage />
-                  </LazyPage>
-                ),
-              },
-              {
-                path: ROUTES.EMPRESAS_DETAIL,
-                element: (
-                  <LazyPage>
-                    <EmpresaDetailPage />
-                  </LazyPage>
-                ),
-              },
-              {
-                path: ROUTES.EMPRESAS_EDIT,
-                element: (
-                  <LazyPage>
-                    <EmpresaEditPage />
-                  </LazyPage>
-                ),
+                element: <RequireSuperAdminRole />,
+                children: [
+                  {
+                    path: ROUTES.EMPRESAS,
+                    element: (
+                      <LazyPage>
+                        <EmpresasPage />
+                      </LazyPage>
+                    ),
+                  },
+                  {
+                    path: ROUTES.EMPRESAS_NEW,
+                    element: (
+                      <LazyPage>
+                        <EmpresaNewPage />
+                      </LazyPage>
+                    ),
+                  },
+                  {
+                    path: ROUTES.EMPRESAS_DETAIL,
+                    element: (
+                      <LazyPage>
+                        <EmpresaDetailPage />
+                      </LazyPage>
+                    ),
+                  },
+                  {
+                    path: ROUTES.EMPRESAS_EDIT,
+                    element: (
+                      <LazyPage>
+                        <EmpresaEditPage />
+                      </LazyPage>
+                    ),
+                  },
+                ],
               },
             ],
           },
