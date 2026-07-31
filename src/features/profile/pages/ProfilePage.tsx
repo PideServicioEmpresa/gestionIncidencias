@@ -259,7 +259,7 @@ export function ProfilePage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[18rem_1fr] lg:items-start lg:gap-6 xl:grid-cols-[20rem_1fr] 2xl:grid-cols-[24rem_1fr]">
         {/* ── COLUMNA IZQUIERDA (sidebar fijo en desktop) ──────────────────── */}
         <div className="min-w-0">
-          <Card className="lg:sticky lg:top-4">
+          <Card>
             <CardContent className="p-4">
               {/* Avatar grande */}
               <div className="flex flex-col items-center gap-3 text-center">
