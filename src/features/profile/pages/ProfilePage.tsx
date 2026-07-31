@@ -256,9 +256,9 @@ export function ProfilePage() {
       </div>
 
       {/* Layout: mobile = columna única, desktop = 2 columnas */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[18rem_1fr] lg:items-start lg:gap-6 xl:grid-cols-[20rem_1fr] 2xl:grid-cols-[24rem_1fr]">
         {/* ── COLUMNA IZQUIERDA (sidebar fijo en desktop) ──────────────────── */}
-        <div className="w-full shrink-0 lg:w-72 xl:w-80 2xl:w-96">
+        <div className="min-w-0">
           <Card className="lg:sticky lg:top-4">
             <CardContent className="p-4">
               {/* Avatar grande */}
@@ -430,7 +430,7 @@ export function ProfilePage() {
         </div>
 
         {/* ── COLUMNA DERECHA (contenido principal) ────────────────────────── */}
-        <div className="min-w-0 flex-1 space-y-4">
+        <div className="min-w-0 space-y-4">
           {/* Card: Información personal */}
           <Card>
             <CardHeader className="px-3 pb-2 pt-3">
