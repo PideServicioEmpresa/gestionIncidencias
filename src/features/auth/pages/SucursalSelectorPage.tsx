@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Building2, Search, Check } from 'lucide-react'
 import { useAuthStore } from '@store/auth.store'
+import { useConteoPorSucursal } from '@features/notifications/hooks/useNotificaciones'
 import type { SucursalPerfil } from '@types-app/index'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
@@ -87,6 +88,11 @@ export function SucursalSelectorPage() {
 
   const confirmarSucursal = useAuthStore((s) => s.confirmarSucursal)
   const queryClient = useQueryClient()
+
+  const { data: conteoData } = useConteoPorSucursal()
+  const conteoPorSucursal = new Map(
+    (conteoData?.items ?? []).map((c) => [c.sucursalId, c.cantidad]),
+  )
 
   const esMultiSucursal = user?.rol ? ROLES_MULTI_SUCURSAL.includes(user.rol) : false
   const sucursalesActivas = useMemo(
@@ -182,7 +188,7 @@ export function SucursalSelectorPage() {
                   sucursal={s}
                   seleccionada={seleccionada === s.sucursalId}
                   onSeleccionar={setSeleccionada}
-                  // notificacionesPendientes — Fase 5: pasar conteo desde el backend
+                  notificacionesPendientes={conteoPorSucursal.get(s.sucursalId)}
                 />
               ))
             )}

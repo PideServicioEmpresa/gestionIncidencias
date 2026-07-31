@@ -17,6 +17,12 @@ export interface NotificacionListParams {
   soloNoLeidas?: boolean
 }
 
+export interface ConteoPorSucursalItemDto {
+  sucursalId: string
+  sucursalNombre: string
+  cantidad: number
+}
+
 export const notificacionService = {
   listar: (params?: NotificacionListParams) =>
     apiClient.get<PagedBackendResponse<NotificacionDto>>(
@@ -27,4 +33,7 @@ export const notificacionService = {
   marcarLeida: (id: string) => apiClient.patch(`/notificaciones/${id}/leida`),
 
   marcarTodasLeidas: () => apiClient.patch('/notificaciones/marcar-todas-leidas'),
+
+  conteoPorSucursal: () =>
+    apiClient.get<{ items: ConteoPorSucursalItemDto[] }>('/notificaciones/conteo-por-sucursal'),
 }

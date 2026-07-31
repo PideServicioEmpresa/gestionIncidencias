@@ -14,15 +14,18 @@ public sealed class ListNotificacionesQueryHandler
     private readonly INotificacionRepository _notificacionRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly IUsuarioRepository _usuarioRepository;
+    private readonly ISucursalActivaService _sucursalActiva;
 
     public ListNotificacionesQueryHandler(
         INotificacionRepository notificacionRepository,
         ICurrentUserService currentUserService,
-        IUsuarioRepository usuarioRepository)
+        IUsuarioRepository usuarioRepository,
+        ISucursalActivaService sucursalActiva)
     {
         _notificacionRepository = notificacionRepository;
         _currentUserService = currentUserService;
         _usuarioRepository = usuarioRepository;
+        _sucursalActiva = sucursalActiva;
     }
 
     public async Task<Result<PagedResult<NotificacionDto>>> Handle(
@@ -46,11 +49,14 @@ public sealed class ListNotificacionesQueryHandler
                 : request.TamanoPagina > 100 ? 100
                 : request.TamanoPagina;
 
+            var sucursalId = await _sucursalActiva.ObtenerAsync(usuario.Id, usuario.SucursalId, usuario.Rol, cancellationToken);
+
             var resultado = await _notificacionRepository.ListarPorUsuarioAsync(
                 usuario.Id,
                 request.SoloNoLeidas,
                 pagina,
                 tamanoPagina,
+                sucursalId,
                 cancellationToken);
 
             var dtos = new PagedResult<NotificacionDto>

@@ -13,15 +13,18 @@ public sealed class GetConteoNoLeidasQueryHandler
     private readonly INotificacionRepository _notificacionRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly IUsuarioRepository _usuarioRepository;
+    private readonly ISucursalActivaService _sucursalActiva;
 
     public GetConteoNoLeidasQueryHandler(
         INotificacionRepository notificacionRepository,
         ICurrentUserService currentUserService,
-        IUsuarioRepository usuarioRepository)
+        IUsuarioRepository usuarioRepository,
+        ISucursalActivaService sucursalActiva)
     {
         _notificacionRepository = notificacionRepository;
         _currentUserService = currentUserService;
         _usuarioRepository = usuarioRepository;
+        _sucursalActiva = sucursalActiva;
     }
 
     public async Task<Result<ConteoNotificacionesDto>> Handle(
@@ -40,8 +43,11 @@ public sealed class GetConteoNoLeidasQueryHandler
 
         try
         {
+            var sucursalId = await _sucursalActiva.ObtenerAsync(usuario.Id, usuario.SucursalId, usuario.Rol, cancellationToken);
+
             var conteo = await _notificacionRepository.ContarNoLeidasAsync(
                 usuario.Id,
+                sucursalId,
                 cancellationToken);
 
             return Result.Exito(new ConteoNotificacionesDto(conteo));

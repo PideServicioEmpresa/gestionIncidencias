@@ -1,10 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAuthStore } from '@store/auth.store'
 import { notificacionService } from '../services/notificacionService'
 import type { NotificacionListParams } from '../services/notificacionService'
+
+const ROLES_MULTI_SUCURSAL = ['tecnico', 'trabajador', 'usuario']
 
 const NOTIF_KEYS = {
   all: ['notificaciones'] as const,
   list: (params?: NotificacionListParams) => ['notificaciones', 'list', params] as const,
+  conteoPorSucursal: ['notificaciones', 'conteo-por-sucursal'] as const,
 }
 
 export function useNotificaciones(params?: NotificacionListParams) {
@@ -43,6 +47,18 @@ export function useConteoNotificaciones() {
       const resp = await notificacionService.listar({ soloNoLeidas: true, tamanoPagina: 1 })
       return { sinLeer: resp.totalRegistros ?? 0 }
     },
+    staleTime: 1000 * 15,
+    refetchInterval: 1000 * 30,
+  })
+}
+
+export function useConteoPorSucursal() {
+  const user = useAuthStore((s) => s.user)
+  const esMultiSucursal = user?.rol ? ROLES_MULTI_SUCURSAL.includes(user.rol) : false
+  return useQuery({
+    queryKey: NOTIF_KEYS.conteoPorSucursal,
+    queryFn: () => notificacionService.conteoPorSucursal(),
+    enabled: esMultiSucursal,
     staleTime: 1000 * 15,
     refetchInterval: 1000 * 30,
   })

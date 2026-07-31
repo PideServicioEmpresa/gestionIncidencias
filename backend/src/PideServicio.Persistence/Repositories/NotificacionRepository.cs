@@ -5,6 +5,7 @@ using Npgsql;
 using PideServicio.Application.Common.Interfaces;
 using PideServicio.Application.Common.Interfaces.Repositories;
 using PideServicio.Application.Common.Models;
+using PideServicio.Application.Features.Notificaciones.DTOs;
 using PideServicio.Domain.Entities;
 using PideServicio.Domain.Enums;
 using PideServicio.Persistence.Helpers;
@@ -94,29 +95,51 @@ public sealed class NotificacionRepository : INotificacionRepository
         bool? soloNoLeidas,
         int pagina,
         int tamanoPagina,
+        Guid? sucursalId = null,
         CancellationToken ct = default)
     {
         await using var cn = (NpgsqlConnection)await _db.CrearConexionAsync(ct);
 
-        var conditions = new List<string> { "destinatario_id = @UsuarioId" };
+        var conditions = new List<string> { "n.destinatario_id = @UsuarioId" };
         var p = new DynamicParameters();
         p.Add("UsuarioId", usuarioId);
 
         if (soloNoLeidas == true)
-            conditions.Add("leida = false");
+            conditions.Add("n.leida = false");
         else if (soloNoLeidas == false)
-            conditions.Add("leida = true");
+            conditions.Add("n.leida = true");
+
+        var joinClause = string.Empty;
+        if (sucursalId.HasValue)
+        {
+            joinClause = "LEFT JOIN tickets t ON t.id = n.ticket_id";
+            conditions.Add("t.sucursal_id = @SucursalId");
+            p.Add("SucursalId", sucursalId.Value);
+        }
 
         var where = string.Join(" AND ", conditions);
         p.Add("Offset", (pagina - 1) * tamanoPagina);
         p.Add("Limit", tamanoPagina);
 
         var sql = $"""
-            SELECT {SelectCols},
-                   COUNT(*) OVER() AS "TotalRegistros"
-            FROM notificaciones
+            SELECT n.id               AS "Id",
+                   n.destinatario_id  AS "DestinatarioId",
+                   n.ticket_id        AS "TicketId",
+                   n.canal::text      AS "Canal",
+                   n.titulo           AS "Titulo",
+                   n.cuerpo           AS "Cuerpo",
+                   n.estado_entrega::text AS "EstadoEntrega",
+                   n.leida            AS "Leida",
+                   n.leida_en         AS "LeidaEn",
+                   n.created_at       AS "CreatedAt",
+                   n.updated_at       AS "UpdatedAt",
+                   n.created_by       AS "CreatedBy",
+                   n.updated_by       AS "UpdatedBy",
+                   COUNT(*) OVER()    AS "TotalRegistros"
+            FROM notificaciones n
+            {joinClause}
             WHERE {where}
-            ORDER BY created_at DESC
+            ORDER BY n.created_at DESC
             LIMIT @Limit OFFSET @Offset
             """;
 
@@ -132,16 +155,50 @@ public sealed class NotificacionRepository : INotificacionRepository
         };
     }
 
-    public async Task<int> ContarNoLeidasAsync(Guid usuarioId, CancellationToken ct = default)
+    public async Task<int> ContarNoLeidasAsync(Guid usuarioId, Guid? sucursalId = null, CancellationToken ct = default)
     {
         await using var cn = (NpgsqlConnection)await _db.CrearConexionAsync(ct);
-        const string sql = """
+
+        if (sucursalId.HasValue)
+        {
+            const string sql = """
+                SELECT COUNT(*)::int
+                FROM notificaciones n
+                LEFT JOIN tickets t ON t.id = n.ticket_id
+                WHERE n.destinatario_id = @usuarioId
+                  AND n.leida = false
+                  AND t.sucursal_id = @sucursalId
+                """;
+            return await cn.ExecuteScalarAsync<int>(sql, new { usuarioId, sucursalId = sucursalId.Value });
+        }
+
+        const string sqlSinFiltro = """
             SELECT COUNT(*)::int
             FROM notificaciones
             WHERE destinatario_id = @usuarioId
               AND leida = false
             """;
-        return await cn.ExecuteScalarAsync<int>(sql, new { usuarioId });
+        return await cn.ExecuteScalarAsync<int>(sqlSinFiltro, new { usuarioId });
+    }
+
+    public async Task<IReadOnlyList<ConteoPorSucursalItemDto>> ContarNoLeidasPorSucursalAsync(
+        Guid usuarioId,
+        CancellationToken ct = default)
+    {
+        await using var cn = (NpgsqlConnection)await _db.CrearConexionAsync(ct);
+        const string sql = """
+            SELECT t.sucursal_id AS "SucursalId",
+                   s.nombre      AS "SucursalNombre",
+                   COUNT(*)::int AS "Cantidad"
+            FROM notificaciones n
+            JOIN tickets    t ON t.id  = n.ticket_id
+            JOIN sucursales s ON s.id  = t.sucursal_id
+            WHERE n.destinatario_id = @usuarioId
+              AND n.leida = false
+            GROUP BY t.sucursal_id, s.nombre
+            """;
+        var rows = await cn.QueryAsync<ConteoPorSucursalItemDto>(sql, new { usuarioId });
+        return rows.AsList().AsReadOnly();
     }
 
     public async Task<bool> ExisteAsync(Guid id, CancellationToken ct = default)

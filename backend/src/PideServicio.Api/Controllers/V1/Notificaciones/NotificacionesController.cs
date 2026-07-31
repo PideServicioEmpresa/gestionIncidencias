@@ -8,6 +8,7 @@ using PideServicio.Application.Features.Notificaciones.Commands.MarcarNotificaci
 using PideServicio.Application.Features.Notificaciones.Commands.MarcarTodasLeidas;
 using PideServicio.Application.Features.Notificaciones.DTOs;
 using PideServicio.Application.Features.Notificaciones.Queries.GetConteoNoLeidas;
+using PideServicio.Application.Features.Notificaciones.Queries.GetConteoPorSucursal;
 using PideServicio.Application.Features.Notificaciones.Queries.ListNotificaciones;
 using PideServicio.Contracts.Common;
 
@@ -44,6 +45,16 @@ public sealed class NotificacionesController : ApiControllerBase
     public async Task<IActionResult> ObtenerConteo(CancellationToken ct)
     {
         var result = await Mediator.Send(new GetConteoNoLeidasQuery(), ct);
+        return HandleResult(result);
+    }
+
+    /// <summary>Devuelve el conteo de notificaciones no leídas agrupadas por sucursal del usuario autenticado.</summary>
+    [HttpGet("conteo-por-sucursal")]
+    [Authorize(Policy = "Autenticado")]
+    [ProducesResponseType(typeof(ApiResponse<ConteoPorSucursalDto>), 200)]
+    public async Task<IActionResult> ObtenerConteoPorSucursal(CancellationToken ct)
+    {
+        var result = await Mediator.Send(new GetConteoPorSucursalQuery(), ct);
         return HandleResult(result);
     }
 
