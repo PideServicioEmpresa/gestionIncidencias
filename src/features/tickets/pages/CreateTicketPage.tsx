@@ -79,6 +79,8 @@ function formatFileSize(bytes: number): string {
 export function CreateTicketPage() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
+  const sucursalActiva = useAuthStore((s) => s.sucursalActiva)
+  const sucursalesDisponibles = useAuthStore((s) => s.sucursalesDisponibles)
   const [submitted, setSubmitted] = useState(false)
   const [createdCode, setCreatedCode] = useState<string>('')
   const [attachments, setAttachments] = useState<AttachedFile[]>([])
@@ -88,6 +90,9 @@ export function CreateTicketPage() {
 
   const isSuperAdmin = user?.rol === 'superadmin'
   const isAdmin = user?.rol === 'admin'
+  const isMultiSucursal = !isSuperAdmin && !isAdmin
+  const nombreSucursalActiva =
+    sucursalesDisponibles.find((s) => s.sucursalId === sucursalActiva)?.sucursalNombre ?? null
   const requiereCorreosJefe = ['usuario', 'trabajador', 'tecnico'].includes(user?.rol ?? '')
 
   // SUPERADMIN empieza sin empresa seleccionada; los demás roles usan la suya
@@ -130,7 +135,7 @@ export function CreateTicketPage() {
     resolver: zodResolver(createTicketSchema),
     defaultValues: {
       priority: 'media',
-      sucursalId: isSuperAdmin ? '' : (user?.sucursalId ?? ''),
+      sucursalId: isSuperAdmin ? '' : (sucursalActiva ?? user?.sucursalId ?? ''),
     },
   })
 
@@ -373,30 +378,38 @@ export function CreateTicketPage() {
                 </div>
               </FormField>
 
-              {/* Sucursal — con búsqueda por escritura */}
-              <FormField label="Sucursal" required error={errors.sucursalId?.message}>
-                <Controller
-                  control={control}
-                  name="sucursalId"
-                  render={({ field }) => (
-                    <SearchableSelect
-                      options={sucursalOptions}
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder={
-                        isSuperAdmin && !selectedEmpresaId
-                          ? 'Selecciona una empresa primero'
-                          : 'Seleccionar sucursal...'
-                      }
-                      searchPlaceholder="Buscar sucursal..."
-                      emptyMessage="No se encontraron sucursales."
-                      loading={sucursalesQuery.isLoading}
-                      disabled={isSuperAdmin && !selectedEmpresaId}
-                      hasError={!!errors.sucursalId}
-                    />
-                  )}
-                />
-              </FormField>
+              {/* Sucursal — readonly para multi-sucursal (la activa del store), interactivo para Admin/SuperAdmin */}
+              {isMultiSucursal ? (
+                <FormField label="Sucursal">
+                  <div className="flex h-8 items-center rounded-md border border-input bg-muted/40 px-3 text-xs">
+                    <span className="font-medium">{nombreSucursalActiva ?? '—'}</span>
+                  </div>
+                </FormField>
+              ) : (
+                <FormField label="Sucursal" required error={errors.sucursalId?.message}>
+                  <Controller
+                    control={control}
+                    name="sucursalId"
+                    render={({ field }) => (
+                      <SearchableSelect
+                        options={sucursalOptions}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder={
+                          isSuperAdmin && !selectedEmpresaId
+                            ? 'Selecciona una empresa primero'
+                            : 'Seleccionar sucursal...'
+                        }
+                        searchPlaceholder="Buscar sucursal..."
+                        emptyMessage="No se encontraron sucursales."
+                        loading={sucursalesQuery.isLoading}
+                        disabled={isSuperAdmin && !selectedEmpresaId}
+                        hasError={!!errors.sucursalId}
+                      />
+                    )}
+                  />
+                </FormField>
+              )}
 
               {/* Área */}
               <FormField label="Área" required error={errors.areaNombre?.message}>

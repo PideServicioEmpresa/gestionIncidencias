@@ -13,18 +13,15 @@ public sealed class ListAreasQueryHandler : IQueryHandler<ListAreasQuery, PagedR
     private readonly IAreaRepository _areaRepo;
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly ICurrentUserService _currentUser;
-    private readonly ISucursalActivaService _sucursalActiva;
 
     public ListAreasQueryHandler(
         IAreaRepository areaRepo,
         IUsuarioRepository usuarioRepository,
-        ICurrentUserService currentUser,
-        ISucursalActivaService sucursalActiva)
+        ICurrentUserService currentUser)
     {
         _areaRepo = areaRepo;
         _usuarioRepository = usuarioRepository;
         _currentUser = currentUser;
-        _sucursalActiva = sucursalActiva;
     }
 
     public async Task<Result<PagedResult<AreaResumenDto>>> Handle(ListAreasQuery request, CancellationToken ct)
@@ -51,13 +48,8 @@ public sealed class ListAreasQueryHandler : IQueryHandler<ListAreasQuery, PagedR
             return Result.NoPermitido<PagedResult<AreaResumenDto>>("No tiene permisos para listar áreas.");
         }
 
-        // Para roles multi-sucursal: forzar el filtro de sucursal activa (ignorar request.SucursalId).
-        // Para Admin/SuperAdmin: ObtenerAsync devuelve null → se usa request.SucursalId (filtro opcional).
-        var sucursalFiltro = await _sucursalActiva.ObtenerAsync(actorDb.Id, actorDb.SucursalId, actorDb.Rol, ct)
-                             ?? request.SucursalId;
-
         var resultado = await _areaRepo.ListarAsync(
-            sucursalFiltro,
+            request.SucursalId,
             empresaIdFiltro,
             request.Pagina,
             request.TamanoPagina,

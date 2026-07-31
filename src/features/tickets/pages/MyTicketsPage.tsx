@@ -428,6 +428,7 @@ export function MyTicketsPage() {
   })
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [sucursalFilter, setSucursalFilter] = useState<string>('')
   const [page, setPage] = useState(1)
 
   // Parámetros para el servidor — se reconstruyen al cambiar filtros.
@@ -441,8 +442,18 @@ export function MyTicketsPage() {
       ...(priorityFilter !== 'all' ? { prioridad: priorityFilter.toUpperCase() } : {}),
       ...(dateFrom ? { fechaDesde: dateFrom } : {}),
       ...(dateTo ? { fechaHasta: dateTo } : {}),
+      ...(isAdmin && sucursalFilter ? { sucursalId: sucursalFilter } : {}),
     }),
-    [page, debouncedSearch, statusFilter, priorityFilter, dateFrom, dateTo],
+    [
+      page,
+      debouncedSearch,
+      statusFilter,
+      priorityFilter,
+      dateFrom,
+      dateTo,
+      isAdmin,
+      sucursalFilter,
+    ],
   )
 
   // Para roles no-admin: también buscar tickets donde el usuario es el ejecutor asignado
@@ -498,6 +509,12 @@ export function MyTicketsPage() {
   const tecnicosQuery = useTecnicos(user?.empresaId)
   const workers = tecnicosQuery.data ?? []
 
+  // Sucursales para el filtro — solo Admin/SuperAdmin
+  const sucursalesQuery = useSucursales(isAdmin ? (user?.empresaId ?? undefined) : undefined)
+  const sucursalOptions = (sucursalesQuery.data ?? [])
+    .filter((s) => s.activa)
+    .map((s) => ({ value: s.id, label: s.nombre }))
+
   const handleFilterChange = () => setPage(1)
 
   const clearFilters = () => {
@@ -506,6 +523,7 @@ export function MyTicketsPage() {
     setPriorityFilter('all')
     setDateFrom('')
     setDateTo('')
+    setSucursalFilter('')
     setPage(1)
   }
 
@@ -690,6 +708,27 @@ export function MyTicketsPage() {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Sucursal — solo Admin/SuperAdmin */}
+          {isAdmin && (
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-medium text-muted-foreground">Sucursal</span>
+              <div className="lg:w-48">
+                <SearchableSelect
+                  options={sucursalOptions}
+                  value={sucursalFilter}
+                  onChange={(v) => {
+                    setSucursalFilter(v)
+                    handleFilterChange()
+                  }}
+                  placeholder="Todas las sucursales"
+                  searchPlaceholder="Buscar sucursal..."
+                  emptyMessage="No se encontraron sucursales."
+                  loading={sucursalesQuery.isLoading}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Desde */}
           <div className="flex flex-col gap-1">
@@ -876,7 +915,7 @@ export function MyTicketsPage() {
                     <TableHead className="h-8 font-semibold">Código</TableHead>
                     <TableHead className="h-8 font-semibold">Tipo de Servicio</TableHead>
                     <TableHead className="hidden h-8 font-semibold 2xl:table-cell">
-                      Empresa
+                      Sucursal / Área
                     </TableHead>
                     <TableHead className="h-8 text-center font-semibold">Prioridad</TableHead>
                     <TableHead className="h-8 text-center font-semibold">Estado</TableHead>

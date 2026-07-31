@@ -15,19 +15,22 @@ public sealed class GetTicketHistorialQueryHandler : IQueryHandler<GetTicketHist
     private readonly ITicketRepository _ticketRepo;
     private readonly ITicketHistorialRepository _historialRepo;
     private readonly ISucursalActivaService _sucursalActiva;
+    private readonly IUsuarioSucursalRepository _usuarioSucursalRepo;
 
     public GetTicketHistorialQueryHandler(
         ICurrentUserService currentUser,
         IUsuarioRepository usuarioRepository,
         ITicketRepository ticketRepo,
         ITicketHistorialRepository historialRepo,
-        ISucursalActivaService sucursalActiva)
+        ISucursalActivaService sucursalActiva,
+        IUsuarioSucursalRepository usuarioSucursalRepo)
     {
         _currentUser = currentUser;
         _usuarioRepository = usuarioRepository;
         _ticketRepo = ticketRepo;
         _historialRepo = historialRepo;
         _sucursalActiva = sucursalActiva;
+        _usuarioSucursalRepo = usuarioSucursalRepo;
     }
 
     public async Task<Result<ListResult<TicketHistorialDto>>> Handle(
@@ -50,7 +53,14 @@ public sealed class GetTicketHistorialQueryHandler : IQueryHandler<GetTicketHist
         // Aislamiento estricto por sucursal activa — consistente con GetTicketById.
         var sucursalActivaId = await _sucursalActiva.ObtenerAsync(actor.Id, actor.SucursalId, actor.Rol, cancellationToken);
         if (sucursalActivaId.HasValue && ticket.SucursalId != sucursalActivaId.Value)
+        {
+            var sucursalesUsuario = await _usuarioSucursalRepo.ListarPorUsuarioAsync(actor.Id, cancellationToken);
+            var sucursalDelTicket = sucursalesUsuario.FirstOrDefault(s => s.SucursalId == ticket.SucursalId && s.Activo);
+            if (sucursalDelTicket is not null)
+                return Result.NoPermitido<ListResult<TicketHistorialDto>>(
+                    $"Este ticket pertenece a la sucursal \"{sucursalDelTicket.SucursalNombre}\". Cambia a esa sucursal para verlo.");
             return Result.NoEncontrado<ListResult<TicketHistorialDto>>("Ticket", request.TicketId);
+        }
 
         if (actor.Rol == RolTipo.SUPERADMIN)
         {

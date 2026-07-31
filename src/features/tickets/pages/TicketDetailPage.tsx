@@ -18,6 +18,7 @@ import {
   Check,
   Eye,
   Download,
+  Building2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@shared/ui/button'
@@ -42,6 +43,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import { FormField } from '@shared/components/FormField'
 import { useAuthStore } from '@store/auth.store'
+import { ApiClientError } from '@services/apiClient'
 import { ROUTES } from '@constants/index'
 import { cn } from '@lib/utils'
 import { useTecnicos, useMotivosRechazo, useMotivosCancelacion } from '../hooks/useCatalogos'
@@ -395,13 +397,27 @@ export function TicketDetailPage() {
   if (ticketQuery.isLoading) return <TicketListSkeleton />
 
   if (ticketQuery.error) {
+    const err = ticketQuery.error
+    const esSucursalAjena =
+      err instanceof ApiClientError && err.status === 403 && err.message.includes('sucursal')
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center p-6">
         <EmptyState
-          icon={AlertTriangle}
-          title="Error al cargar el ticket"
-          description={(ticketQuery.error as Error).message}
-          action={<Button onClick={() => navigate(ROUTES.TICKETS)}>Volver a tickets</Button>}
+          icon={esSucursalAjena ? Building2 : AlertTriangle}
+          title={esSucursalAjena ? 'Ticket en otra sucursal' : 'Error al cargar el ticket'}
+          description={esSucursalAjena ? err.message : (err as Error).message}
+          action={
+            esSucursalAjena ? (
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => navigate(ROUTES.TICKETS)}>
+                  Volver a tickets
+                </Button>
+                <Button onClick={() => navigate(ROUTES.SELECT_SUCURSAL)}>Cambiar sucursal</Button>
+              </div>
+            ) : (
+              <Button onClick={() => navigate(ROUTES.TICKETS)}>Volver a tickets</Button>
+            )
+          }
         />
       </div>
     )

@@ -17,6 +17,7 @@ public sealed class GetTicketByIdQueryHandler : IQueryHandler<GetTicketByIdQuery
     private readonly IAreaRepository _areaRepo;
     private readonly ITipoServicioRepository _tipoServicioRepo;
     private readonly ISucursalActivaService _sucursalActiva;
+    private readonly IUsuarioSucursalRepository _usuarioSucursalRepo;
 
     public GetTicketByIdQueryHandler(
         ICurrentUserService currentUser,
@@ -25,7 +26,8 @@ public sealed class GetTicketByIdQueryHandler : IQueryHandler<GetTicketByIdQuery
         ISucursalRepository sucursalRepo,
         IAreaRepository areaRepo,
         ITipoServicioRepository tipoServicioRepo,
-        ISucursalActivaService sucursalActiva)
+        ISucursalActivaService sucursalActiva,
+        IUsuarioSucursalRepository usuarioSucursalRepo)
     {
         _currentUser = currentUser;
         _usuarioRepository = usuarioRepository;
@@ -34,6 +36,7 @@ public sealed class GetTicketByIdQueryHandler : IQueryHandler<GetTicketByIdQuery
         _areaRepo = areaRepo;
         _tipoServicioRepo = tipoServicioRepo;
         _sucursalActiva = sucursalActiva;
+        _usuarioSucursalRepo = usuarioSucursalRepo;
     }
 
     public async Task<Result<TicketDetalleDto>> Handle(GetTicketByIdQuery request, CancellationToken cancellationToken)
@@ -52,10 +55,18 @@ public sealed class GetTicketByIdQueryHandler : IQueryHandler<GetTicketByIdQuery
             return Result.NoEncontrado<TicketDetalleDto>("Ticket", request.Id);
 
         // Aislamiento estricto por sucursal activa para roles multi-sucursal.
-        // Devuelve 404 (no 403) para no revelar que el ticket existe en otra sucursal.
         var sucursalActivaId = await _sucursalActiva.ObtenerAsync(actor.Id, actor.SucursalId, actor.Rol, cancellationToken);
         if (sucursalActivaId.HasValue && ticket.SucursalId != sucursalActivaId.Value)
+        {
+            // Caso 1: el ticket pertenece a otra sucursal asignada al mismo usuario → mensaje útil (no es fuga).
+            // Caso 2: sucursal ajena/otra empresa → 404 genérico para no revelar existencia.
+            var sucursalesUsuario = await _usuarioSucursalRepo.ListarPorUsuarioAsync(actor.Id, cancellationToken);
+            var sucursalDelTicket = sucursalesUsuario.FirstOrDefault(s => s.SucursalId == ticket.SucursalId && s.Activo);
+            if (sucursalDelTicket is not null)
+                return Result.NoPermitido<TicketDetalleDto>(
+                    $"Este ticket pertenece a la sucursal \"{sucursalDelTicket.SucursalNombre}\". Cambia a esa sucursal para verlo.");
             return Result.NoEncontrado<TicketDetalleDto>("Ticket", request.Id);
+        }
 
         if (actor.Rol == RolTipo.SUPERADMIN)
         {
