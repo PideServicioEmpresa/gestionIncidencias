@@ -16,6 +16,7 @@ public sealed class GetTicketByIdQueryHandler : IQueryHandler<GetTicketByIdQuery
     private readonly ISucursalRepository _sucursalRepo;
     private readonly IAreaRepository _areaRepo;
     private readonly ITipoServicioRepository _tipoServicioRepo;
+    private readonly ISucursalActivaService _sucursalActiva;
 
     public GetTicketByIdQueryHandler(
         ICurrentUserService currentUser,
@@ -23,7 +24,8 @@ public sealed class GetTicketByIdQueryHandler : IQueryHandler<GetTicketByIdQuery
         ITicketRepository ticketRepo,
         ISucursalRepository sucursalRepo,
         IAreaRepository areaRepo,
-        ITipoServicioRepository tipoServicioRepo)
+        ITipoServicioRepository tipoServicioRepo,
+        ISucursalActivaService sucursalActiva)
     {
         _currentUser = currentUser;
         _usuarioRepository = usuarioRepository;
@@ -31,6 +33,7 @@ public sealed class GetTicketByIdQueryHandler : IQueryHandler<GetTicketByIdQuery
         _sucursalRepo = sucursalRepo;
         _areaRepo = areaRepo;
         _tipoServicioRepo = tipoServicioRepo;
+        _sucursalActiva = sucursalActiva;
     }
 
     public async Task<Result<TicketDetalleDto>> Handle(GetTicketByIdQuery request, CancellationToken cancellationToken)
@@ -46,6 +49,12 @@ public sealed class GetTicketByIdQueryHandler : IQueryHandler<GetTicketByIdQuery
 
         var ticket = await _ticketRepo.ObtenerPorIdAsync(request.Id, cancellationToken);
         if (ticket is null)
+            return Result.NoEncontrado<TicketDetalleDto>("Ticket", request.Id);
+
+        // Aislamiento estricto por sucursal activa para roles multi-sucursal.
+        // Devuelve 404 (no 403) para no revelar que el ticket existe en otra sucursal.
+        var sucursalActivaId = await _sucursalActiva.ObtenerAsync(actor.Id, actor.SucursalId, actor.Rol, cancellationToken);
+        if (sucursalActivaId.HasValue && ticket.SucursalId != sucursalActivaId.Value)
             return Result.NoEncontrado<TicketDetalleDto>("Ticket", request.Id);
 
         if (actor.Rol == RolTipo.SUPERADMIN)

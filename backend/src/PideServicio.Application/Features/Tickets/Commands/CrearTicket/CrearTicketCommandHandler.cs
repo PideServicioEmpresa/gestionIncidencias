@@ -22,6 +22,7 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
     private readonly INotificationService _notificationService;
     private readonly IEmailService _emailService;
     private readonly IAuditService _auditService;
+    private readonly ISucursalActivaService _sucursalActiva;
     private readonly ILogger<CrearTicketCommandHandler> _logger;
 
     public CrearTicketCommandHandler(
@@ -35,6 +36,7 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
         INotificationService notificationService,
         IEmailService emailService,
         IAuditService auditService,
+        ISucursalActivaService sucursalActiva,
         ILogger<CrearTicketCommandHandler> logger)
     {
         _currentUser = currentUser;
@@ -47,6 +49,7 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
         _notificationService = notificationService;
         _emailService = emailService;
         _auditService = auditService;
+        _sucursalActiva = sucursalActiva;
         _logger = logger;
     }
 
@@ -65,11 +68,17 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
         if (rolesObligatorios.Contains(actor.Rol) && (request.CorreosJefe is null || request.CorreosJefe.Count == 0))
             return Result.Fallo<Guid>("Debes ingresar al menos un correo del jefe o supervisor para registrar el ticket.");
 
+        // Para roles multi-sucursal: forzar sucursalId = sucursal activa validada del header,
+        // ignorando el valor que venga en el body (defensa en profundidad).
+        // Para Admin/SuperAdmin: ObtenerAsync devuelve null → se respeta request.SucursalId.
+        var sucursalId = await _sucursalActiva.ObtenerAsync(actor.Id, actor.SucursalId, actor.Rol, cancellationToken)
+                         ?? request.SucursalId;
+
         try
         {
             // Resolver el área: buscar por nombre en la sucursal, crear si no existe
             var areasExistentes = await _areaRepository.ListarPorSucursalAsync(
-                request.SucursalId, soloActivas: true, ct: cancellationToken);
+                sucursalId, soloActivas: true, ct: cancellationToken);
 
             var areaEncontrada = areasExistentes.FirstOrDefault(a =>
                 string.Equals(a.Nombre, request.AreaNombre.Trim(), StringComparison.OrdinalIgnoreCase));
@@ -83,7 +92,7 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
             }
             else
             {
-                var nuevaArea = Area.Crear(request.SucursalId, areaNombre, creadoPor: actor.Id);
+                var nuevaArea = Area.Crear(sucursalId, areaNombre, creadoPor: actor.Id);
                 areaId = await _areaRepository.CrearAsync(nuevaArea, cancellationToken);
             }
 
@@ -94,7 +103,7 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
                 request.Titulo,
                 request.Descripcion,
                 actor.EmpresaId,
-                request.SucursalId,
+                sucursalId,
                 areaId,
                 request.TipoServicioId,
                 request.CategoriaId,
@@ -142,7 +151,7 @@ public sealed class CrearTicketCommandHandler : ICommandHandler<CrearTicketComma
             string? sucursalNombre = null;
             try
             {
-                var sucursal = await _sucursalRepository.ObtenerPorIdAsync(request.SucursalId, cancellationToken);
+                var sucursal = await _sucursalRepository.ObtenerPorIdAsync(sucursalId, cancellationToken);
                 sucursalNombre = sucursal?.Nombre;
             }
             catch (Exception ex)

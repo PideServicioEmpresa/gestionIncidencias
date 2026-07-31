@@ -12,15 +12,18 @@ public sealed class ListTicketsQueryHandler : IQueryHandler<ListTicketsQuery, Pa
     private readonly ICurrentUserService _currentUser;
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly ITicketRepository _ticketRepo;
+    private readonly ISucursalActivaService _sucursalActiva;
 
     public ListTicketsQueryHandler(
         ICurrentUserService currentUser,
         IUsuarioRepository usuarioRepository,
-        ITicketRepository ticketRepo)
+        ITicketRepository ticketRepo,
+        ISucursalActivaService sucursalActiva)
     {
         _currentUser = currentUser;
         _usuarioRepository = usuarioRepository;
         _ticketRepo = ticketRepo;
+        _sucursalActiva = sucursalActiva;
     }
 
     public async Task<Result<PagedResult<TicketResumenDto>>> Handle(
@@ -35,6 +38,11 @@ public sealed class ListTicketsQueryHandler : IQueryHandler<ListTicketsQuery, Pa
             ? await _usuarioRepository.ObtenerPorIdAsync(claims.Id, cancellationToken)
             : await _usuarioRepository.ObtenerPorAuthIdAsync(claims.AuthId, cancellationToken);
         if (actor is null || !actor.Activo) return Result.NoAutorizado<PagedResult<TicketResumenDto>>();
+
+        // Para roles multi-sucursal devuelve la sucursal activa validada del header.
+        // Para Admin/SuperAdmin devuelve null → sin restricción de sucursal.
+        var sucursalFiltro = await _sucursalActiva.ObtenerAsync(actor.Id, actor.SucursalId, actor.Rol, cancellationToken)
+                             ?? request.SucursalId;
 
         Guid? empresaId = null;
         Guid? tecnicoId = request.TecnicoId;
@@ -72,7 +80,7 @@ public sealed class ListTicketsQueryHandler : IQueryHandler<ListTicketsQuery, Pa
 
         var filtros = new TicketConsultaParams(
             EmpresaId: empresaId,
-            SucursalId: request.SucursalId,
+            SucursalId: sucursalFiltro,
             AreaId: request.AreaId,
             TecnicoId: tecnicoId,
             SolicitanteId: solicitanteId,

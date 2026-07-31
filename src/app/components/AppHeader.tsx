@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   Menu,
   Bell,
@@ -71,6 +72,7 @@ function timeAgoShort(dateStr: string): string {
 
 export function AppHeader({ onMenuClick, title, onCommandOpen }: AppHeaderProps) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const user = useAuthStore((s) => s.user)
   const sucursalActiva = useAuthStore((s) => s.sucursalActiva)
   const sucursalesDisponibles = useAuthStore((s) => s.sucursalesDisponibles)
@@ -98,6 +100,8 @@ export function AppHeader({ onMenuClick, title, onCommandOpen }: AppHeaderProps)
     if (!sucursalSeleccionada) return
     cambiarSucursalActiva(sucursalSeleccionada)
     setSheetOpen(false)
+    // Forzar recarga de todos los listados con el nuevo header X-Sucursal-Activa
+    queryClient.invalidateQueries()
   }
 
   const { data: conteoData } = useConteoNotificaciones()

@@ -14,17 +14,20 @@ public sealed class GetTicketHistorialQueryHandler : IQueryHandler<GetTicketHist
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly ITicketRepository _ticketRepo;
     private readonly ITicketHistorialRepository _historialRepo;
+    private readonly ISucursalActivaService _sucursalActiva;
 
     public GetTicketHistorialQueryHandler(
         ICurrentUserService currentUser,
         IUsuarioRepository usuarioRepository,
         ITicketRepository ticketRepo,
-        ITicketHistorialRepository historialRepo)
+        ITicketHistorialRepository historialRepo,
+        ISucursalActivaService sucursalActiva)
     {
         _currentUser = currentUser;
         _usuarioRepository = usuarioRepository;
         _ticketRepo = ticketRepo;
         _historialRepo = historialRepo;
+        _sucursalActiva = sucursalActiva;
     }
 
     public async Task<Result<ListResult<TicketHistorialDto>>> Handle(
@@ -42,6 +45,11 @@ public sealed class GetTicketHistorialQueryHandler : IQueryHandler<GetTicketHist
 
         var ticket = await _ticketRepo.ObtenerPorIdAsync(request.TicketId, cancellationToken);
         if (ticket is null)
+            return Result.NoEncontrado<ListResult<TicketHistorialDto>>("Ticket", request.TicketId);
+
+        // Aislamiento estricto por sucursal activa — consistente con GetTicketById.
+        var sucursalActivaId = await _sucursalActiva.ObtenerAsync(actor.Id, actor.SucursalId, actor.Rol, cancellationToken);
+        if (sucursalActivaId.HasValue && ticket.SucursalId != sucursalActivaId.Value)
             return Result.NoEncontrado<ListResult<TicketHistorialDto>>("Ticket", request.TicketId);
 
         if (actor.Rol == RolTipo.SUPERADMIN)

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Building2, Search, Check } from 'lucide-react'
 import { useAuthStore } from '@store/auth.store'
 import type { SucursalPerfil } from '@types-app/index'
@@ -85,6 +86,7 @@ export function SucursalSelectorPage() {
   const cambiarSucursalActiva = useAuthStore((s) => s.cambiarSucursalActiva)
 
   const confirmarSucursal = useAuthStore((s) => s.confirmarSucursal)
+  const queryClient = useQueryClient()
 
   const esMultiSucursal = user?.rol ? ROLES_MULTI_SUCURSAL.includes(user.rol) : false
   const sucursalesActivas = useMemo(
@@ -112,6 +114,7 @@ export function SucursalSelectorPage() {
     if (sucursalesActivas.length === 1) {
       cambiarSucursalActiva(sucursalesActivas[0].sucursalId)
       confirmarSucursal()
+      queryClient.invalidateQueries()
       navigate(ROUTES.DASHBOARD, { replace: true })
     }
   }, [
@@ -120,7 +123,7 @@ export function SucursalSelectorPage() {
     cambiarSucursalActiva,
     confirmarSucursal,
     navigate,
-  ]) // eslint-disable-line react-hooks/exhaustive-deps
+  ])
 
   const sucursalesFiltradas = useMemo(() => {
     const q = busqueda.trim().toLowerCase()
@@ -133,6 +136,7 @@ export function SucursalSelectorPage() {
     // Orden crítico: confirmar antes de redirigir para que el guard no intercepte.
     cambiarSucursalActiva(seleccionada)
     confirmarSucursal()
+    queryClient.invalidateQueries()
     navigate(ROUTES.DASHBOARD, { replace: true })
   }
 
