@@ -84,6 +84,8 @@ export function SucursalSelectorPage() {
   const sucursalActiva = useAuthStore((s) => s.sucursalActiva)
   const cambiarSucursalActiva = useAuthStore((s) => s.cambiarSucursalActiva)
 
+  const confirmarSucursal = useAuthStore((s) => s.confirmarSucursal)
+
   const esMultiSucursal = user?.rol ? ROLES_MULTI_SUCURSAL.includes(user.rol) : false
   const sucursalesActivas = useMemo(
     () => sucursalesDisponibles.filter((s) => s.activo),
@@ -100,15 +102,25 @@ export function SucursalSelectorPage() {
   )
 
   useEffect(() => {
+    // Admin/SuperAdmin nunca deben llegar aquí; redirigir sin tocar la bandera.
     if (!esMultiSucursal) {
       navigate(ROUTES.DASHBOARD, { replace: true })
       return
     }
+    // Atajo: una sola sucursal activa — confirmar antes de redirigir para que
+    // RequireSucursalActiva no vuelva a interceptar y genere un bucle.
     if (sucursalesActivas.length === 1) {
       cambiarSucursalActiva(sucursalesActivas[0].sucursalId)
+      confirmarSucursal()
       navigate(ROUTES.DASHBOARD, { replace: true })
     }
-  }, [esMultiSucursal, sucursalesActivas.length, cambiarSucursalActiva, navigate]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [
+    esMultiSucursal,
+    sucursalesActivas.length,
+    cambiarSucursalActiva,
+    confirmarSucursal,
+    navigate,
+  ]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const sucursalesFiltradas = useMemo(() => {
     const q = busqueda.trim().toLowerCase()
@@ -118,7 +130,9 @@ export function SucursalSelectorPage() {
 
   const handleContinuar = () => {
     if (!seleccionada) return
+    // Orden crítico: confirmar antes de redirigir para que el guard no intercepte.
     cambiarSucursalActiva(seleccionada)
+    confirmarSucursal()
     navigate(ROUTES.DASHBOARD, { replace: true })
   }
 

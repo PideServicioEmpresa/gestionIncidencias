@@ -90,10 +90,12 @@ export const authService = {
 
     const user = mapPerfilToAppUser(perfil, data.user.id)
     useAuthStore.getState().setAuth(user, data.session.access_token)
-    // En login nuevo no hay sucursal previa que preservar
+    // En login nuevo no hay sucursal previa que preservar.
+    // Se resetea sucursalConfirmada para que el guard muestre la pantalla de selección.
     useAuthStore
       .getState()
       .setSucursales(perfil.sucursales ?? [], resolverSucursalActiva(perfil, null))
+    useAuthStore.getState().resetConfirmacionSucursal()
 
     return user
   },

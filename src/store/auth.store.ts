@@ -8,6 +8,10 @@ interface AuthState {
   isAuthenticated: boolean
   sucursalActiva: string | null
   sucursalesDisponibles: SucursalPerfil[]
+  // true solo después de que el usuario confirme en la pantalla de selección.
+  // false → RequireSucursalActiva redirige al selector.
+  // No se modifica en restaurarSesion (solo en login y logout).
+  sucursalConfirmada: boolean
 
   setUser: (user: AppUser | null) => void
   setToken: (token: string | null) => void
@@ -15,6 +19,8 @@ interface AuthState {
   clearAuth: () => void
   setSucursales: (sucursales: SucursalPerfil[], principal: string | null) => void
   cambiarSucursalActiva: (sucursalId: string) => void
+  confirmarSucursal: () => void
+  resetConfirmacionSucursal: () => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -25,6 +31,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       sucursalActiva: null,
       sucursalesDisponibles: [],
+      sucursalConfirmada: false,
 
       setUser: (user) => set({ user, isAuthenticated: user !== null }),
       setToken: (token) => set({ accessToken: token }),
@@ -36,10 +43,13 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: false,
           sucursalActiva: null,
           sucursalesDisponibles: [],
+          sucursalConfirmada: false,
         }),
       setSucursales: (sucursales, principal) =>
         set({ sucursalesDisponibles: sucursales, sucursalActiva: principal }),
       cambiarSucursalActiva: (sucursalId) => set({ sucursalActiva: sucursalId }),
+      confirmarSucursal: () => set({ sucursalConfirmada: true }),
+      resetConfirmacionSucursal: () => set({ sucursalConfirmada: false }),
     }),
     {
       name: 'pide-servicio-auth',
@@ -49,6 +59,7 @@ export const useAuthStore = create<AuthState>()(
         isAuthenticated: state.isAuthenticated,
         sucursalActiva: state.sucursalActiva,
         sucursalesDisponibles: state.sucursalesDisponibles,
+        sucursalConfirmada: state.sucursalConfirmada,
       }),
     },
   ),

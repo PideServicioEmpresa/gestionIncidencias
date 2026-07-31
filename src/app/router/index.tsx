@@ -146,14 +146,22 @@ function RequireSucursalActiva() {
   const user = useAuthStore((s) => s.user)
   const sucursalActiva = useAuthStore((s) => s.sucursalActiva)
   const sucursalesDisponibles = useAuthStore((s) => s.sucursalesDisponibles)
+  const sucursalConfirmada = useAuthStore((s) => s.sucursalConfirmada)
 
-  if (user?.rol && ROLES_MULTI_SUCURSAL.includes(user.rol)) {
-    const esValida =
-      sucursalActiva !== null &&
-      sucursalesDisponibles.some((s) => s.sucursalId === sucursalActiva && s.activo)
-    if (!esValida) {
-      return <Navigate to={ROUTES.SELECT_SUCURSAL} replace />
-    }
+  // Admin/SuperAdmin: sin restricción de sucursal — pasan siempre, sin evaluar la bandera.
+  if (!user?.rol || !ROLES_MULTI_SUCURSAL.includes(user.rol)) {
+    return <Outlet />
+  }
+
+  // Roles multi-sucursal: redirigir si el usuario no confirmó en esta sesión de login
+  // o si la sucursal activa dejó de ser válida (fue desactivada / desasignada).
+  // Nota: /seleccionar-sucursal es sibling de este guard, no hijo → no hay bucle.
+  const esValida =
+    sucursalActiva !== null &&
+    sucursalesDisponibles.some((s) => s.sucursalId === sucursalActiva && s.activo)
+
+  if (!sucursalConfirmada || !esValida) {
+    return <Navigate to={ROUTES.SELECT_SUCURSAL} replace />
   }
 
   return <Outlet />
