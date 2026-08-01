@@ -54,6 +54,7 @@ public static class ApplicationBuilderExtensions
         app.UseRateLimiter();
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseMiddleware<MantenimientoMiddleware>();
         app.MapControllers();
 
         // Endpoint de salud sin autenticación — usado por Render para health checks.

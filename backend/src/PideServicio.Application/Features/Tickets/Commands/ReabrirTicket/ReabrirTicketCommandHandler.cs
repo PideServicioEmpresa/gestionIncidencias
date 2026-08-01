@@ -17,6 +17,7 @@ public sealed class ReabrirTicketCommandHandler : ICommandHandler<ReabrirTicketC
     private readonly ITicketHistorialRepository _historialRepo;
     private readonly IMotivoRechazoRepository _motivoRechazoRepo;
     private readonly IEmpresaCorreoCopiaRepository _empresaCorreoCopiaRepo;
+    private readonly IParametroRepository _parametroRepo;
     private readonly INotificationService _notificationService;
     private readonly IEmailService _emailService;
     private readonly IAuditService _auditService;
@@ -29,6 +30,7 @@ public sealed class ReabrirTicketCommandHandler : ICommandHandler<ReabrirTicketC
         ITicketHistorialRepository historialRepo,
         IMotivoRechazoRepository motivoRechazoRepo,
         IEmpresaCorreoCopiaRepository empresaCorreoCopiaRepo,
+        IParametroRepository parametroRepo,
         INotificationService notificationService,
         IEmailService emailService,
         IAuditService auditService,
@@ -40,6 +42,7 @@ public sealed class ReabrirTicketCommandHandler : ICommandHandler<ReabrirTicketC
         _historialRepo = historialRepo;
         _motivoRechazoRepo = motivoRechazoRepo;
         _empresaCorreoCopiaRepo = empresaCorreoCopiaRepo;
+        _parametroRepo = parametroRepo;
         _notificationService = notificationService;
         _emailService = emailService;
         _auditService = auditService;
@@ -73,6 +76,15 @@ public sealed class ReabrirTicketCommandHandler : ICommandHandler<ReabrirTicketC
         var esOtro = await _motivoRechazoRepo.EsOtroAsync(request.MotivoRechazoId, cancellationToken);
         if (esOtro && string.IsNullOrWhiteSpace(request.ComentarioRechazo))
             return Result.ErrorValidacion("ComentarioRechazo", "El comentario es obligatorio cuando el motivo es 'Otro'.");
+
+        // Verificar si la reapertura está habilitada (SUPERADMIN siempre puede)
+        if (actor.Rol != RolTipo.SUPERADMIN)
+        {
+            var paramReapertura = await _parametroRepo.ObtenerPorClaveAsync(
+                "PERMITIR_REAPERTURA", ticket.EmpresaId, cancellationToken);
+            if (paramReapertura?.Valor.Equals("false", StringComparison.OrdinalIgnoreCase) == true)
+                return Result.NoPermitido("La reapertura de tickets está deshabilitada en la configuración del sistema.");
+        }
 
         var tecnicoAnteriorId = ticket.TecnicoId;
         var estadoAnterior = ticket.Estado;
