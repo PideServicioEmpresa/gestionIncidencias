@@ -7,5 +7,5 @@ public sealed record GetDashboardResumenQuery(
     Guid? EmpresaId,
     Guid? SucursalId,
     Guid? AreaId,
-    DateOnly? FechaDesde,
-    DateOnly? FechaHasta) : IQuery<DashboardResumenDto>;
+    string? FechaDesde,
+    string? FechaHasta) : IQuery<DashboardResumenDto>;

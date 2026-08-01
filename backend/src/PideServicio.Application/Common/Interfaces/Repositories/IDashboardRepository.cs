@@ -5,25 +5,25 @@ using PideServicio.Application.Features.Dashboard.DTOs;
 public interface IDashboardRepository
 {
     Task<(int TotalAbiertos, int TotalCerrados, int Total, int Criticos, int CerradosHoy)>
-        ObtenerKpisAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, DateOnly? fechaDesde = null, DateOnly? fechaHasta = null, CancellationToken ct = default);
+        ObtenerKpisAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, string? fechaDesde = null, string? fechaHasta = null, CancellationToken ct = default);
 
     Task<IReadOnlyList<ContadorEstadoDto>>
-        ObtenerPorEstadoAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, DateOnly? fechaDesde = null, DateOnly? fechaHasta = null, CancellationToken ct = default);
+        ObtenerPorEstadoAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, string? fechaDesde = null, string? fechaHasta = null, CancellationToken ct = default);
 
     Task<IReadOnlyList<ContadorPrioridadDto>>
-        ObtenerPorPrioridadAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, DateOnly? fechaDesde = null, DateOnly? fechaHasta = null, CancellationToken ct = default);
+        ObtenerPorPrioridadAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, string? fechaDesde = null, string? fechaHasta = null, CancellationToken ct = default);
 
     Task<IReadOnlyList<ContadorSucursalDto>>
-        ObtenerPorSucursalAsync(Guid? empresaId, DateOnly? fechaDesde = null, DateOnly? fechaHasta = null, CancellationToken ct = default);
+        ObtenerPorSucursalAsync(Guid? empresaId, string? fechaDesde = null, string? fechaHasta = null, CancellationToken ct = default);
 
     Task<IReadOnlyList<ContadorAreaDto>>
-        ObtenerPorAreaAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, DateOnly? fechaDesde = null, DateOnly? fechaHasta = null, CancellationToken ct = default);
+        ObtenerPorAreaAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, string? fechaDesde = null, string? fechaHasta = null, CancellationToken ct = default);
 
     Task<IReadOnlyList<ContadorTipoServicioDto>>
-        ObtenerPorTipoServicioAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, DateOnly? fechaDesde = null, DateOnly? fechaHasta = null, CancellationToken ct = default);
+        ObtenerPorTipoServicioAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, string? fechaDesde = null, string? fechaHasta = null, CancellationToken ct = default);
 
     Task<IReadOnlyList<ContadorTecnicoDto>>
-        ObtenerPorTecnicoAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, DateOnly? fechaDesde = null, DateOnly? fechaHasta = null, CancellationToken ct = default);
+        ObtenerPorTecnicoAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, string? fechaDesde = null, string? fechaHasta = null, CancellationToken ct = default);
 
     Task<IReadOnlyList<PuntoTendenciaDto>>
         ObtenerTendenciaDiariaAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, CancellationToken ct = default);

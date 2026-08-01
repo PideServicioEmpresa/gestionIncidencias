@@ -24,11 +24,11 @@ public sealed class DashboardRepository : IDashboardRepository
         public int CerradosHoy { get; init; }
     }
 
-    // Dapper no serializa DateOnly? directamente — se convierte a DateTime? antes de cada llamada
-    private static DateTime? ToParam(DateOnly? d) => d?.ToDateTime(TimeOnly.MinValue);
+    // Convierte string vacío o nulo a null para que Dapper envíe DBNull y el IS NULL del SQL funcione.
+    private static string? Fecha(string? s) => string.IsNullOrWhiteSpace(s) ? null : s;
 
     public async Task<(int TotalAbiertos, int TotalCerrados, int Total, int Criticos, int CerradosHoy)>
-        ObtenerKpisAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, DateOnly? fechaDesde = null, DateOnly? fechaHasta = null, CancellationToken ct = default)
+        ObtenerKpisAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, string? fechaDesde = null, string? fechaHasta = null, CancellationToken ct = default)
     {
         const string sql = """
             SELECT
@@ -52,7 +52,7 @@ public sealed class DashboardRepository : IDashboardRepository
         var row = await cn.QuerySingleOrDefaultAsync<KpiRow>(sql, new
         {
             EmpresaId = empresaId, SucursalId = sucursalId, AreaId = areaId,
-            FechaDesde = ToParam(fechaDesde), FechaHasta = ToParam(fechaHasta),
+            FechaDesde = Fecha(fechaDesde), FechaHasta = Fecha(fechaHasta),
         });
 
         return row is null
@@ -61,7 +61,7 @@ public sealed class DashboardRepository : IDashboardRepository
     }
 
     public async Task<IReadOnlyList<ContadorEstadoDto>>
-        ObtenerPorEstadoAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, DateOnly? fechaDesde = null, DateOnly? fechaHasta = null, CancellationToken ct = default)
+        ObtenerPorEstadoAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, string? fechaDesde = null, string? fechaHasta = null, CancellationToken ct = default)
     {
         const string sql = """
             SELECT estado::text AS "Estado", COUNT(*)::int AS "Total"
@@ -80,13 +80,13 @@ public sealed class DashboardRepository : IDashboardRepository
         var rows = await cn.QueryAsync<ContadorEstadoDto>(sql, new
         {
             EmpresaId = empresaId, SucursalId = sucursalId, AreaId = areaId,
-            FechaDesde = ToParam(fechaDesde), FechaHasta = ToParam(fechaHasta),
+            FechaDesde = Fecha(fechaDesde), FechaHasta = Fecha(fechaHasta),
         });
         return rows.ToList().AsReadOnly();
     }
 
     public async Task<IReadOnlyList<ContadorPrioridadDto>>
-        ObtenerPorPrioridadAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, DateOnly? fechaDesde = null, DateOnly? fechaHasta = null, CancellationToken ct = default)
+        ObtenerPorPrioridadAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, string? fechaDesde = null, string? fechaHasta = null, CancellationToken ct = default)
     {
         const string sql = """
             SELECT prioridad_efectiva::text AS "Prioridad", COUNT(*)::int AS "Total"
@@ -106,13 +106,13 @@ public sealed class DashboardRepository : IDashboardRepository
         var rows = await cn.QueryAsync<ContadorPrioridadDto>(sql, new
         {
             EmpresaId = empresaId, SucursalId = sucursalId, AreaId = areaId,
-            FechaDesde = ToParam(fechaDesde), FechaHasta = ToParam(fechaHasta),
+            FechaDesde = Fecha(fechaDesde), FechaHasta = Fecha(fechaHasta),
         });
         return rows.ToList().AsReadOnly();
     }
 
     public async Task<IReadOnlyList<ContadorSucursalDto>>
-        ObtenerPorSucursalAsync(Guid? empresaId, DateOnly? fechaDesde = null, DateOnly? fechaHasta = null, CancellationToken ct = default)
+        ObtenerPorSucursalAsync(Guid? empresaId, string? fechaDesde = null, string? fechaHasta = null, CancellationToken ct = default)
     {
         const string sql = """
             SELECT t.sucursal_id AS "SucursalId", s.nombre AS "SucursalNombre", COUNT(*)::int AS "Total"
@@ -130,13 +130,13 @@ public sealed class DashboardRepository : IDashboardRepository
         var rows = await cn.QueryAsync<ContadorSucursalDto>(sql, new
         {
             EmpresaId = empresaId,
-            FechaDesde = ToParam(fechaDesde), FechaHasta = ToParam(fechaHasta),
+            FechaDesde = Fecha(fechaDesde), FechaHasta = Fecha(fechaHasta),
         });
         return rows.ToList().AsReadOnly();
     }
 
     public async Task<IReadOnlyList<ContadorAreaDto>>
-        ObtenerPorAreaAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, DateOnly? fechaDesde = null, DateOnly? fechaHasta = null, CancellationToken ct = default)
+        ObtenerPorAreaAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, string? fechaDesde = null, string? fechaHasta = null, CancellationToken ct = default)
     {
         const string sql = """
             SELECT
@@ -161,13 +161,13 @@ public sealed class DashboardRepository : IDashboardRepository
         var rows = await cn.QueryAsync<ContadorAreaDto>(sql, new
         {
             EmpresaId = empresaId, SucursalId = sucursalId, AreaId = areaId,
-            FechaDesde = ToParam(fechaDesde), FechaHasta = ToParam(fechaHasta),
+            FechaDesde = Fecha(fechaDesde), FechaHasta = Fecha(fechaHasta),
         });
         return rows.ToList().AsReadOnly();
     }
 
     public async Task<IReadOnlyList<ContadorTipoServicioDto>>
-        ObtenerPorTipoServicioAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, DateOnly? fechaDesde = null, DateOnly? fechaHasta = null, CancellationToken ct = default)
+        ObtenerPorTipoServicioAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, string? fechaDesde = null, string? fechaHasta = null, CancellationToken ct = default)
     {
         const string sql = """
             SELECT
@@ -190,13 +190,13 @@ public sealed class DashboardRepository : IDashboardRepository
         var rows = await cn.QueryAsync<ContadorTipoServicioDto>(sql, new
         {
             EmpresaId = empresaId, SucursalId = sucursalId, AreaId = areaId,
-            FechaDesde = ToParam(fechaDesde), FechaHasta = ToParam(fechaHasta),
+            FechaDesde = Fecha(fechaDesde), FechaHasta = Fecha(fechaHasta),
         });
         return rows.ToList().AsReadOnly();
     }
 
     public async Task<IReadOnlyList<ContadorTecnicoDto>>
-        ObtenerPorTecnicoAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, DateOnly? fechaDesde = null, DateOnly? fechaHasta = null, CancellationToken ct = default)
+        ObtenerPorTecnicoAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, string? fechaDesde = null, string? fechaHasta = null, CancellationToken ct = default)
     {
         const string sql = """
             SELECT
@@ -222,7 +222,7 @@ public sealed class DashboardRepository : IDashboardRepository
         var rows = await cn.QueryAsync<ContadorTecnicoDto>(sql, new
         {
             EmpresaId = empresaId, SucursalId = sucursalId, AreaId = areaId,
-            FechaDesde = ToParam(fechaDesde), FechaHasta = ToParam(fechaHasta),
+            FechaDesde = Fecha(fechaDesde), FechaHasta = Fecha(fechaHasta),
         });
         return rows.ToList().AsReadOnly();
     }

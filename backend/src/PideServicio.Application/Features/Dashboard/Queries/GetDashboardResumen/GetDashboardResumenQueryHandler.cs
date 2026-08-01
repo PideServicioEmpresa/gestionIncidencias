@@ -60,7 +60,7 @@ public sealed class GetDashboardResumenQueryHandler
             return Result.NoPermitido<DashboardResumenDto>("No tiene permisos para acceder al dashboard.");
         }
 
-        // Métodos de agregación filtrados por fechas (7)
+        // Métodos de agregación — aplican filtro de fechas cuando se proveen (7)
         var kpisTask            = _dashboardRepository.ObtenerKpisAsync(empresaId, sucursalId, areaId, request.FechaDesde, request.FechaHasta, cancellationToken);
         var porEstadoTask       = _dashboardRepository.ObtenerPorEstadoAsync(empresaId, sucursalId, areaId, request.FechaDesde, request.FechaHasta, cancellationToken);
         var porPrioridadTask    = _dashboardRepository.ObtenerPorPrioridadAsync(empresaId, sucursalId, areaId, request.FechaDesde, request.FechaHasta, cancellationToken);

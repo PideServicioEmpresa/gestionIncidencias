@@ -19,8 +19,8 @@ public sealed class DashboardController : ApiControllerBase
         [FromQuery] Guid? empresaId,
         [FromQuery] Guid? sucursalId,
         [FromQuery] Guid? areaId,
-        [FromQuery] DateOnly? desde,
-        [FromQuery] DateOnly? hasta,
+        [FromQuery] string? desde,
+        [FromQuery] string? hasta,
         CancellationToken ct)
         => HandleResult(await Mediator.Send(new GetDashboardResumenQuery(empresaId, sucursalId, areaId, desde, hasta), ct));
 }
