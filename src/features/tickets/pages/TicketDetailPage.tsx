@@ -340,6 +340,10 @@ const VALID_NEXT_STATES: Partial<Record<TicketStatus, TicketStatus[]>> = {
   reabierto: ['asignado', 'en_proceso'],
 }
 
+// Estados desde los que el técnico asignado puede ejecutar transiciones propias.
+// Desde REABIERTO no se incluye porque requiere re-asignación por admin primero.
+const TECNICO_ESTADOS_PERMITIDOS: TicketStatus[] = ['asignado', 'en_proceso', 'en_espera']
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 type ActiveTab = 'comments' | 'history' | 'evidencias'
@@ -439,6 +443,7 @@ export function TicketDetailPage() {
   const ticket = ticketQuery.data
   const currentStatus = normalizeEstado(ticket.estado)
   const currentPriority = normalizePrioridad(ticket.prioridadEfectiva)
+  const isTecnicoAsignado = ticket.tecnicoId === user?.id
 
   const canUploadEvidencia =
     isAdmin || isSupervisor || ticket.tecnicoId === user?.id || ticket.solicitanteId === user?.id
@@ -1107,24 +1112,33 @@ export function TicketDetailPage() {
                   </Button>
                 )}
 
-                {/* Cambiar estado (solo admin, solo cuando hay transiciones válidas) */}
-                {isAdmin && (VALID_NEXT_STATES[currentStatus] ?? []).length > 0 && (
+                {/* Cambiar estado: admin/superadmin siempre; técnico asignado solo en sus estados */}
+                {(isAdmin ||
+                  (isTecnicoAsignado && TECNICO_ESTADOS_PERMITIDOS.includes(currentStatus))) &&
+                  (VALID_NEXT_STATES[currentStatus] ?? []).length > 0 && (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        setPendingStatus(
+                          (VALID_NEXT_STATES[currentStatus] ?? [])[0] ?? currentStatus,
+                        )
+                        setChangeStatusModal(true)
+                      }}
+                    >
+                      <Settings2 className="mr-2 h-4 w-4" />
+                      Cambiar estado
+                    </Button>
+                  )}
+
+                {/* Reabrir ticket: solo desde PENDIENTE_VALIDACION (el backend lo exige).
+                    En CERRADO el ticket es terminal y no puede reabrirse. */}
+                {currentStatus === 'pendiente_validacion' && (
                   <Button
                     variant="outline"
-                    className="w-full"
-                    onClick={() => {
-                      setPendingStatus((VALID_NEXT_STATES[currentStatus] ?? [])[0] ?? currentStatus)
-                      setChangeStatusModal(true)
-                    }}
+                    className="w-full border-amber-300 text-amber-700 hover:border-amber-400 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-800 dark:text-amber-500 dark:hover:bg-amber-950"
+                    onClick={handleReopenTicket}
                   >
-                    <Settings2 className="mr-2 h-4 w-4" />
-                    Cambiar estado
-                  </Button>
-                )}
-
-                {/* Reabrir ticket */}
-                {currentStatus === 'cerrado' && (
-                  <Button variant="outline" className="w-full" onClick={handleReopenTicket}>
                     <RefreshCw className="mr-2 h-4 w-4" />
                     Reabrir ticket
                   </Button>
