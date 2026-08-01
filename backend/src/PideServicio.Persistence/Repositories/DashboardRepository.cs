@@ -24,6 +24,9 @@ public sealed class DashboardRepository : IDashboardRepository
         public int CerradosHoy { get; init; }
     }
 
+    // Dapper no serializa DateOnly? directamente — se convierte a DateTime? antes de cada llamada
+    private static DateTime? ToParam(DateOnly? d) => d?.ToDateTime(TimeOnly.MinValue);
+
     public async Task<(int TotalAbiertos, int TotalCerrados, int Total, int Criticos, int CerradosHoy)>
         ObtenerKpisAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, DateOnly? fechaDesde = null, DateOnly? fechaHasta = null, CancellationToken ct = default)
     {
@@ -41,12 +44,16 @@ public sealed class DashboardRepository : IDashboardRepository
               AND (@EmpresaId  IS NULL OR empresa_id  = @EmpresaId)
               AND (@SucursalId IS NULL OR sucursal_id = @SucursalId)
               AND (@AreaId     IS NULL OR area_id     = @AreaId)
-              AND (@FechaDesde IS NULL OR (fecha_creacion AT TIME ZONE 'America/Lima')::date >= @FechaDesde)
-              AND (@FechaHasta IS NULL OR (fecha_creacion AT TIME ZONE 'America/Lima')::date <= @FechaHasta);
+              AND (@FechaDesde IS NULL OR (fecha_creacion AT TIME ZONE 'America/Lima')::date >= @FechaDesde::date)
+              AND (@FechaHasta IS NULL OR (fecha_creacion AT TIME ZONE 'America/Lima')::date <= @FechaHasta::date);
             """;
 
         await using var cn = (NpgsqlConnection)await _db.CrearConexionAsync(ct);
-        var row = await cn.QuerySingleOrDefaultAsync<KpiRow>(sql, new { EmpresaId = empresaId, SucursalId = sucursalId, AreaId = areaId, FechaDesde = fechaDesde, FechaHasta = fechaHasta });
+        var row = await cn.QuerySingleOrDefaultAsync<KpiRow>(sql, new
+        {
+            EmpresaId = empresaId, SucursalId = sucursalId, AreaId = areaId,
+            FechaDesde = ToParam(fechaDesde), FechaHasta = ToParam(fechaHasta),
+        });
 
         return row is null
             ? (0, 0, 0, 0, 0)
@@ -63,14 +70,18 @@ public sealed class DashboardRepository : IDashboardRepository
               AND (@EmpresaId  IS NULL OR empresa_id  = @EmpresaId)
               AND (@SucursalId IS NULL OR sucursal_id = @SucursalId)
               AND (@AreaId     IS NULL OR area_id     = @AreaId)
-              AND (@FechaDesde IS NULL OR (fecha_creacion AT TIME ZONE 'America/Lima')::date >= @FechaDesde)
-              AND (@FechaHasta IS NULL OR (fecha_creacion AT TIME ZONE 'America/Lima')::date <= @FechaHasta)
+              AND (@FechaDesde IS NULL OR (fecha_creacion AT TIME ZONE 'America/Lima')::date >= @FechaDesde::date)
+              AND (@FechaHasta IS NULL OR (fecha_creacion AT TIME ZONE 'America/Lima')::date <= @FechaHasta::date)
             GROUP BY estado
             ORDER BY "Total" DESC;
             """;
 
         await using var cn = (NpgsqlConnection)await _db.CrearConexionAsync(ct);
-        var rows = await cn.QueryAsync<ContadorEstadoDto>(sql, new { EmpresaId = empresaId, SucursalId = sucursalId, AreaId = areaId, FechaDesde = fechaDesde, FechaHasta = fechaHasta });
+        var rows = await cn.QueryAsync<ContadorEstadoDto>(sql, new
+        {
+            EmpresaId = empresaId, SucursalId = sucursalId, AreaId = areaId,
+            FechaDesde = ToParam(fechaDesde), FechaHasta = ToParam(fechaHasta),
+        });
         return rows.ToList().AsReadOnly();
     }
 
@@ -85,14 +96,18 @@ public sealed class DashboardRepository : IDashboardRepository
               AND (@EmpresaId  IS NULL OR empresa_id  = @EmpresaId)
               AND (@SucursalId IS NULL OR sucursal_id = @SucursalId)
               AND (@AreaId     IS NULL OR area_id     = @AreaId)
-              AND (@FechaDesde IS NULL OR (fecha_creacion AT TIME ZONE 'America/Lima')::date >= @FechaDesde)
-              AND (@FechaHasta IS NULL OR (fecha_creacion AT TIME ZONE 'America/Lima')::date <= @FechaHasta)
+              AND (@FechaDesde IS NULL OR (fecha_creacion AT TIME ZONE 'America/Lima')::date >= @FechaDesde::date)
+              AND (@FechaHasta IS NULL OR (fecha_creacion AT TIME ZONE 'America/Lima')::date <= @FechaHasta::date)
             GROUP BY prioridad_efectiva
             ORDER BY "Total" DESC;
             """;
 
         await using var cn = (NpgsqlConnection)await _db.CrearConexionAsync(ct);
-        var rows = await cn.QueryAsync<ContadorPrioridadDto>(sql, new { EmpresaId = empresaId, SucursalId = sucursalId, AreaId = areaId, FechaDesde = fechaDesde, FechaHasta = fechaHasta });
+        var rows = await cn.QueryAsync<ContadorPrioridadDto>(sql, new
+        {
+            EmpresaId = empresaId, SucursalId = sucursalId, AreaId = areaId,
+            FechaDesde = ToParam(fechaDesde), FechaHasta = ToParam(fechaHasta),
+        });
         return rows.ToList().AsReadOnly();
     }
 
@@ -105,14 +120,18 @@ public sealed class DashboardRepository : IDashboardRepository
             INNER JOIN sucursales s ON s.id = t.sucursal_id AND s.deleted_at IS NULL
             WHERE t.deleted_at IS NULL
               AND (@EmpresaId IS NULL OR t.empresa_id = @EmpresaId)
-              AND (@FechaDesde IS NULL OR (t.fecha_creacion AT TIME ZONE 'America/Lima')::date >= @FechaDesde)
-              AND (@FechaHasta IS NULL OR (t.fecha_creacion AT TIME ZONE 'America/Lima')::date <= @FechaHasta)
+              AND (@FechaDesde IS NULL OR (t.fecha_creacion AT TIME ZONE 'America/Lima')::date >= @FechaDesde::date)
+              AND (@FechaHasta IS NULL OR (t.fecha_creacion AT TIME ZONE 'America/Lima')::date <= @FechaHasta::date)
             GROUP BY t.sucursal_id, s.nombre
             ORDER BY "Total" DESC;
             """;
 
         await using var cn = (NpgsqlConnection)await _db.CrearConexionAsync(ct);
-        var rows = await cn.QueryAsync<ContadorSucursalDto>(sql, new { EmpresaId = empresaId, FechaDesde = fechaDesde, FechaHasta = fechaHasta });
+        var rows = await cn.QueryAsync<ContadorSucursalDto>(sql, new
+        {
+            EmpresaId = empresaId,
+            FechaDesde = ToParam(fechaDesde), FechaHasta = ToParam(fechaHasta),
+        });
         return rows.ToList().AsReadOnly();
     }
 
@@ -132,14 +151,18 @@ public sealed class DashboardRepository : IDashboardRepository
               AND (@EmpresaId  IS NULL OR t.empresa_id  = @EmpresaId)
               AND (@SucursalId IS NULL OR t.sucursal_id = @SucursalId)
               AND (@AreaId     IS NULL OR t.area_id     = @AreaId)
-              AND (@FechaDesde IS NULL OR (t.fecha_creacion AT TIME ZONE 'America/Lima')::date >= @FechaDesde)
-              AND (@FechaHasta IS NULL OR (t.fecha_creacion AT TIME ZONE 'America/Lima')::date <= @FechaHasta)
+              AND (@FechaDesde IS NULL OR (t.fecha_creacion AT TIME ZONE 'America/Lima')::date >= @FechaDesde::date)
+              AND (@FechaHasta IS NULL OR (t.fecha_creacion AT TIME ZONE 'America/Lima')::date <= @FechaHasta::date)
             GROUP BY t.area_id, a.nombre, t.sucursal_id
             ORDER BY 4 + 5 DESC;
             """;
 
         await using var cn = (NpgsqlConnection)await _db.CrearConexionAsync(ct);
-        var rows = await cn.QueryAsync<ContadorAreaDto>(sql, new { EmpresaId = empresaId, SucursalId = sucursalId, AreaId = areaId, FechaDesde = fechaDesde, FechaHasta = fechaHasta });
+        var rows = await cn.QueryAsync<ContadorAreaDto>(sql, new
+        {
+            EmpresaId = empresaId, SucursalId = sucursalId, AreaId = areaId,
+            FechaDesde = ToParam(fechaDesde), FechaHasta = ToParam(fechaHasta),
+        });
         return rows.ToList().AsReadOnly();
     }
 
@@ -157,14 +180,18 @@ public sealed class DashboardRepository : IDashboardRepository
               AND (@EmpresaId  IS NULL OR t.empresa_id  = @EmpresaId)
               AND (@SucursalId IS NULL OR t.sucursal_id = @SucursalId)
               AND (@AreaId     IS NULL OR t.area_id     = @AreaId)
-              AND (@FechaDesde IS NULL OR (t.fecha_creacion AT TIME ZONE 'America/Lima')::date >= @FechaDesde)
-              AND (@FechaHasta IS NULL OR (t.fecha_creacion AT TIME ZONE 'America/Lima')::date <= @FechaHasta)
+              AND (@FechaDesde IS NULL OR (t.fecha_creacion AT TIME ZONE 'America/Lima')::date >= @FechaDesde::date)
+              AND (@FechaHasta IS NULL OR (t.fecha_creacion AT TIME ZONE 'America/Lima')::date <= @FechaHasta::date)
             GROUP BY t.tipo_servicio_id, ts.nombre
             ORDER BY "Total" DESC;
             """;
 
         await using var cn = (NpgsqlConnection)await _db.CrearConexionAsync(ct);
-        var rows = await cn.QueryAsync<ContadorTipoServicioDto>(sql, new { EmpresaId = empresaId, SucursalId = sucursalId, AreaId = areaId, FechaDesde = fechaDesde, FechaHasta = fechaHasta });
+        var rows = await cn.QueryAsync<ContadorTipoServicioDto>(sql, new
+        {
+            EmpresaId = empresaId, SucursalId = sucursalId, AreaId = areaId,
+            FechaDesde = ToParam(fechaDesde), FechaHasta = ToParam(fechaHasta),
+        });
         return rows.ToList().AsReadOnly();
     }
 
@@ -184,15 +211,19 @@ public sealed class DashboardRepository : IDashboardRepository
               AND (@EmpresaId  IS NULL OR t.empresa_id  = @EmpresaId)
               AND (@SucursalId IS NULL OR t.sucursal_id = @SucursalId)
               AND (@AreaId     IS NULL OR t.area_id     = @AreaId)
-              AND (@FechaDesde IS NULL OR (t.fecha_creacion AT TIME ZONE 'America/Lima')::date >= @FechaDesde)
-              AND (@FechaHasta IS NULL OR (t.fecha_creacion AT TIME ZONE 'America/Lima')::date <= @FechaHasta)
+              AND (@FechaDesde IS NULL OR (t.fecha_creacion AT TIME ZONE 'America/Lima')::date >= @FechaDesde::date)
+              AND (@FechaHasta IS NULL OR (t.fecha_creacion AT TIME ZONE 'America/Lima')::date <= @FechaHasta::date)
             GROUP BY u.id, u.nombre, u.apellido
             ORDER BY "Total" DESC
             LIMIT 10;
             """;
 
         await using var cn = (NpgsqlConnection)await _db.CrearConexionAsync(ct);
-        var rows = await cn.QueryAsync<ContadorTecnicoDto>(sql, new { EmpresaId = empresaId, SucursalId = sucursalId, AreaId = areaId, FechaDesde = fechaDesde, FechaHasta = fechaHasta });
+        var rows = await cn.QueryAsync<ContadorTecnicoDto>(sql, new
+        {
+            EmpresaId = empresaId, SucursalId = sucursalId, AreaId = areaId,
+            FechaDesde = ToParam(fechaDesde), FechaHasta = ToParam(fechaHasta),
+        });
         return rows.ToList().AsReadOnly();
     }
 
