@@ -71,6 +71,8 @@ export function useDashboardResumen(params?: {
   empresaId?: string
   sucursalId?: string
   areaId?: string
+  desde?: string
+  hasta?: string
 }) {
   return useQuery({
     queryKey: ['dashboard', 'resumen', params],

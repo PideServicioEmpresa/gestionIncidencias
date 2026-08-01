@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Ticket,
@@ -15,9 +15,12 @@ import {
   BarChart3,
   ChevronRight,
   RefreshCw,
+  X,
+  Filter,
 } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@shared/ui/button'
+import { Input } from '@shared/ui/input'
 import { SearchableSelect } from '@shared/components/SearchableSelect'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@shared/ui/card'
 import { StatusBadge } from '@shared/components/StatusBadge'
@@ -476,7 +479,10 @@ function AdminDashboard() {
   const [widgetOrder, setWidgetOrder] = useState<string[]>(getSavedOrder)
   const [editMode, setEditMode] = useState(false)
   const [selectedSucursalId, setSelectedSucursalId] = useState<string>('general')
-  const [selectedAreaId, setSelectedAreaId] = useState<string>('general')
+  const [filterDesde, setFilterDesde] = useState('')
+  const [filterHasta, setFilterHasta] = useState('')
+  const [appliedDesde, setAppliedDesde] = useState('')
+  const [appliedHasta, setAppliedHasta] = useState('')
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
@@ -490,16 +496,37 @@ function AdminDashboard() {
     sessionStorage.setItem('ps-dashboard-order', JSON.stringify(newOrder))
   }
 
+  function handleApplyDates() {
+    setAppliedDesde(filterDesde)
+    setAppliedHasta(filterHasta)
+  }
+
+  function handleClearAll() {
+    setSelectedSucursalId('general')
+    setFilterDesde('')
+    setFilterHasta('')
+    setAppliedDesde('')
+    setAppliedHasta('')
+  }
+
   // ── Datos del backend (un único endpoint de analytics) ────────────────────────
 
   const queryClient = useQueryClient()
   const sucursalParam = selectedSucursalId !== 'general' ? selectedSucursalId : undefined
+  const dashboardQueryParams = useMemo(() => {
+    const p: { sucursalId?: string; desde?: string; hasta?: string } = {}
+    if (sucursalParam) p.sucursalId = sucursalParam
+    if (appliedDesde) p.desde = appliedDesde
+    if (appliedHasta) p.hasta = appliedHasta
+    return Object.keys(p).length > 0 ? p : undefined
+  }, [sucursalParam, appliedDesde, appliedHasta])
+
   const {
     data: resumen,
     isLoading,
     isFetching: isAdminFetching,
     error: resumenError,
-  } = useDashboardResumen(sucursalParam ? { sucursalId: sucursalParam } : undefined)
+  } = useDashboardResumen(dashboardQueryParams)
 
   const handleAdminRefresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
@@ -562,18 +589,6 @@ function AdminDashboard() {
     name: s.sucursalNombre ?? '',
   }))
 
-  const areaOptions =
-    selectedSucursalId !== 'general'
-      ? r.porArea
-          .filter((a) => a.sucursalId === selectedSucursalId)
-          .map((a) => ({ id: a.areaId, name: a.areaNombre ?? '' }))
-      : []
-
-  function handleSucursalChange(val: string) {
-    setSelectedSucursalId(val)
-    setSelectedAreaId('general')
-  }
-
   // ── Datos para gráficos — directo del backend ─────────────────────────────────
 
   const statusData = r.porEstado
@@ -604,11 +619,7 @@ function AdminDashboard() {
     }
   })
 
-  // Filtro local por área en el gráfico de distribución por área
-  const areaFiltrada =
-    selectedAreaId !== 'general' ? r.porArea.filter((a) => a.areaId === selectedAreaId) : r.porArea
-
-  const areasData = areaFiltrada.map((a) => {
+  const areasData = r.porArea.map((a) => {
     const nombre = a.areaNombre ?? ''
     return {
       name: nombre.length > 14 ? nombre.substring(0, 14) + '.' : nombre,
@@ -1070,27 +1081,38 @@ function AdminDashboard() {
                     ...sucursalOptions.map((s) => ({ value: s.id, label: s.name })),
                   ]}
                   value={selectedSucursalId}
-                  onChange={handleSucursalChange}
+                  onChange={setSelectedSucursalId}
                   placeholder="Sucursal..."
                   searchPlaceholder="Buscar sucursal..."
                   emptyMessage="Sin sucursales."
                 />
               </div>
-              {/* Filtro por área, activo solo si hay sucursal seleccionada */}
-              <div className="w-[160px]">
-                <SearchableSelect
-                  options={[
-                    { value: 'general', label: 'Todas las áreas' },
-                    ...areaOptions.map((a) => ({ value: a.id, label: a.name })),
-                  ]}
-                  value={selectedAreaId}
-                  onChange={setSelectedAreaId}
-                  placeholder="Área..."
-                  searchPlaceholder="Buscar área..."
-                  emptyMessage="Sin áreas."
-                  disabled={selectedSucursalId === 'general'}
-                />
-              </div>
+              {/* Filtros de fecha */}
+              <Input
+                type="date"
+                className="h-8 w-[130px] text-xs"
+                value={filterDesde}
+                onChange={(e) => setFilterDesde(e.target.value)}
+              />
+              <Input
+                type="date"
+                className="h-8 w-[130px] text-xs"
+                value={filterHasta}
+                onChange={(e) => setFilterHasta(e.target.value)}
+              />
+              {(filterDesde !== '' || filterHasta !== '') && (
+                <Button size="sm" variant="outline" className="h-8" onClick={handleApplyDates}>
+                  <Filter className="mr-1.5 h-3.5 w-3.5" />
+                  Aplicar fechas
+                </Button>
+              )}
+              {/* Limpiar filtros */}
+              {(selectedSucursalId !== 'general' || appliedDesde !== '' || appliedHasta !== '') && (
+                <Button variant="ghost" size="sm" onClick={handleClearAll}>
+                  <X className="mr-1.5 h-3.5 w-3.5" />
+                  Limpiar filtros
+                </Button>
+              )}
             </>
           )}
           <Button

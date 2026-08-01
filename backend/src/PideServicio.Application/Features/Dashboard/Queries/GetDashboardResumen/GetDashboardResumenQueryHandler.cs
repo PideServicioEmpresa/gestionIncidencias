@@ -60,13 +60,16 @@ public sealed class GetDashboardResumenQueryHandler
             return Result.NoPermitido<DashboardResumenDto>("No tiene permisos para acceder al dashboard.");
         }
 
-        var kpisTask            = _dashboardRepository.ObtenerKpisAsync(empresaId, sucursalId, areaId, cancellationToken);
-        var porEstadoTask       = _dashboardRepository.ObtenerPorEstadoAsync(empresaId, sucursalId, areaId, cancellationToken);
-        var porPrioridadTask    = _dashboardRepository.ObtenerPorPrioridadAsync(empresaId, sucursalId, areaId, cancellationToken);
-        var porSucursalTask     = _dashboardRepository.ObtenerPorSucursalAsync(empresaId, cancellationToken);
-        var porAreaTask         = _dashboardRepository.ObtenerPorAreaAsync(empresaId, sucursalId, areaId, cancellationToken);
-        var porTipoServicioTask = _dashboardRepository.ObtenerPorTipoServicioAsync(empresaId, sucursalId, areaId, cancellationToken);
-        var porTecnicoTask      = _dashboardRepository.ObtenerPorTecnicoAsync(empresaId, sucursalId, areaId, cancellationToken);
+        // Métodos de agregación filtrados por fechas (7)
+        var kpisTask            = _dashboardRepository.ObtenerKpisAsync(empresaId, sucursalId, areaId, request.FechaDesde, request.FechaHasta, cancellationToken);
+        var porEstadoTask       = _dashboardRepository.ObtenerPorEstadoAsync(empresaId, sucursalId, areaId, request.FechaDesde, request.FechaHasta, cancellationToken);
+        var porPrioridadTask    = _dashboardRepository.ObtenerPorPrioridadAsync(empresaId, sucursalId, areaId, request.FechaDesde, request.FechaHasta, cancellationToken);
+        var porSucursalTask     = _dashboardRepository.ObtenerPorSucursalAsync(empresaId, request.FechaDesde, request.FechaHasta, cancellationToken);
+        var porAreaTask         = _dashboardRepository.ObtenerPorAreaAsync(empresaId, sucursalId, areaId, request.FechaDesde, request.FechaHasta, cancellationToken);
+        var porTipoServicioTask = _dashboardRepository.ObtenerPorTipoServicioAsync(empresaId, sucursalId, areaId, request.FechaDesde, request.FechaHasta, cancellationToken);
+        var porTecnicoTask      = _dashboardRepository.ObtenerPorTecnicoAsync(empresaId, sucursalId, areaId, request.FechaDesde, request.FechaHasta, cancellationToken);
+
+        // Métodos de tendencia — ventana fija de tiempo, sin filtro de fechas (3)
         var tendenciaDiariaTask = _dashboardRepository.ObtenerTendenciaDiariaAsync(empresaId, sucursalId, areaId, cancellationToken);
         var tendenciaSemTask    = _dashboardRepository.ObtenerTendenciaSemanalAsync(empresaId, sucursalId, areaId, cancellationToken);
         var sparklineTask       = _dashboardRepository.ObtenerSparklineAsync(empresaId, sucursalId, areaId, cancellationToken);

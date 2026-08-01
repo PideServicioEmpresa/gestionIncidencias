@@ -29,7 +29,7 @@ import { Input } from '@shared/ui/input'
 import { SearchableSelect } from '@shared/components/SearchableSelect'
 import { useAuthStore } from '@store/auth.store'
 import { empresaService } from '@features/empresas/services/empresaService'
-import { useSucursales, useAreas } from '@features/tickets/hooks/useCatalogos'
+import { useSucursales } from '@features/tickets/hooks/useCatalogos'
 import {
   ResponsiveContainer,
   BarChart,
@@ -126,8 +126,6 @@ export function ReportsPage() {
   const [selEmpresaLabel, setSelEmpresaLabel] = useState('')
   const [selSucursalId, setSelSucursalId] = useState('')
   const [selSucursalLabel, setSelSucursalLabel] = useState('')
-  const [selAreaId, setSelAreaId] = useState('')
-  const [selAreaLabel, setSelAreaLabel] = useState('')
   const [filterDesde, setFilterDesde] = useState('')
   const [filterHasta, setFilterHasta] = useState('')
 
@@ -138,8 +136,8 @@ export function ReportsPage() {
   const [appliedEmpresaLabel, setAppliedEmpresaLabel] = useState('')
   const [appliedSucursalId, setAppliedSucursalId] = useState<string | undefined>(undefined)
   const [appliedSucursalLabel, setAppliedSucursalLabel] = useState('')
-  const [appliedAreaId, setAppliedAreaId] = useState<string | undefined>(undefined)
-  const [appliedAreaLabel, setAppliedAreaLabel] = useState('')
+  const [appliedDesde, setAppliedDesde] = useState('')
+  const [appliedHasta, setAppliedHasta] = useState('')
 
   // ── Queries de catálogos ──────────────────────────────────────────────────
   const empresasQuery = useQuery({
@@ -158,22 +156,15 @@ export function ReportsPage() {
   const sucursalesQuery = useSucursales(empresaIdForSucursales)
   const sucursales = (sucursalesQuery.data ?? []).filter((s) => s.activa)
 
-  const areaIdContext = selSucursalId
-    ? { sucursalId: selSucursalId }
-    : empresaIdForSucursales
-      ? { empresaId: empresaIdForSucursales }
-      : undefined
-  const areasQuery = useAreas(areaIdContext)
-  const areas = (areasQuery.data ?? []).filter((a) => a.activa)
-
   // ── Hook de datos con filtros aplicados ───────────────────────────────────
-  const dashboardParams = useMemo(
-    () =>
-      appliedEmpresaId || appliedSucursalId || appliedAreaId
-        ? { empresaId: appliedEmpresaId, sucursalId: appliedSucursalId, areaId: appliedAreaId }
-        : undefined,
-    [appliedEmpresaId, appliedSucursalId, appliedAreaId],
-  )
+  const dashboardParams = useMemo(() => {
+    const p: { empresaId?: string; sucursalId?: string; desde?: string; hasta?: string } = {}
+    if (appliedEmpresaId) p.empresaId = appliedEmpresaId
+    if (appliedSucursalId) p.sucursalId = appliedSucursalId
+    if (appliedDesde) p.desde = appliedDesde
+    if (appliedHasta) p.hasta = appliedHasta
+    return Object.keys(p).length > 0 ? p : undefined
+  }, [appliedEmpresaId, appliedSucursalId, appliedDesde, appliedHasta])
 
   const { data: resumen, isFetching, refetch } = useDashboardResumen(dashboardParams)
 
@@ -216,17 +207,10 @@ export function ReportsPage() {
   // ── Opciones para SearchableSelect ───────────────────────────────────────
   const empresaOptions = empresas.map((e) => ({ value: e.id, label: e.nombreComercial }))
   const sucursalOptions = sucursales.map((s) => ({ value: s.id, label: s.nombre }))
-  const areaOptions = areas.map((a) => ({ value: a.id, label: a.nombre }))
-
   // ── Filtros ───────────────────────────────────────────────────────────────
   const hasFilters = useMemo(
-    () =>
-      !!appliedEmpresaId ||
-      !!appliedSucursalId ||
-      !!appliedAreaId ||
-      filterDesde !== '' ||
-      filterHasta !== '',
-    [appliedEmpresaId, appliedSucursalId, appliedAreaId, filterDesde, filterHasta],
+    () => !!appliedEmpresaId || !!appliedSucursalId || filterDesde !== '' || filterHasta !== '',
+    [appliedEmpresaId, appliedSucursalId, filterDesde, filterHasta],
   )
 
   function handleEmpresaChange(id: string) {
@@ -235,22 +219,12 @@ export function ReportsPage() {
     setSelEmpresaLabel(label)
     setSelSucursalId('')
     setSelSucursalLabel('')
-    setSelAreaId('')
-    setSelAreaLabel('')
   }
 
   function handleSucursalChange(id: string) {
     const label = sucursales.find((s) => s.id === id)?.nombre ?? ''
     setSelSucursalId(id)
     setSelSucursalLabel(label)
-    setSelAreaId('')
-    setSelAreaLabel('')
-  }
-
-  function handleAreaChange(id: string) {
-    const label = areas.find((a) => a.id === id)?.nombre ?? ''
-    setSelAreaId(id)
-    setSelAreaLabel(label)
   }
 
   function handleApplyFilters() {
@@ -262,8 +236,8 @@ export function ReportsPage() {
     setAppliedEmpresaLabel(empresaLabel)
     setAppliedSucursalId(selSucursalId || undefined)
     setAppliedSucursalLabel(selSucursalLabel)
-    setAppliedAreaId(selAreaId || undefined)
-    setAppliedAreaLabel(selAreaLabel)
+    setAppliedDesde(filterDesde)
+    setAppliedHasta(filterHasta)
   }
 
   function handleClearFilters() {
@@ -271,25 +245,22 @@ export function ReportsPage() {
     setSelEmpresaLabel('')
     setSelSucursalId('')
     setSelSucursalLabel('')
-    setSelAreaId('')
-    setSelAreaLabel('')
     setFilterDesde('')
     setFilterHasta('')
     setAppliedEmpresaId(isAdmin ? (user?.empresaId ?? undefined) : undefined)
     setAppliedEmpresaLabel('')
     setAppliedSucursalId(undefined)
     setAppliedSucursalLabel('')
-    setAppliedAreaId(undefined)
-    setAppliedAreaLabel('')
+    setAppliedDesde('')
+    setAppliedHasta('')
   }
 
   // ── Exportaciones ─────────────────────────────────────────────────────────
   const filtrosPDF = {
-    desde: filterDesde || undefined,
-    hasta: filterHasta || undefined,
+    desde: appliedDesde || undefined,
+    hasta: appliedHasta || undefined,
     empresa: appliedEmpresaLabel || undefined,
     sucursal: appliedSucursalLabel || undefined,
-    area: appliedAreaLabel || undefined,
   }
 
   const GENERADORES: Record<string, () => void> = {
@@ -393,18 +364,15 @@ export function ReportsPage() {
               Filtros
             </CardTitle>
             {hasFilters && (
-              <button
-                onClick={handleClearFilters}
-                className="ml-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-3 w-3" />
+              <Button variant="ghost" size="sm" onClick={handleClearFilters} className="ml-auto">
+                <X className="mr-1 h-3.5 w-3.5" />
                 Limpiar
-              </button>
+              </Button>
             )}
           </div>
         </CardHeader>
         <CardContent className="p-3 pt-0">
-          <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
             {/* Empresa */}
             <div className="flex flex-col gap-1">
               <span className="text-[10px] font-medium text-muted-foreground">Empresa</span>
@@ -440,21 +408,6 @@ export function ReportsPage() {
               />
             </div>
 
-            {/* Área */}
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-medium text-muted-foreground">Área</span>
-              <SearchableSelect
-                options={areaOptions}
-                value={selAreaId}
-                onChange={handleAreaChange}
-                placeholder="Todas las áreas"
-                searchPlaceholder="Buscar área..."
-                emptyMessage="Sin áreas."
-                loading={areasQuery.isLoading}
-                disabled={!areaIdContext}
-              />
-            </div>
-
             {/* Desde */}
             <div className="flex flex-col gap-1">
               <span className="text-[10px] font-medium text-muted-foreground">Desde</span>
@@ -478,13 +431,8 @@ export function ReportsPage() {
             </div>
           </div>
           <div className="mt-2 flex justify-end">
-            <Button
-              size="sm"
-              className="h-7 gap-1.5 text-xs"
-              onClick={handleApplyFilters}
-              disabled={isFetching}
-            >
-              <Filter className="h-3 w-3" />
+            <Button size="sm" onClick={handleApplyFilters} disabled={isFetching}>
+              <Filter className="mr-1.5 h-3.5 w-3.5" />
               {isFetching ? 'Actualizando...' : 'Aplicar filtros'}
             </Button>
           </div>
