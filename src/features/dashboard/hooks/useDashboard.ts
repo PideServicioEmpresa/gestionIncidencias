@@ -67,6 +67,16 @@ export interface DashboardResumenDto {
   sparkCerrados: number[]
 }
 
+export interface TicketReporteItemDto {
+  codigo: string
+  estado: string
+  prioridad: string
+  sucursalNombre: string
+  fechaCreacion: string
+  fechaCierre: string | null
+  tecnicoNombre: string | null
+}
+
 export function useDashboardResumen(params?: {
   empresaId?: string
   sucursalId?: string

@@ -10,6 +10,15 @@ public sealed record PuntoTendenciaDto(string Fecha, int Creados, int Resueltos)
 public sealed record PuntoSemanalDto(string Semana, int Creados, int Resueltos);
 public sealed record SparklineRowDto(int Abiertos, int Criticos, int Cerrados);
 
+public sealed record TicketReporteItemDto(
+    string Codigo,
+    string Estado,
+    string Prioridad,
+    string SucursalNombre,
+    DateTime FechaCreacion,
+    DateTime? FechaCierre,
+    string? TecnicoNombre);
+
 public sealed record DashboardResumenDto(
     int TotalAbiertos,
     int TotalCerrados,

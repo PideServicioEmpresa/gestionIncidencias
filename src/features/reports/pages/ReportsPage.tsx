@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   FileBarChart,
   FileSpreadsheet,
@@ -13,7 +13,11 @@ import {
   ArrowRight,
   RefreshCw,
 } from 'lucide-react'
-import { useDashboardResumen } from '@features/dashboard/hooks/useDashboard'
+import {
+  useDashboardResumen,
+  type TicketReporteItemDto,
+} from '@features/dashboard/hooks/useDashboard'
+import { apiClient } from '@services/apiClient'
 import {
   exportarDatosGeneralesPDF,
   exportarReporteMensualPDF,
@@ -167,6 +171,7 @@ export function ReportsPage() {
   }, [appliedEmpresaId, appliedSucursalId, appliedDesde, appliedHasta])
 
   const { data: resumen, isFetching, refetch } = useDashboardResumen(dashboardParams)
+  const queryClient = useQueryClient()
 
   const [downloading, setDownloading] = useState<string | null>(null)
 
@@ -273,7 +278,17 @@ export function ReportsPage() {
   const handleDownloadExcel = () => {
     if (downloading || !resumen) return
     setDownloading('excel')
-    const promise = exportarExcel(resumen, filtrosPDF).finally(() => setDownloading(null))
+    const promise = (async () => {
+      const ticketParams = dashboardParams as Record<string, string | undefined> | undefined
+      const tickets = await queryClient.fetchQuery<TicketReporteItemDto[]>({
+        queryKey: ['dashboard', 'tickets-reporte', dashboardParams],
+        queryFn: () =>
+          apiClient.get<TicketReporteItemDto[]>('/dashboard/tickets-reporte', ticketParams),
+        staleTime: 1000 * 30,
+      })
+      await exportarExcel(resumen, filtrosPDF, tickets)
+    })().finally(() => setDownloading(null))
+
     void import('sonner').then(({ toast }) => {
       toast.promise(promise, {
         loading: 'Generando Excel...',

@@ -1,5 +1,8 @@
 import ExcelJS from 'exceljs'
-import type { DashboardResumenDto } from '@features/dashboard/hooks/useDashboard'
+import type {
+  DashboardResumenDto,
+  TicketReporteItemDto,
+} from '@features/dashboard/hooks/useDashboard'
 import type { FiltrosPDF } from './reportePDF'
 
 // ─── Paleta ───────────────────────────────────────────────────────────────────
@@ -94,10 +97,38 @@ function finalizarHoja(sheet: ExcelJS.Worksheet): void {
   })
 }
 
+// ─── Helpers para detalle de tickets ─────────────────────────────────────────
+function formatFechaPeru(isoString: string | null): string {
+  if (!isoString) return '—'
+  return new Intl.DateTimeFormat('es-PE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/Lima',
+    hour12: false,
+  }).format(new Date(isoString))
+}
+
+function calcTiempoResolucion(desde: string, hasta: string | null): string {
+  if (!hasta) return '—'
+  const ms = new Date(hasta).getTime() - new Date(desde).getTime()
+  if (ms <= 0) return '—'
+  const totalMinutes = Math.floor(ms / 60000)
+  const days = Math.floor(totalMinutes / 1440)
+  const hours = Math.floor((totalMinutes % 1440) / 60)
+  const minutes = totalMinutes % 60
+  if (days > 0) return `${days} día${days !== 1 ? 's' : ''} ${hours} h`
+  if (hours > 0) return `${hours} h ${minutes} min`
+  return `${minutes} min`
+}
+
 // ─── Exportación principal ────────────────────────────────────────────────────
 export async function exportarExcel(
   resumen: DashboardResumenDto,
   filtros: FiltrosPDF = {},
+  tickets?: TicketReporteItemDto[],
 ): Promise<void> {
   const wb = new ExcelJS.Workbook()
   wb.creator = 'Pide Servicio'
@@ -257,6 +288,63 @@ export async function exportarExcel(
       sheet.addRow({ semana: s.semana, creados: s.creados, resueltos: s.resueltos })
     }
     finalizarHoja(sheet)
+  }
+
+  // ── Hoja 10: Detalle de tickets ─────────────────────────────────────────────
+  if (tickets !== undefined) {
+    const sheet = crearHoja(wb, 'Detalle de tickets', [
+      { header: 'Código', key: 'codigo', width: 18 },
+      { header: 'Estado', key: 'estado', width: 22 },
+      { header: 'Prioridad', key: 'prioridad', width: 14 },
+      { header: 'Sucursal', key: 'sucursal', width: 28 },
+      { header: 'Fecha de creación', key: 'fechaCreacion', width: 20 },
+      { header: 'Fecha de cierre', key: 'fechaCierre', width: 20 },
+      { header: 'Responsable', key: 'tecnico', width: 28 },
+      { header: 'Tiempo de resolución', key: 'tiempoResolucion', width: 24 },
+    ])
+
+    if (tickets.length === 0) {
+      const emptyRow = sheet.addRow({ codigo: 'Sin tickets en el período seleccionado.' })
+      emptyRow.getCell(1).font = {
+        italic: true,
+        color: { argb: 'FF9CA3AF' },
+        size: 9,
+        name: 'Calibri',
+      }
+      sheet.mergeCells('A2:H2')
+      emptyRow.commit()
+    } else {
+      for (const t of tickets) {
+        sheet.addRow({
+          codigo: t.codigo,
+          estado: estadoLabel(t.estado),
+          prioridad: prioridadLabel(t.prioridad),
+          sucursal: t.sucursalNombre,
+          fechaCreacion: formatFechaPeru(t.fechaCreacion),
+          fechaCierre: formatFechaPeru(t.fechaCierre),
+          tecnico: t.tecnicoNombre ?? '—',
+          tiempoResolucion: calcTiempoResolucion(t.fechaCreacion, t.fechaCierre),
+        })
+      }
+      finalizarHoja(sheet)
+
+      if (tickets.length >= 1000) {
+        sheet.addRow({})
+        const noteRow = sheet.addRow({
+          codigo:
+            'Nota: Se muestran los primeros 1,000 registros. Aplica filtros de fecha para acotar el rango.',
+        })
+        const nr = noteRow.number
+        sheet.mergeCells(`A${nr}:H${nr}`)
+        noteRow.getCell(1).font = {
+          italic: true,
+          color: { argb: 'FF9CA3AF' },
+          size: 9,
+          name: 'Calibri',
+        }
+        noteRow.commit()
+      }
+    }
   }
 
   // ── Descarga ─────────────────────────────────────────────────────────────────

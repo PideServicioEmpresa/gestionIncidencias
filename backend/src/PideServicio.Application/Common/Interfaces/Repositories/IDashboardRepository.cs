@@ -33,4 +33,7 @@ public interface IDashboardRepository
 
     Task<IReadOnlyList<SparklineRowDto>>
         ObtenerSparklineAsync(Guid? empresaId, Guid? sucursalId, Guid? areaId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<TicketReporteItemDto>>
+        ObtenerParaReporteAsync(Guid? empresaId, Guid? sucursalId, string? fechaDesde = null, string? fechaHasta = null, CancellationToken ct = default);
 }

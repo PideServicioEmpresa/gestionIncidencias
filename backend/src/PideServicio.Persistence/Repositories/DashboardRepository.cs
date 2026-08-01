@@ -227,6 +227,42 @@ public sealed class DashboardRepository : IDashboardRepository
         return rows.ToList().AsReadOnly();
     }
 
+    public async Task<IReadOnlyList<TicketReporteItemDto>>
+        ObtenerParaReporteAsync(Guid? empresaId, Guid? sucursalId, string? fechaDesde = null, string? fechaHasta = null, CancellationToken ct = default)
+    {
+        const string sql = """
+            SELECT
+                t.codigo                                                    AS "Codigo",
+                t.estado::text                                              AS "Estado",
+                t.prioridad_efectiva::text                                  AS "Prioridad",
+                s.nombre                                                    AS "SucursalNombre",
+                t.fecha_creacion                                            AS "FechaCreacion",
+                t.fecha_cierre                                              AS "FechaCierre",
+                CASE WHEN u.id IS NOT NULL
+                     THEN u.nombre || ' ' || u.apellido
+                     ELSE NULL
+                END                                                         AS "TecnicoNombre"
+            FROM tickets t
+            INNER JOIN sucursales s ON s.id = t.sucursal_id AND s.deleted_at IS NULL
+            LEFT  JOIN usuarios   u ON u.id = t.tecnico_id
+            WHERE t.deleted_at IS NULL
+              AND (@EmpresaId  IS NULL OR t.empresa_id  = @EmpresaId)
+              AND (@SucursalId IS NULL OR t.sucursal_id = @SucursalId)
+              AND (@FechaDesde IS NULL OR (t.fecha_creacion AT TIME ZONE 'America/Lima')::date >= @FechaDesde::date)
+              AND (@FechaHasta IS NULL OR (t.fecha_creacion AT TIME ZONE 'America/Lima')::date <= @FechaHasta::date)
+            ORDER BY t.fecha_creacion DESC
+            LIMIT 1000;
+            """;
+
+        await using var cn = (NpgsqlConnection)await _db.CrearConexionAsync(ct);
+        var rows = await cn.QueryAsync<TicketReporteItemDto>(sql, new
+        {
+            EmpresaId = empresaId, SucursalId = sucursalId,
+            FechaDesde = Fecha(fechaDesde), FechaHasta = Fecha(fechaHasta),
+        });
+        return rows.ToList().AsReadOnly();
+    }
+
     // ── Métodos de tendencia — SIN filtro de fechas (siempre muestran los últimos N días/semanas) ──
 
     public async Task<IReadOnlyList<PuntoTendenciaDto>>
