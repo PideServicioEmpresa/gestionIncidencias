@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { AlertCircle, Eye, EyeOff, Info, Loader2 } from 'lucide-react'
+import { AlertCircle, Eye, EyeOff, Info, Loader2, Wrench } from 'lucide-react'
+import { ApiClientError } from '@services/apiClient'
 import { Button } from '@shared/ui/button'
 import { Input } from '@shared/ui/input'
 import { Label } from '@shared/ui/label'
@@ -25,6 +26,7 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [authError, setAuthError] = useState('')
+  const [esMantenimiento, setEsMantenimiento] = useState(false)
   const [forgotOpen, setForgotOpen] = useState(false)
 
   const {
@@ -36,11 +38,16 @@ export function LoginPage() {
   const doLogin = async (correo: string, contrasena: string) => {
     setLoading(true)
     setAuthError('')
+    setEsMantenimiento(false)
     try {
       await authService.login(correo, contrasena)
       navigate(ROUTES.DASHBOARD, { replace: true })
     } catch (err) {
-      setAuthError(err instanceof Error ? err.message : 'Error al iniciar sesión.')
+      if (err instanceof ApiClientError && err.codigo === 'SISTEMA_EN_MANTENIMIENTO') {
+        setEsMantenimiento(true)
+      } else {
+        setAuthError(err instanceof Error ? err.message : 'Error al iniciar sesión.')
+      }
     } finally {
       setLoading(false)
     }
@@ -121,6 +128,20 @@ export function LoginPage() {
                 </p>
               )}
             </div>
+
+            {/* Mantenimiento programado */}
+            {esMantenimiento && (
+              <div className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-3 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+                <Wrench className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                <div>
+                  <p className="font-semibold">Sistema en mantenimiento</p>
+                  <p className="mt-0.5 leading-relaxed">
+                    El sistema está temporalmente en mantenimiento. Por favor, vuelve a intentarlo
+                    en unos minutos. Disculpa las molestias.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Error de autenticación */}
             {authError && (

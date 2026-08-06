@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider, QueryCache } from '@tanstack/react-qu
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { toast } from 'sonner'
 import { Toaster } from 'sonner'
+import { Wrench } from 'lucide-react'
 import { ThemeProvider } from '@shared/components/ThemeProvider'
 import { ErrorBoundary } from '@shared/components/ErrorBoundary'
 import { authService } from '@features/auth/services/authService'
@@ -11,7 +12,7 @@ import { usePreferencesStore } from '@store/preferences.store'
 import type { AccentColor } from '@store/preferences.store'
 
 // Los errores 401 y 403 se manejan en apiClient (redirect + clearAuth).
-// Aquí solo mostramos toast para errores de red u otros errores de queries.
+// Los errores de mantenimiento se muestran como aviso, no como error rojo.
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -26,12 +27,13 @@ const queryClient = new QueryClient({
   },
   queryCache: new QueryCache({
     onError: (error) => {
-      if (
-        error instanceof ApiClientError &&
-        !['NO_AUTENTICADO', 'SIN_PERMISOS'].includes(error.codigo)
-      ) {
-        toast.error(error.message)
-      } else if (!(error instanceof ApiClientError)) {
+      if (error instanceof ApiClientError) {
+        if (error.codigo === 'SISTEMA_EN_MANTENIMIENTO') {
+          toast.warning(error.message, { duration: 8000 })
+        } else if (!['NO_AUTENTICADO', 'SIN_PERMISOS'].includes(error.codigo)) {
+          toast.error(error.message)
+        }
+      } else {
         toast.error('Ocurrió un error inesperado. Intenta de nuevo.')
       }
     },
@@ -65,18 +67,46 @@ interface ProvidersProps {
   children: React.ReactNode
 }
 
+function MantenimientoScreen() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-5 bg-background p-8">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950/40">
+        <Wrench className="h-8 w-8 text-amber-600 dark:text-amber-500" aria-hidden />
+      </div>
+      <div className="max-w-xs text-center">
+        <h1 className="text-lg font-bold text-foreground">Sistema en mantenimiento</h1>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          El sistema está temporalmente en mantenimiento. Por favor, vuelve a intentarlo en unos
+          minutos. Disculpa las molestias.
+        </p>
+      </div>
+      <button
+        className="text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        onClick={() => window.location.reload()}
+      >
+        Reintentar
+      </button>
+    </div>
+  )
+}
+
 /**
  * Restaura la sesión de Supabase al cargar la app.
  * Muestra un indicador de carga mientras verifica la sesión.
+ * Si el backend está en mantenimiento, muestra la pantalla correspondiente.
  */
 function SessionRestorer({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false)
+  const [enMantenimiento, setEnMantenimiento] = useState(false)
 
   useEffect(() => {
     authService
       .restaurarSesion()
-      .catch(() => {
-        /* sesión inválida — clearAuth ya fue llamado */
+      .catch((err) => {
+        if (err instanceof ApiClientError && err.codigo === 'SISTEMA_EN_MANTENIMIENTO') {
+          setEnMantenimiento(true)
+        }
+        // Otros errores: clearAuth ya fue llamado dentro de restaurarSesion
       })
       .finally(() => setReady(true))
 
@@ -96,6 +126,8 @@ function SessionRestorer({ children }: { children: React.ReactNode }) {
       </div>
     )
   }
+
+  if (enMantenimiento) return <MantenimientoScreen />
 
   return <>{children}</>
 }

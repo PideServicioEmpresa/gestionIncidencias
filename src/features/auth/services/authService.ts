@@ -1,5 +1,5 @@
 import { supabase } from '@services/supabase'
-import { apiClient } from '@services/apiClient'
+import { apiClient, ApiClientError } from '@services/apiClient'
 import { useAuthStore } from '@store/auth.store'
 import type { AppUser, PerfilBackend, UserRole, LaborStatus } from '@types-app/index'
 import { ROL_MAP } from '@types-app/index'
@@ -131,8 +131,10 @@ export const authService = {
         .getState()
         .setSucursales(perfil.sucursales ?? [], resolverSucursalActiva(perfil, sucursalPrevia))
       return user
-    } catch {
-      // Si el backend no responde o el usuario no existe, limpiar sesión
+    } catch (err) {
+      // El error de mantenimiento se re-lanza para que SessionRestorer muestre la pantalla adecuada
+      if (err instanceof ApiClientError && err.codigo === 'SISTEMA_EN_MANTENIMIENTO') throw err
+      // Cualquier otro error (usuario eliminado, token inválido, etc.) → limpiar sesión
       useAuthStore.getState().clearAuth()
       return null
     }

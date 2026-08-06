@@ -331,13 +331,14 @@ const STATUS_OPTIONS: { value: TicketStatus; label: string }[] = [
   { value: 'reabierto', label: 'Reabierto' },
 ]
 
-// El backend aplica la máquina de estados — solo mostrar transiciones válidas
+// El backend aplica la máquina de estados — solo mostrar transiciones válidas.
+// Debe ser un espejo exacto de ValidarTransicion() en Ticket.cs.
 const VALID_NEXT_STATES: Partial<Record<TicketStatus, TicketStatus[]>> = {
   asignado: ['en_proceso'],
   en_proceso: ['en_espera', 'pendiente_validacion'],
-  en_espera: ['asignado'],
+  en_espera: ['en_proceso'],
   pendiente_validacion: ['cerrado'],
-  reabierto: ['asignado', 'en_proceso'],
+  // reabierto: sin entradas — desde REABIERTO el admin debe re-asignar (botón dedicado)
 }
 
 // Estados desde los que el técnico asignado puede ejecutar transiciones propias.
@@ -493,9 +494,12 @@ export function TicketDetailPage() {
   function handleConfirmStatusChange() {
     const onErr = (err: Error) => toast.error(err.message || 'No se pudo cambiar el estado.')
     const acciones: Partial<Record<TicketStatus, () => void>> = {
-      en_proceso: () => iniciarProceso.mutate(ticket.id, { onError: onErr }),
+      // EN_PROCESO se alcanza desde ASIGNADO (iniciar) o desde EN_ESPERA (reanudar)
+      en_proceso: () => {
+        if (currentStatus === 'en_espera') reanudar.mutate(ticket.id, { onError: onErr })
+        else iniciarProceso.mutate(ticket.id, { onError: onErr })
+      },
       en_espera: () => pausar.mutate(ticket.id, { onError: onErr }),
-      asignado: () => reanudar.mutate(ticket.id, { onError: onErr }),
       pendiente_validacion: () => submitValidacion.mutate(ticket.id, { onError: onErr }),
       cerrado: () => cerrarTicket.mutate({ ticketId: ticket.id }, { onError: onErr }),
     }

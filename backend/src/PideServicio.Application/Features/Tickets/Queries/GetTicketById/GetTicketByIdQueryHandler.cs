@@ -54,9 +54,13 @@ public sealed class GetTicketByIdQueryHandler : IQueryHandler<GetTicketByIdQuery
         if (ticket is null)
             return Result.NoEncontrado<TicketDetalleDto>("Ticket", request.Id);
 
+        // El creador o el técnico asignado siempre pueden ver su ticket,
+        // independientemente de la sucursal activa en la sesión.
+        var esDirectamenteVinculado = ticket.SolicitanteId == actor.Id || ticket.TecnicoId == actor.Id;
+
         // Aislamiento estricto por sucursal activa para roles multi-sucursal.
         var sucursalActivaId = await _sucursalActiva.ObtenerAsync(actor.Id, actor.SucursalId, actor.Rol, cancellationToken);
-        if (sucursalActivaId.HasValue && ticket.SucursalId != sucursalActivaId.Value)
+        if (!esDirectamenteVinculado && sucursalActivaId.HasValue && ticket.SucursalId != sucursalActivaId.Value)
         {
             // Caso 1: el ticket pertenece a otra sucursal asignada al mismo usuario → mensaje útil (no es fuga).
             // Caso 2: sucursal ajena/otra empresa → 404 genérico para no revelar existencia.

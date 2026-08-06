@@ -94,8 +94,12 @@ public sealed class MantenimientoMiddleware
         context.Response.ContentType = "application/json; charset=utf-8";
         await context.Response.WriteAsJsonAsync(new
         {
-            error = "El sistema se encuentra temporalmente en mantenimiento. Intente más tarde.",
-            code = "SISTEMA_EN_MANTENIMIENTO"
+            exitoso = false,
+            error = new
+            {
+                codigo = "SISTEMA_EN_MANTENIMIENTO",
+                mensaje = "El sistema está temporalmente en mantenimiento. Por favor, vuelve a intentarlo en unos minutos. Disculpa las molestias."
+            }
         });
     }
 }
