@@ -95,6 +95,12 @@ public sealed class SubmitParaValidacionCommandHandler : ICommandHandler<SubmitP
             var notifCodigo = ticket.Codigo.Valor;
             var notifTitulo = ticket.Titulo;
 
+            // Vars capturadas para el correo a admins
+            var adminEmailActorId = actor.Id;
+            var adminEmailActorNombre = actor.NombreCompleto;
+            var adminEmailCodigo = ticket.Codigo.Valor;
+            var adminEmailTitulo = ticket.Titulo;
+
             _ = Task.Run(async () =>
             {
                 try
@@ -123,6 +129,12 @@ public sealed class SubmitParaValidacionCommandHandler : ICommandHandler<SubmitP
                         $"El ticket {notifCodigo} está listo para validación: {notifTitulo}",
                         tipoEvento: "ticket.pendiente_validacion",
                         ticketId: notifTicketId,
+                        eventoEmail: "pendiente_validacion",
+                        codigoEmail: adminEmailCodigo,
+                        tituloEmail: adminEmailTitulo,
+                        actorNombreEmail: adminEmailActorNombre,
+                        detalleEmail: null,
+                        actorId: adminEmailActorId,
                         cancellationToken: CancellationToken.None);
                 }
                 catch (Exception ex)

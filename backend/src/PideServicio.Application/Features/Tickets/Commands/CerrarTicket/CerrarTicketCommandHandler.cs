@@ -94,6 +94,13 @@ public sealed class CerrarTicketCommandHandler : ICommandHandler<CerrarTicketCom
             var notifCodigo = ticket.Codigo.Valor;
             var notifTitulo = ticket.Titulo;
 
+            // Vars capturadas para el correo a admins
+            var adminEmailActorId = actor.Id;
+            var adminEmailActorNombre = actor.NombreCompleto;
+            var adminEmailCodigo = ticket.Codigo.Valor;
+            var adminEmailTitulo = ticket.Titulo;
+            var adminEmailValoracion = ticket.Valoracion?.ToString();
+
             if (ticket.TecnicoId.HasValue)
             {
                 var notifTecnicoId = ticket.TecnicoId.Value;
@@ -126,6 +133,12 @@ public sealed class CerrarTicketCommandHandler : ICommandHandler<CerrarTicketCom
                         $"El ticket {notifCodigo} fue cerrado: {notifTitulo}",
                         tipoEvento: "ticket.cerrado",
                         ticketId: notifTicketId,
+                        eventoEmail: "cerrado",
+                        codigoEmail: adminEmailCodigo,
+                        tituloEmail: adminEmailTitulo,
+                        actorNombreEmail: adminEmailActorNombre,
+                        detalleEmail: adminEmailValoracion,
+                        actorId: adminEmailActorId,
                         cancellationToken: CancellationToken.None);
                 }
                 catch (Exception ex)

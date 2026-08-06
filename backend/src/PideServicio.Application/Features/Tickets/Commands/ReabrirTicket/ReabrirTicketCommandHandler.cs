@@ -120,6 +120,15 @@ public sealed class ReabrirTicketCommandHandler : ICommandHandler<ReabrirTicketC
             var notifCodigo = ticket.Codigo.Valor;
             var notifTitulo = ticket.Titulo;
 
+            // Vars capturadas para el correo a admins
+            var adminEmailActorId = actor.Id;
+            var adminEmailActorNombre = actor.NombreCompleto;
+            var adminEmailCodigo = ticket.Codigo.Valor;
+            var adminEmailTitulo = ticket.Titulo;
+            var adminEmailDetalle = !string.IsNullOrWhiteSpace(request.ComentarioRechazo)
+                ? request.ComentarioRechazo
+                : "El solicitante rechazó la atención";
+
             // Materializar CC: correos de copia empresa + correos del jefe del ticket
             var correosCopiaEmpresa = await _empresaCorreoCopiaRepo.ListarCorreosPorEmpresaAsync(ticket.EmpresaId, cancellationToken);
             IReadOnlyList<string> correosCc = correosCopiaEmpresa
@@ -189,6 +198,12 @@ public sealed class ReabrirTicketCommandHandler : ICommandHandler<ReabrirTicketC
                         $"El ticket {notifCodigo} ha sido rechazado y requiere reasignación.",
                         tipoEvento: "ticket.rechazado",
                         ticketId: notifTicketId,
+                        eventoEmail: "reabierto",
+                        codigoEmail: adminEmailCodigo,
+                        tituloEmail: adminEmailTitulo,
+                        actorNombreEmail: adminEmailActorNombre,
+                        detalleEmail: adminEmailDetalle,
+                        actorId: adminEmailActorId,
                         cancellationToken: CancellationToken.None);
                 }
                 catch (Exception ex)

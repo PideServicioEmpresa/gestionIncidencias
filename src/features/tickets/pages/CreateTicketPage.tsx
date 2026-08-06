@@ -22,7 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@shar
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import { FormField } from '@shared/components/FormField'
 import { SearchableSelect } from '@shared/components/SearchableSelect'
-import { EmailChipsInput } from '@shared/components/EmailChipsInput'
+import { EmailChipsInputConGuardados } from '@shared/components/EmailChipsInputConGuardados'
 import { useAuthStore } from '@store/auth.store'
 import { ROUTES } from '@constants/index'
 import { empresaService } from '@features/empresas/services/empresaService'
@@ -606,7 +606,7 @@ export function CreateTicketPage() {
               <p className="mb-2 text-[11px] text-muted-foreground">
                 Recibirán copia de todas las notificaciones relacionadas con este ticket.
               </p>
-              <EmailChipsInput
+              <EmailChipsInputConGuardados
                 value={correosJefe}
                 onChange={(emails) => {
                   setCorreosJefe(emails)

@@ -108,6 +108,14 @@ public sealed class CancelarTicketCommandHandler : ICommandHandler<CancelarTicke
             var notifCodigo = ticket.Codigo.Valor;
             var notifTitulo = ticket.Titulo;
 
+            // Vars capturadas para el correo a admins
+            var adminEmailActorId = actor.Id;
+            var adminEmailActorNombre = actor.NombreCompleto;
+            var adminEmailCodigo = ticket.Codigo.Valor;
+            var adminEmailTitulo = ticket.Titulo;
+            var motivoCancelacionEntidad = await _motivoCancelacionRepo.ObtenerPorIdAsync(request.MotivoCancelacionId, cancellationToken);
+            var adminEmailDetalle = motivoCancelacionEntidad?.Texto ?? "Cancelado por el sistema";
+
             if (!esSolicitante)
             {
                 _ = Task.Run(async () =>
@@ -161,6 +169,12 @@ public sealed class CancelarTicketCommandHandler : ICommandHandler<CancelarTicke
                         $"El ticket {notifCodigo} fue cancelado: {notifTitulo}",
                         tipoEvento: "ticket.cancelado",
                         ticketId: notifTicketId,
+                        eventoEmail: "cancelado",
+                        codigoEmail: adminEmailCodigo,
+                        tituloEmail: adminEmailTitulo,
+                        actorNombreEmail: adminEmailActorNombre,
+                        detalleEmail: adminEmailDetalle,
+                        actorId: adminEmailActorId,
                         cancellationToken: CancellationToken.None);
                 }
                 catch (Exception ex)
@@ -183,8 +197,7 @@ public sealed class CancelarTicketCommandHandler : ICommandHandler<CancelarTicke
 
             if (!string.IsNullOrWhiteSpace(correoSolicitante))
             {
-                var motivoEntidad = await _motivoCancelacionRepo.ObtenerPorIdAsync(request.MotivoCancelacionId, cancellationToken);
-                var motivoTexto = motivoEntidad?.Texto ?? "Cancelado por el sistema";
+                var motivoTexto = adminEmailDetalle;
                 var correoCaptura = correoSolicitante;
                 var codigoTicket = ticket.Codigo.Valor;
                 var tituloTicket = ticket.Titulo;

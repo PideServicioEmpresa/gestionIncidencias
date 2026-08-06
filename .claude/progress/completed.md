@@ -2,6 +2,39 @@
 
 > Registro acumulativo. Se añade al final; no se borra.
 
+## Feature correos_guardados por usuario (2026-08-06)
+
+Permite a los usuarios guardar correos frecuentes de supervisores para reutilizarlos al crear tickets.
+
+### Base de datos (SQL pendiente de ejecución manual en Supabase)
+- `database/migrations/correos_guardados.sql` — migración que crea la tabla `correos_guardados`
+
+### Backend (.NET 10, Clean Architecture)
+- `Application/Common/Interfaces/Repositories/ICorreoGuardadoRepository.cs` — interfaz del repositorio
+- `Application/Features/CorreosGuardados/DTOs/CorreoGuardadoDto.cs` — DTO de respuesta
+- `Application/Features/CorreosGuardados/Queries/ListarCorreosGuardados/` — query + handler (GET por usuario autenticado)
+- `Application/Features/CorreosGuardados/Commands/AgregarCorreoGuardado/` — command + handler (límite 20 correos por usuario, sin duplicados)
+- `Application/Features/CorreosGuardados/Commands/EliminarCorreoGuardado/` — command + handler (delete físico, verifica ownership del registro)
+- `Persistence/Repositories/CorreoGuardadoRepository.cs` — implementación con Dapper + NpgsqlConnection
+- `Api/Controllers/V1/CorreosGuardados/CorreosGuardadosController.cs` — 3 endpoints: GET /, POST /, DELETE /{id}
+- `Persistence/DependencyInjection.cs` — registro de `ICorreoGuardadoRepository` en el contenedor DI
+
+### Frontend (React 19 + TypeScript)
+- `src/features/correos-guardados/services/correosGuardadosService.ts` — 3 métodos: listar, agregar, eliminar
+- `src/features/correos-guardados/hooks/useCorreosGuardados.ts` — 3 hooks TanStack Query (useListarCorreosGuardados, useAgregarCorreoGuardado, useEliminarCorreoGuardado)
+- `src/shared/components/EmailChipsInputConGuardados.tsx` — componente que envuelve EmailChipsInput; añade zona de correos guardados con botones + (guardar) y x (eliminar)
+- `src/features/tickets/pages/CreateTicketPage.tsx` — reemplazado EmailChipsInput por EmailChipsInputConGuardados en el campo de supervisores
+
+### Notas de implementación
+- Límite de 20 correos guardados por usuario (validado en el handler del backend)
+- Sin duplicados: el handler rechaza correos ya guardados por el mismo usuario
+- Delete físico del registro (no borrado lógico), con verificación de ownership antes de eliminar
+- SQL de migración debe ejecutarse manualmente en Supabase por el usuario
+
+**Estado:** COMPLETADO — implementación fullstack completa. Pendiente: ejecutar `database/migrations/correos_guardados.sql` en Supabase y hacer deploy.
+
+---
+
 ## Funcionalidad CC en Notificaciones de Email (2026-07-24)
 
 ### Base de datos (SQL pendiente de ejecución manual por el usuario)

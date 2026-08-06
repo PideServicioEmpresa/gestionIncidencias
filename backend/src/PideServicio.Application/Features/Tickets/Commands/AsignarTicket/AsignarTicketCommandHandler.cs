@@ -110,6 +110,13 @@ public sealed class AsignarTicketCommandHandler : ICommandHandler<AsignarTicketC
             var notifCodigo = ticket.Codigo.Valor;
             var notifTitulo = ticket.Titulo;
 
+            // Vars capturadas para el correo a admins
+            var adminEmailActorId = actor.Id;
+            var adminEmailActorNombre = actor.NombreCompleto;
+            var adminEmailCodigo = ticket.Codigo.Valor;
+            var adminEmailTitulo = ticket.Titulo;
+            var adminEmailPrioridad = ticket.PrioridadEfectiva.ToString();
+
             _ = Task.Run(async () =>
             {
                 try
@@ -138,6 +145,12 @@ public sealed class AsignarTicketCommandHandler : ICommandHandler<AsignarTicketC
                         $"El ticket {notifCodigo} fue asignado: {notifTitulo}",
                         tipoEvento: "ticket.asignado",
                         ticketId: notifTicketId,
+                        eventoEmail: "asignado",
+                        codigoEmail: adminEmailCodigo,
+                        tituloEmail: adminEmailTitulo,
+                        actorNombreEmail: adminEmailActorNombre,
+                        detalleEmail: adminEmailPrioridad,
+                        actorId: adminEmailActorId,
                         cancellationToken: CancellationToken.None);
                 }
                 catch (Exception ex)

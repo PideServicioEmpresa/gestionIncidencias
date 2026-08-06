@@ -2,9 +2,11 @@
 
 ## Fase Actual: 7.0 EN CURSO — Hardening y Estabilización RC
 
-**Estado:** Auditoría completada, correcciones aplicadas, bloqueantes identificados. Módulo Usuarios (Fase 2 multi-sucursal) completado y pusheado — commit 37c5a14. Funcionalidad CC en emails implementada fullstack (2026-07-24).
+**Estado:** Auditoría completada, correcciones aplicadas, bloqueantes identificados. Módulo Usuarios (Fase 2 multi-sucursal) completado y pusheado — commit 37c5a14. Funcionalidad CC en emails implementada (2026-07-24). Feature correos_guardados implementada fullstack (2026-08-06).
 
-**Última tarea completada (2026-07-24):** CC (copia) en notificaciones de email — tabla `empresa_correos_copia`, columna `tickets.correos_jefe`, entidad + repositorio + CRUD Application, `EmailService` refactorizado con campo `cc` real de Brevo API, 8 handlers de estado actualizados, `CrearTicketCommand` con `CorreosJefe`, 3 endpoints nuevos en `EmpresasController`, `EmailChipsInput.tsx`, `CreateTicketPage.tsx` (sección Supervisores), `EmpresaDetailPage.tsx` (card correos en copia). Build backend: 0 errores. TypeScript: 0 errores. Pendiente: usuario ejecuta SQL en Supabase y hace deploy.
+**Última tarea completada (2026-08-06):** Feature correos_guardados por usuario — tabla `correos_guardados` (SQL pendiente de ejecución en Supabase), `ICorreoGuardadoRepository` + `CorreoGuardadoRepository` (Dapper), query `ListarCorreosGuardados`, commands `AgregarCorreoGuardado` (límite 20, sin duplicados) y `EliminarCorreoGuardado` (ownership check), `CorreosGuardadosController` (3 endpoints: GET, POST, DELETE /{id}), registro DI en `Persistence/DependencyInjection.cs`. Frontend: `correosGuardadosService.ts`, `useCorreosGuardados.ts` (3 hooks TanStack Query), `EmailChipsInputConGuardados.tsx`, `CreateTicketPage.tsx` actualizada. Pendientes sin resolver: Error 1 (CancelarTicket 500 Admin/SIN_ASIGNAR) y Error 3 (400 en notificaciones) — ambos esperan stack trace de Render del usuario.
+
+**Tarea anterior (2026-07-24):** CC (copia) en notificaciones de email — tabla `empresa_correos_copia`, columna `tickets.correos_jefe`, entidad + repositorio + CRUD Application, `EmailService` refactorizado con campo `cc` real de Brevo API, 8 handlers de estado actualizados, `CrearTicketCommand` con `CorreosJefe`, 3 endpoints nuevos en `EmpresasController`, `EmailChipsInput.tsx`, `CreateTicketPage.tsx` (sección Supervisores), `EmpresaDetailPage.tsx` (card correos en copia). Build backend: 0 errores. TypeScript: 0 errores.
 
 **Tarea anterior (2026-07-22):** Soporte multi-sucursal para usuarios — 10 archivos agregados al repositorio, fallo de build en Render corregido. Funcionalidad completa: backend (entidad, repositorio, comando CQRS, validador, DTOs) + frontend (SucursalMultiSelector).
 

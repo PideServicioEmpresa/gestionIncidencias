@@ -58,6 +58,9 @@ public static class DependencyInjection
         // Fase 7.0 — Dashboard Analytics
         services.AddScoped<IDashboardRepository, DashboardRepository>();
 
+        // Correos guardados por usuario (preferencias personales)
+        services.AddScoped<ICorreoGuardadoRepository, CorreoGuardadoRepository>();
+
         return services;
     }
 }

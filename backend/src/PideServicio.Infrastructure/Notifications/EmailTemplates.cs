@@ -302,6 +302,57 @@ internal static class EmailTemplates
         return (asunto, html);
     }
 
+    public static (string Asunto, string Html) EventoTicketAdmin(
+        string evento, string codigo, string? titulo,
+        string? actorNombre = null, string? detalle = null)
+    {
+        var eventoTitulo = evento switch
+        {
+            "asignado"             => "Ticket asignado a técnico",
+            "reasignado"           => "Ticket reasignado",
+            "en_proceso"           => "Ticket en proceso",
+            "pendiente_validacion" => "Ticket pendiente de validación",
+            "cerrado"              => "Ticket cerrado",
+            "reabierto"            => "Ticket reabierto",
+            "cancelado"            => "Ticket cancelado",
+            _                      => $"Evento: {evento}",
+        };
+
+        var asunto = AsuntoConTitulo(eventoTitulo, codigo, titulo);
+
+        var filaActor = !string.IsNullOrEmpty(actorNombre)
+            ? $"<tr><td>Realizado por</td><td>{EscapeHtml(actorNombre)}</td></tr>"
+            : string.Empty;
+
+        var filaDetalle = !string.IsNullOrEmpty(detalle)
+            ? $"<tr><td>Detalle</td><td>{EscapeHtml(detalle)}</td></tr>"
+            : string.Empty;
+
+        var descripcion = evento switch
+        {
+            "asignado"             => "El ticket ha sido asignado a un técnico y está en atención.",
+            "reasignado"           => "El ticket ha sido reasignado a un nuevo técnico.",
+            "en_proceso"           => "El técnico ha iniciado la atención del ticket.",
+            "pendiente_validacion" => "El técnico completó el trabajo. El ticket está pendiente de validación por parte del solicitante.",
+            "cerrado"              => "El ticket ha sido cerrado y marcado como completado.",
+            "reabierto"            => "El solicitante rechazó la atención. El ticket ha sido reabierto y requiere reasignación.",
+            "cancelado"            => "El ticket ha sido cancelado.",
+            _                      => "Se registró un cambio de estado en el ticket.",
+        };
+
+        var html = Wrap(eventoTitulo, "Notificación de actividad de ticket", $"""
+            <span class="badge">{EscapeHtml(eventoTitulo)} · {EscapeHtml(codigo)}</span>
+            <p class="title">{EscapeHtml(string.IsNullOrWhiteSpace(titulo) ? codigo : titulo.Trim())}</p>
+            <p class="desc">{descripcion}</p>
+            <table class="data">
+              <tr><td>Código</td><td><strong>{EscapeHtml(codigo)}</strong></td></tr>
+              {filaActor}
+              {filaDetalle}
+            </table>
+            """);
+        return (asunto, html);
+    }
+
     private static string EscapeHtml(string? text)
     {
         if (string.IsNullOrEmpty(text)) return string.Empty;

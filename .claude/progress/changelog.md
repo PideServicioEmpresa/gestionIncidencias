@@ -2,6 +2,43 @@
 
 > Cambios significativos del proyecto. Formato: fecha — descripción. Se actualiza tras cada commit.
 
+## 2026-08-06 — Feature correos_guardados por usuario — implementación fullstack
+
+### Sin commit — pendiente autorización del usuario (SQL pendiente de ejecución en Supabase)
+
+### Base de datos (SQL pendiente de ejecución en Supabase)
+- Nueva tabla `correos_guardados` — almacena correos frecuentes por usuario para reutilizar al crear tickets
+- Archivo de migración: `database/migrations/correos_guardados.sql`
+
+### Backend — Application
+- `ICorreoGuardadoRepository.cs` — interfaz del repositorio en la capa Application
+- `CorreoGuardadoDto.cs` — DTO de respuesta para correos guardados
+- `ListarCorreosGuardados/` — query + handler para listar correos del usuario autenticado
+- `AgregarCorreoGuardado/` — command + handler; aplica límite de 20 correos por usuario y rechaza duplicados
+- `EliminarCorreoGuardado/` — command + handler; delete físico con verificación de ownership
+
+### Backend — Persistence
+- `CorreoGuardadoRepository.cs` — implementación con Dapper + NpgsqlConnection
+- `Persistence/DependencyInjection.cs` — registro de `ICorreoGuardadoRepository`
+
+### Backend — API
+- `CorreosGuardadosController.cs` — 3 endpoints REST:
+  - `GET /api/v1/correos-guardados` — listar correos del usuario autenticado
+  - `POST /api/v1/correos-guardados` — agregar correo guardado
+  - `DELETE /api/v1/correos-guardados/{id}` — eliminar correo guardado
+
+### Frontend
+- `correosGuardadosService.ts` — 3 métodos de llamada a la API (listar, agregar, eliminar)
+- `useCorreosGuardados.ts` — 3 hooks TanStack Query (useListarCorreosGuardados, useAgregarCorreoGuardado, useEliminarCorreoGuardado)
+- `EmailChipsInputConGuardados.tsx` — nuevo componente que envuelve EmailChipsInput con zona de correos guardados (botones + y x)
+- `CreateTicketPage.tsx` — campo de supervisores migrado de EmailChipsInput a EmailChipsInputConGuardados
+
+### Errores pendientes (no se resolvieron en esta tarea — esperan stack trace del usuario)
+- Error 1: CancelarTicket HTTP 500 para Admin en estado SIN_ASIGNAR
+- Error 3: HTTP 400 "A non-empty request body is required" en notificaciones
+
+---
+
 ## 2026-07-24 — Funcionalidad CC en notificaciones de email — implementación fullstack
 
 ### Sin commit — pendiente autorización del usuario (SQL + deploy pendientes de ejecución manual)

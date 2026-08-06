@@ -14,15 +14,18 @@ public sealed class NotificationService : INotificationService
     private readonly INotificacionRepository _notifRepo;
     private readonly IUsuarioRepository _usuarioRepo;
     private readonly ICurrentUserService _currentUser;
+    private readonly IEmailService _emailService;
 
     public NotificationService(
         INotificacionRepository notifRepo,
         IUsuarioRepository usuarioRepo,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        IEmailService emailService)
     {
         _notifRepo = notifRepo;
         _usuarioRepo = usuarioRepo;
         _currentUser = currentUser;
+        _emailService = emailService;
     }
 
     public async Task EnviarAsync(
@@ -67,6 +70,12 @@ public sealed class NotificationService : INotificationService
         string cuerpo,
         string tipoEvento = "general",
         Guid? ticketId = null,
+        string? eventoEmail = null,
+        string? codigoEmail = null,
+        string? tituloEmail = null,
+        string? actorNombreEmail = null,
+        string? detalleEmail = null,
+        Guid? actorId = null,
         CancellationToken cancellationToken = default)
     {
         var adminsTask = _usuarioRepo.ListarAdminsActivosPorEmpresaAsync(empresaId, cancellationToken);
@@ -80,5 +89,23 @@ public sealed class NotificationService : INotificationService
 
         var tareas = destinatarios.Select(u => EnviarAsync(u.Id, titulo, cuerpo, tipoEvento, ticketId, cancellationToken));
         await Task.WhenAll(tareas);
+
+        // Correo a admins — solo si se proporcionaron los parámetros de correo
+        if (!string.IsNullOrWhiteSpace(eventoEmail) && !string.IsNullOrWhiteSpace(codigoEmail))
+        {
+            var correosAdmins = destinatarios
+                .Where(u => actorId is null || u.Id != actorId.Value)
+                .Select(u => u.Correo.Valor)
+                .Where(c => !string.IsNullOrWhiteSpace(c))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (correosAdmins.Count > 0)
+            {
+                var (asunto, html) = EmailTemplates.EventoTicketAdmin(
+                    eventoEmail, codigoEmail, tituloEmail, actorNombreEmail, detalleEmail);
+                await _emailService.EnviarAVariosAsync(correosAdmins, asunto, html, null, cancellationToken);
+            }
+        }
     }
 }

@@ -114,6 +114,13 @@ public sealed class ReasignarTicketCommandHandler : ICommandHandler<ReasignarTic
             var notifTitulo = ticket.Titulo;
             var notifNuevoTecnicoId = request.NuevoTecnicoId;
 
+            // Vars capturadas para el correo a admins
+            var adminEmailActorId = actor.Id;
+            var adminEmailActorNombre = actor.NombreCompleto;
+            var adminEmailCodigo = ticket.Codigo.Valor;
+            var adminEmailTitulo = ticket.Titulo;
+            var adminEmailPrioridad = ticket.PrioridadEfectiva.ToString();
+
             if (tecnicoAnteriorId.HasValue)
             {
                 var notifTecnicoAnteriorId = tecnicoAnteriorId.Value;
@@ -164,6 +171,12 @@ public sealed class ReasignarTicketCommandHandler : ICommandHandler<ReasignarTic
                         $"El ticket {notifCodigo} fue reasignado: {notifTitulo}",
                         tipoEvento: "ticket.reasignado",
                         ticketId: notifTicketId,
+                        eventoEmail: "reasignado",
+                        codigoEmail: adminEmailCodigo,
+                        tituloEmail: adminEmailTitulo,
+                        actorNombreEmail: adminEmailActorNombre,
+                        detalleEmail: adminEmailPrioridad,
+                        actorId: adminEmailActorId,
                         cancellationToken: CancellationToken.None);
                 }
                 catch (Exception ex)

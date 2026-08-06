@@ -4,6 +4,16 @@
 
 ---
 
+## Feature correos_guardados — IMPLEMENTADO, pendiente SQL + errores sin stack trace (2026-08-06)
+
+La funcionalidad de correos guardados está implementada de extremo a extremo (ver `completed.md`). Quedan acciones pendientes:
+
+- [ ] **Ejecutar SQL en Supabase:** correr `database/migrations/correos_guardados.sql` manualmente en el panel de Supabase.
+- [ ] **Error 1 — CancelarTicket 500 en Admin / estado SIN_ASIGNAR:** se reproduce cuando un Admin intenta cancelar un ticket en estado SIN_ASIGNAR. El endpoint retorna HTTP 500. Pendiente: usuario proporciona el stack trace completo de Render para diagnosticar la causa raíz.
+- [ ] **Error 3 — 400 "A non-empty request body is required" en notificaciones:** el endpoint de notificaciones retorna 400 con este mensaje. Pendiente: usuario proporciona el stack trace completo de Render para diagnosticar la causa raíz.
+
+---
+
 ## CC en Notificaciones de Email — IMPLEMENTADO, pendiente deploy y SQL (2026-07-24)
 
 La funcionalidad de copia (CC) en emails está implementada de extremo a extremo (ver `completed.md`). Quedan dos acciones que el usuario ejecuta manualmente:
