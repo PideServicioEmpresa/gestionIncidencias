@@ -52,6 +52,10 @@ public sealed class ActualizarTicketCommandHandler : ICommandHandler<ActualizarT
         if (ticket is null)
             return Result.NoEncontrado("Ticket", request.TicketId);
 
+        // Aislamiento entre empresas: nadie opera sobre tickets de una empresa ajena
+        if (actor.Rol != RolTipo.SUPERADMIN && ticket.EmpresaId != actor.EmpresaId)
+            return Result.NoPermitido("No tiene acceso a este ticket.");
+
         var tituloAnterior = ticket.Titulo;
         var tipoAnterior = ticket.TipoServicioId;
         var descripcionAnterior = ticket.Descripcion;

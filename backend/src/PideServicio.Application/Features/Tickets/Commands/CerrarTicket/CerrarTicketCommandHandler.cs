@@ -58,6 +58,10 @@ public sealed class CerrarTicketCommandHandler : ICommandHandler<CerrarTicketCom
         if (ticket is null)
             return Result.NoEncontrado("Ticket", request.TicketId);
 
+        // Aislamiento entre empresas: nadie opera sobre tickets de una empresa ajena
+        if (actor.Rol != RolTipo.SUPERADMIN && ticket.EmpresaId != actor.EmpresaId)
+            return Result.NoPermitido("No tiene acceso a este ticket.");
+
         var esSolicitante = ticket.SolicitanteId == actor.Id;
         var tieneAccesoAdministrativo = actor.Rol is RolTipo.ADMIN or RolTipo.SUPERADMIN or RolTipo.SUPERVISOR;
         if (!esSolicitante && !tieneAccesoAdministrativo)

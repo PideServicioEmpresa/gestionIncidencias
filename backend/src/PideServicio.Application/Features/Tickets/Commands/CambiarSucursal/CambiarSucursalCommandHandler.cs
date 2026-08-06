@@ -12,6 +12,7 @@ public sealed class CambiarSucursalCommandHandler : ICommandHandler<CambiarSucur
 {
     private readonly ICurrentUserService _currentUser;
     private readonly IUsuarioRepository _usuarioRepository;
+    private readonly ISucursalRepository _sucursalRepository;
     private readonly ITicketRepository _ticketRepo;
     private readonly ITicketHistorialRepository _historialRepo;
     private readonly IAuditService _auditService;
@@ -19,12 +20,14 @@ public sealed class CambiarSucursalCommandHandler : ICommandHandler<CambiarSucur
     public CambiarSucursalCommandHandler(
         ICurrentUserService currentUser,
         IUsuarioRepository usuarioRepository,
+        ISucursalRepository sucursalRepository,
         ITicketRepository ticketRepo,
         ITicketHistorialRepository historialRepo,
         IAuditService auditService)
     {
         _currentUser = currentUser;
         _usuarioRepository = usuarioRepository;
+        _sucursalRepository = sucursalRepository;
         _ticketRepo = ticketRepo;
         _historialRepo = historialRepo;
         _auditService = auditService;
@@ -48,8 +51,23 @@ public sealed class CambiarSucursalCommandHandler : ICommandHandler<CambiarSucur
         if (ticket is null)
             return Result.NoEncontrado("Ticket", request.TicketId);
 
+        // Aislamiento entre empresas: nadie opera sobre tickets de una empresa ajena
+        if (actor.Rol != RolTipo.SUPERADMIN && ticket.EmpresaId != actor.EmpresaId)
+            return Result.NoPermitido("No tiene acceso a este ticket.");
+
         if (ticket.SucursalId == request.NuevaSucursalId)
             return Result.Exito();
+
+        // La sucursal destino debe existir, estar activa y pertenecer a la empresa del ticket
+        var sucursalDestino = await _sucursalRepository.ObtenerPorIdAsync(request.NuevaSucursalId, cancellationToken);
+        if (sucursalDestino is null)
+            return Result.ErrorValidacion("NuevaSucursalId", "La sucursal indicada no existe.");
+
+        if (!sucursalDestino.Activa)
+            return Result.ErrorValidacion("NuevaSucursalId", "La sucursal indicada está inactiva.");
+
+        if (sucursalDestino.EmpresaId != ticket.EmpresaId)
+            return Result.ErrorValidacion("NuevaSucursalId", "La sucursal indicada no pertenece a la empresa del ticket.");
 
         var sucursalAnteriorId = ticket.SucursalId;
         var tecnicoAnteriorId = ticket.TecnicoId;

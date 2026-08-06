@@ -70,6 +70,21 @@ public sealed class ReasignarTicketCommandHandler : ICommandHandler<ReasignarTic
         if (ticket is null)
             return Result.NoEncontrado("Ticket", request.TicketId);
 
+        // Aislamiento entre empresas: nadie opera sobre tickets de una empresa ajena
+        if (actor.Rol != RolTipo.SUPERADMIN && ticket.EmpresaId != actor.EmpresaId)
+            return Result.NoPermitido("No tiene acceso a este ticket.");
+
+        // El técnico destino debe existir, estar activo, ser ejecutor y pertenecer a la empresa del ticket
+        var tecnicoDestino = await _usuarioRepository.ObtenerPorIdAsync(request.NuevoTecnicoId, cancellationToken);
+        if (tecnicoDestino is null || !tecnicoDestino.Activo)
+            return Result.ErrorValidacion("NuevoTecnicoId", "El técnico indicado no existe o está inactivo.");
+
+        if (tecnicoDestino.Rol is not (RolTipo.TECNICO or RolTipo.TRABAJADOR))
+            return Result.ErrorValidacion("NuevoTecnicoId", "El usuario indicado no puede recibir tickets asignados.");
+
+        if (tecnicoDestino.EmpresaId != ticket.EmpresaId)
+            return Result.ErrorValidacion("NuevoTecnicoId", "El técnico indicado no pertenece a la empresa del ticket.");
+
         var tecnicoAnteriorId = ticket.TecnicoId;
         var estadoAnterior = ticket.Estado;
 
@@ -193,7 +208,7 @@ public sealed class ReasignarTicketCommandHandler : ICommandHandler<ReasignarTic
                 .ToList();
 
             // Emails — fire-and-forget con try-catch explícito
-            var nuevoTecnico = await _usuarioRepository.ObtenerPorIdAsync(request.NuevoTecnicoId, cancellationToken);
+            var nuevoTecnico = tecnicoDestino;
             var solicitante = await _usuarioRepository.ObtenerPorIdAsync(ticket.SolicitanteId, cancellationToken);
             var sucursal = await _sucursalRepository.ObtenerPorIdAsync(ticket.SucursalId, cancellationToken);
             var area = await _areaRepository.ObtenerPorIdAsync(ticket.AreaId, cancellationToken);

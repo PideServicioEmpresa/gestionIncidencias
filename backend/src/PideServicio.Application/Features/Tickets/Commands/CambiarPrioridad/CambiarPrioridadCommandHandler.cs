@@ -61,6 +61,10 @@ public sealed class CambiarPrioridadCommandHandler : ICommandHandler<CambiarPrio
         if (ticket is null)
             return Result.NoEncontrado("Ticket", request.TicketId);
 
+        // Aislamiento entre empresas: nadie opera sobre tickets de una empresa ajena
+        if (actor.Rol != RolTipo.SUPERADMIN && ticket.EmpresaId != actor.EmpresaId)
+            return Result.NoPermitido("No tiene acceso a este ticket.");
+
         var prioridadAnterior = ticket.PrioridadEfectiva;
 
         try
