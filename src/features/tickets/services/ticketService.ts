@@ -135,7 +135,9 @@ export const ticketService = {
 
   submitValidacion: (ticketId: string) => apiClient.patch(`/tickets/${ticketId}/submit-validacion`),
 
-  cerrar: (ticketId: string) => apiClient.patch(`/tickets/${ticketId}/cerrar`),
+  // El backend exige body en este endpoint; la valoración es opcional y viaja como null si no se envía.
+  cerrar: (ticketId: string, valoracion?: number) =>
+    apiClient.patch(`/tickets/${ticketId}/cerrar`, { valoracion: valoracion ?? null }),
 
   reabrir: (ticketId: string, motivoRechazoId: string, comentarioRechazo?: string) =>
     apiClient.patch(`/tickets/${ticketId}/reabrir`, { motivoRechazoId, comentarioRechazo }),

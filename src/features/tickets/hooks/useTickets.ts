@@ -234,7 +234,8 @@ export function useSubmitValidacion() {
 export function useCerrarTicket() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ ticketId }: { ticketId: string }) => ticketService.cerrar(ticketId),
+    mutationFn: ({ ticketId, valoracion }: { ticketId: string; valoracion?: number }) =>
+      ticketService.cerrar(ticketId, valoracion),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: TICKET_KEYS.all })
       void qc.invalidateQueries({ queryKey: ['dashboard'] })

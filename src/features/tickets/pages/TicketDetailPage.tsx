@@ -1108,8 +1108,9 @@ export function TicketDetailPage() {
                   </Button>
                 )}
 
-                {/* Asignar trabajador */}
-                {isAdmin && currentStatus === 'sin_asignar' && (
+                {/* Asignar trabajador — también en REABIERTO: Reabrir() limpia el técnico
+                    y el dominio solo permite REABIERTO → ASIGNADO */}
+                {isAdmin && ['sin_asignar', 'reabierto'].includes(currentStatus) && (
                   <Button className="w-full" onClick={() => setAssignModal(true)}>
                     <UserCheck className="mr-2 h-4 w-4" />
                     Asignar trabajador

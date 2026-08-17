@@ -13,6 +13,7 @@ public sealed class AsignarTicketCommandHandler : ICommandHandler<AsignarTicketC
 {
     private readonly ICurrentUserService _currentUser;
     private readonly IUsuarioRepository _usuarioRepository;
+    private readonly IUsuarioSucursalRepository _usuarioSucursalRepository;
     private readonly ISucursalRepository _sucursalRepository;
     private readonly IAreaRepository _areaRepository;
     private readonly ITicketRepository _ticketRepo;
@@ -27,6 +28,7 @@ public sealed class AsignarTicketCommandHandler : ICommandHandler<AsignarTicketC
     public AsignarTicketCommandHandler(
         ICurrentUserService currentUser,
         IUsuarioRepository usuarioRepository,
+        IUsuarioSucursalRepository usuarioSucursalRepository,
         ISucursalRepository sucursalRepository,
         IAreaRepository areaRepository,
         ITicketRepository ticketRepo,
@@ -40,6 +42,7 @@ public sealed class AsignarTicketCommandHandler : ICommandHandler<AsignarTicketC
     {
         _currentUser = currentUser;
         _usuarioRepository = usuarioRepository;
+        _usuarioSucursalRepository = usuarioSucursalRepository;
         _sucursalRepository = sucursalRepository;
         _areaRepository = areaRepository;
         _ticketRepo = ticketRepo;
@@ -84,6 +87,12 @@ public sealed class AsignarTicketCommandHandler : ICommandHandler<AsignarTicketC
 
         if (tecnicoDestino.EmpresaId != ticket.EmpresaId)
             return Result.ErrorValidacion("TecnicoId", "El técnico indicado no pertenece a la empresa del ticket.");
+
+        // El técnico debe tener asignada la sucursal del ticket; de lo contrario el filtro
+        // de sucursal activa lo dejaría invisible en su listado.
+        var sucursalesTecnico = await _usuarioSucursalRepository.ListarPorUsuarioAsync(tecnicoDestino.Id, cancellationToken);
+        if (!sucursalesTecnico.Any(s => s.SucursalId == ticket.SucursalId && s.Activo))
+            return Result.ErrorValidacion("TecnicoId", "El técnico no está asignado a la sucursal de este ticket.");
 
         var estadoAnterior = ticket.Estado;
 
