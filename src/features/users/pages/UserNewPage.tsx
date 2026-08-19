@@ -179,9 +179,11 @@ export function UserNewPage() {
       .replace(/_{2,}/g, '_')
       .slice(0, 50)
 
+    // Admin y SuperAdmin no se asignan a sucursales: se omite el campo en lugar de
+    // enviar "", que no es un Guid válido y el backend rechaza al deserializar.
     const principalSucursalId = isMultiSucursal
-      ? (form.sucursalesMulti.find((s) => s.esPrincipal)?.sucursalId ?? '')
-      : ''
+      ? form.sucursalesMulti.find((s) => s.esPrincipal)?.sucursalId
+      : undefined
 
     crearUsuario.mutate(
       {
