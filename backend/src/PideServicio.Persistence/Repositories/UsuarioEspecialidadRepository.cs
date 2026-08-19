@@ -58,12 +58,22 @@ public sealed class UsuarioEspecialidadRepository : IUsuarioEspecialidadReposito
             """;
 
         await using var cn = (NpgsqlConnection)await _db.CrearConexionAsync(ct);
-        var filas = await cn.QueryAsync<(Guid UsuarioId, string[] Nombres)>(
+        var filas = await cn.QueryAsync<NombresPorUsuarioRow>(
             sql, new { UsuarioIds = usuarioIds.ToArray() });
 
         return filas.ToDictionary(
             f => f.UsuarioId,
-            f => (IReadOnlyList<string>)f.Nombres);
+            f => (IReadOnlyList<string>)(f.Nombres ?? []));
+    }
+
+    /// <summary>
+    /// Fila de la agregación. Es una clase y no una ValueTuple porque Dapper no mapea
+    /// tuplas por nombre de columna de forma fiable.
+    /// </summary>
+    private sealed class NombresPorUsuarioRow
+    {
+        public Guid UsuarioId { get; init; }
+        public string[]? Nombres { get; init; }
     }
 
     public async Task ReemplazarAsync(
