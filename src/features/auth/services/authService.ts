@@ -17,8 +17,9 @@ function mapPerfilToAppUser(perfil: PerfilBackend, authUserId: string): AppUser 
 
   // Construir lista completa de IDs a partir de las sucursales asignadas.
   // Para Admin/SuperAdmin la lista estará vacía y sucursalIds cae al id principal.
+  const sucursalesPerfil = perfil.sucursales ?? []
   const sucursalIds =
-    perfil.sucursales?.length > 0 ? perfil.sucursales.map((s) => s.sucursalId) : [perfil.sucursalId]
+    sucursalesPerfil.length > 0 ? sucursalesPerfil.map((s) => s.sucursalId) : [perfil.sucursalId]
 
   return {
     id: perfil.id,
