@@ -491,8 +491,32 @@ export function TicketDetailPage() {
     )
   }
 
+  // Abre el modal de cambio de estado releyendo antes el ticket: pudo cambiar en el
+  // servidor mientras esta pantalla estaba abierta y el caché ofrecería transiciones
+  // que el dominio ya no acepta.
+  async function handleOpenStatusModal() {
+    const { data } = await ticketQuery.refetch()
+    const estadoReal = data ? normalizeEstado(data.estado) : currentStatus
+    const opciones = VALID_NEXT_STATES[estadoReal] ?? []
+
+    if (opciones.length === 0) {
+      toast.info('El estado del ticket cambió. Ya no hay cambios de estado disponibles.')
+      return
+    }
+
+    setPendingStatus(opciones[0])
+    setChangeStatusModal(true)
+  }
+
   function handleConfirmStatusChange() {
-    const onErr = (err: Error) => toast.error(err.message || 'No se pudo cambiar el estado.')
+    const onErr = (err: Error) => {
+      toast.error(err.message || 'No se pudo cambiar el estado.')
+      // 409 = el ticket ya no está en el estado que mostraba la pantalla.
+      // Se refresca para que el usuario vea el estado real y no reintente en vano.
+      if (err instanceof ApiClientError && err.status === 409) {
+        void ticketQuery.refetch()
+      }
+    }
     const acciones: Partial<Record<TicketStatus, () => void>> = {
       // EN_PROCESO se alcanza desde ASIGNADO (iniciar) o desde EN_ESPERA (reanudar)
       en_proceso: () => {
@@ -1124,12 +1148,7 @@ export function TicketDetailPage() {
                     <Button
                       variant="outline"
                       className="w-full"
-                      onClick={() => {
-                        setPendingStatus(
-                          (VALID_NEXT_STATES[currentStatus] ?? [])[0] ?? currentStatus,
-                        )
-                        setChangeStatusModal(true)
-                      }}
+                      onClick={() => void handleOpenStatusModal()}
                     >
                       <Settings2 className="mr-2 h-4 w-4" />
                       Cambiar estado

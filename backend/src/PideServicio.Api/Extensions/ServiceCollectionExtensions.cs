@@ -3,9 +3,11 @@ namespace PideServicio.Api.Extensions;
 using System.IO.Compression;
 using System.Threading.RateLimiting;
 using Asp.Versioning;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.OpenApi.Models;
+using PideServicio.Contracts.Common;
 using PideServicio.Persistence.Options;
 
 public static class ServiceCollectionExtensions
@@ -17,6 +19,37 @@ public static class ServiceCollectionExtensions
                 opts.JsonSerializerOptions.Converters.Add(
                     new System.Text.Json.Serialization.JsonStringEnumConverter()));
         services.AddEndpointsApiExplorer();
+
+        // ---------------------------------------------------------------------------
+        // Errores automáticos de model binding: ASP.NET responde ProblemDetails por
+        // defecto, un formato que el frontend no sabe leer y termina mostrando un
+        // mensaje genérico. Los reescribimos al mismo contrato ApiResponse que usan
+        // el resto de errores para que el usuario vea siempre un mensaje útil.
+        // ---------------------------------------------------------------------------
+        services.Configure<ApiBehaviorOptions>(opts =>
+        {
+            opts.InvalidModelStateResponseFactory = context =>
+            {
+                // "" y "request" son claves internas del binder (cuerpo ausente), no campos reales
+                var errores = context.ModelState
+                    .Where(kv => kv.Value is { Errors.Count: > 0 }
+                                 && !string.IsNullOrEmpty(kv.Key)
+                                 && !kv.Key.Equals("request", StringComparison.OrdinalIgnoreCase))
+                    .ToDictionary(
+                        kv => kv.Key,
+                        kv => kv.Value!.Errors.Select(e => e.ErrorMessage).ToArray());
+
+                var mensaje = errores.Count > 0
+                    ? $"Revisa los datos enviados: {string.Join(", ", errores.Keys)}."
+                    : "Faltan datos requeridos en la solicitud.";
+
+                var respuesta = ApiResponse.Fallo(
+                    new ApiError("ERROR_VALIDACION", mensaje, errores.Count > 0 ? errores : null),
+                    context.HttpContext.TraceIdentifier);
+
+                return new BadRequestObjectResult(respuesta);
+            };
+        });
 
         services.AddApiVersioning(opts =>
         {

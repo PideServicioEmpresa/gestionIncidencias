@@ -30,7 +30,7 @@ public sealed class GlobalExceptionMiddleware(
     private async Task ManejarExcepcionAsync(HttpContext contexto, Exception excepcion)
     {
         var traceId = contexto.TraceIdentifier;
-        var (codigoHttp, apiError) = MapearExcepcion(excepcion);
+        var (codigoHttp, apiError) = MapearExcepcion(excepcion, traceId);
 
         // Excepciones de negocio esperadas (4xx) se registran como Warning para evitar
         // ruido en los dashboards de errores de producción.
@@ -71,7 +71,19 @@ public sealed class GlobalExceptionMiddleware(
         await contexto.Response.WriteAsync(JsonSerializer.Serialize(respuesta, OpcionesJson));
     }
 
-    private static (HttpStatusCode, ApiError) MapearExcepcion(Exception excepcion) =>
+    /// <summary>
+    /// Referencia corta del traceId para que el usuario pueda reportarla. El traceId
+    /// completo queda en los logs y en el campo traceId de la respuesta.
+    /// </summary>
+    private static string ReferenciaCorta(string traceId)
+    {
+        // Formato W3C: 00-{trace-id}-{span-id}-{flags}. Tomamos el inicio del trace-id real.
+        var partes = traceId.Split('-');
+        var significativo = partes.Length >= 2 ? partes[1] : traceId;
+        return significativo.Length >= 8 ? significativo[..8] : significativo;
+    }
+
+    private static (HttpStatusCode, ApiError) MapearExcepcion(Exception excepcion, string traceId) =>
         excepcion switch
         {
             ValidationException ex => (
@@ -90,8 +102,12 @@ public sealed class GlobalExceptionMiddleware(
                 HttpStatusCode.Forbidden,
                 new ApiError("SIN_PERMISOS", ex.Message)),
 
+            // El detalle real de la excepción nunca se expone: solo la referencia
+            // para que el usuario pueda reportarla y se cruce con los logs.
             _ => (
                 HttpStatusCode.InternalServerError,
-                new ApiError("ERROR_INTERNO", "Ocurrió un error interno. Contacte al administrador."))
+                new ApiError(
+                    "ERROR_INTERNO",
+                    $"Ocurrió un error interno. Código de referencia: {ReferenciaCorta(traceId)}"))
         };
 }
