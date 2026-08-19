@@ -12,6 +12,7 @@ using PideServicio.Contracts.Common;
 
 /// <summary>Correos frecuentes guardados por el usuario para reutilizar en tickets.</summary>
 [ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/correos-guardados")]
 [Tags("CorreosGuardados")]
 public sealed class CorreosGuardadosController : ApiControllerBase
 {

@@ -1,5 +1,18 @@
 {
   "projects": {
     "default": "gestion-incidencias-2db91"
-  }
+  },
+  "targets": {
+    "gestion-incidencias-2db91": {
+      "hosting": {
+        "dev": [
+          "pidde-servicio-dev"
+        ],
+        "production": [
+          "gestion-incidencias-2db91"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }
