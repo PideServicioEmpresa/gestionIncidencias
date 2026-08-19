@@ -20,4 +20,8 @@ public sealed record UsuarioDto(
 {
     // Mapster no mapea esta propiedad; el handler la rellena manualmente tras Adapt<>.
     public IReadOnlyList<SucursalAsignacionDto> Sucursales { get; init; } = [];
+
+    // Mapster no mapea esta propiedad; el handler la rellena manualmente tras Adapt<>.
+    // Siempre es una lista (vacía si el usuario no tiene especialidades), nunca null.
+    public IReadOnlyList<EspecialidadAsignadaDto> Especialidades { get; init; } = [];
 }

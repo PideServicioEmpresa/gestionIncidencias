@@ -21,6 +21,12 @@ export interface SucursalAsignacionItem {
   activo: boolean
 }
 
+export interface EspecialidadAsignadaItem {
+  especialidadId: string
+  especialidadNombre: string
+  activo: boolean
+}
+
 export interface UsuarioDetalleDto {
   id: string
   authId: string
@@ -40,6 +46,7 @@ export interface UsuarioDetalleDto {
   ultimoAcceso: string | null
   createdAt: string
   sucursales: SucursalAsignacionItem[]
+  especialidades: EspecialidadAsignadaItem[]
 }
 
 export interface UsuarioListParams {
@@ -75,6 +82,10 @@ export const usuarioService = {
 
   actualizarSucursales: (id: string, sucursales: { sucursalId: string; esPrincipal: boolean }[]) =>
     apiClient.put(`/usuarios/${id}/sucursales`, { sucursales }),
+
+  /** Reemplaza la lista completa de especialidades del usuario. Puede ir vacía. */
+  actualizarEspecialidades: (id: string, especialidades: string[]) =>
+    apiClient.put(`/usuarios/${id}/especialidades`, { especialidades }),
 
   actualizarPerfil: (
     id: string,
