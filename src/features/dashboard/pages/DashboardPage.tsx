@@ -956,27 +956,35 @@ function AdminDashboard() {
       description: 'Métricas normalizadas por empresa',
       colSpan: 1,
       viewAllPath: ROUTES.REPORTS,
-      chart: (
-        <ResponsiveContainer width="100%" height={220}>
-          <RadarChart data={radarData} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
-            <PolarGrid stroke={GRID_COLOR} />
-            <PolarAngleAxis dataKey="metric" tick={TICK_STYLE} />
-            <Tooltip contentStyle={TOOLTIP_STYLE} />
-            {radarKeys.map((key, idx) => (
-              <Radar
-                key={key}
-                name={key}
-                dataKey={key}
-                stroke={radarColors[idx % radarColors.length]}
-                fill={radarColors[idx % radarColors.length]}
-                fillOpacity={0.12}
-                strokeWidth={1.5}
-              />
-            ))}
-            <Legend iconSize={8} wrapperStyle={{ fontSize: 10, color: '#6b7280' }} />
-          </RadarChart>
-        </ResponsiveContainer>
-      ),
+      // Sin sucursales con datos no hay ninguna serie <Radar>, y entonces Recharts no
+      // puede construir el eje radial: PolarGrid recibe un eje nulo y revienta al
+      // recorrer sus ticks. Con la lista vacía se muestra el estado vacío en su lugar.
+      chart:
+        radarKeys.length === 0 ? (
+          <div className="flex h-[220px] items-center justify-center px-4 text-center text-xs text-muted-foreground">
+            Aún no hay datos por sucursal para comparar.
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={220}>
+            <RadarChart data={radarData} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
+              <PolarGrid stroke={GRID_COLOR} />
+              <PolarAngleAxis dataKey="metric" tick={TICK_STYLE} />
+              <Tooltip contentStyle={TOOLTIP_STYLE} />
+              {radarKeys.map((key, idx) => (
+                <Radar
+                  key={key}
+                  name={key}
+                  dataKey={key}
+                  stroke={radarColors[idx % radarColors.length]}
+                  fill={radarColors[idx % radarColors.length]}
+                  fillOpacity={0.12}
+                  strokeWidth={1.5}
+                />
+              ))}
+              <Legend iconSize={8} wrapperStyle={{ fontSize: 10, color: '#6b7280' }} />
+            </RadarChart>
+          </ResponsiveContainer>
+        ),
     },
 
     semanal: {
