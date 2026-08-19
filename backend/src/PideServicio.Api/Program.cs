@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration.Json;
 using Serilog;
 using PideServicio.Api.Extensions;
 using PideServicio.Application;
@@ -13,6 +14,37 @@ try
     Log.Information("Iniciando PideServicio API...");
 
     var builder = WebApplication.CreateBuilder(args);
+
+    // ---------------------------------------------------------------------------
+    // Desactivar la recarga en caliente de los appsettings.
+    //
+    // CreateBuilder registra appsettings.json y appsettings.{Environment}.json con
+    // reloadOnChange: true, y cada uno abre un FileSystemWatcher (una instancia de
+    // inotify en Linux). En contenedores con el límite por defecto esto agota la
+    // cuota y el arranque falla con:
+    //   IOException: The configured user limit (128) on the number of inotify
+    //   instances has been reached.
+    //
+    // No se necesita: la configuración que cambia en producción llega por variables
+    // de entorno, que se leen al iniciar y no dependen de ningún watcher.
+    //
+    // Se sustituye cada fuente EN SU MISMA POSICIÓN para no alterar la precedencia:
+    // las variables de entorno deben seguir ganando sobre los archivos JSON.
+    // ---------------------------------------------------------------------------
+    var fuentes = builder.Configuration.Sources;
+    for (var i = 0; i < fuentes.Count; i++)
+    {
+        if (fuentes[i] is JsonConfigurationSource { ReloadOnChange: true, Path: not null } json)
+        {
+            fuentes[i] = new JsonConfigurationSource
+            {
+                Path = json.Path,
+                Optional = json.Optional,
+                FileProvider = json.FileProvider,
+                ReloadOnChange = false,
+            };
+        }
+    }
 
     builder.Host.UseSerilog((ctx, lc) => lc
         .ReadFrom.Configuration(ctx.Configuration)
