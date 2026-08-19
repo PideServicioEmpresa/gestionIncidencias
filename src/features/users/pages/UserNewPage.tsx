@@ -9,9 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@shared/ui/select'
 import { FormField } from '@shared/components/FormField'
 import { SearchableSelect } from '@shared/components/SearchableSelect'
-import { useCrearUsuario, useRoles } from '../hooks/useUsuarios'
+import { useCrearUsuario, useRoles, useEspecialidadesDisponibles } from '../hooks/useUsuarios'
+import { usuarioService } from '../services/usuarioService'
 import { SucursalMultiSelector } from '../components/SucursalMultiSelector'
 import type { SucursalItem } from '../components/SucursalMultiSelector'
+import { EspecialidadMultiSelector } from '../components/EspecialidadMultiSelector'
+import type { EspecialidadItem } from '../components/EspecialidadMultiSelector'
 import { useEmpresas } from '@features/empresas/hooks/useEmpresas'
 import { useSucursales } from '@features/sucursales/hooks/useSucursales'
 import { useAuthStore } from '@store/auth.store'
@@ -86,6 +89,9 @@ export function UserNewPage() {
   const prevSucursalDataRef = useRef({ sucursalId: '', sucursalesMulti: [] as SucursalItem[] })
 
   const isMultiSucursal = ROLES_MULTI_SUCURSAL.includes(form.rol as UserRole)
+  // Las especialidades solo aplican a quienes ejecutan tickets (no a Usuario)
+  const esEjecutor = form.rol === 'tecnico' || form.rol === 'trabajador'
+  const [especialidadesMulti, setEspecialidadesMulti] = useState<EspecialidadItem[]>([])
   const isAdminRol = form.rol === 'admin'
   const isSuperAdminRol = form.rol === 'superadmin'
 
@@ -107,6 +113,13 @@ export function UserNewPage() {
 
   const empresas = empresasData?.items ?? []
   const sucursales = sucursalesData?.items ?? []
+
+  const { data: especialidadesData, isLoading: loadingEspecialidades } =
+    useEspecialidadesDisponibles(form.empresaId || undefined)
+  const especialidadesOpciones = (especialidadesData ?? []).map((e) => ({
+    value: e.id,
+    label: e.nombre,
+  }))
 
   // Iniciales calculadas en tiempo real
   const initials = useMemo(() => {
@@ -204,7 +217,24 @@ export function UserNewPage() {
           : undefined,
       },
       {
-        onSuccess: () => {
+        onSuccess: async (nuevoUsuario) => {
+          // Las especialidades se asignan en un segundo paso: el endpoint necesita el
+          // id del usuario, que solo existe una vez creado. Si falla, el usuario ya
+          // quedó creado y se avisa para que se corrijan desde la edición.
+          if (esEjecutor && especialidadesMulti.length > 0 && nuevoUsuario?.id) {
+            try {
+              await usuarioService.actualizarEspecialidades(
+                nuevoUsuario.id,
+                especialidadesMulti.map((e) => e.especialidadId),
+              )
+            } catch {
+              toast.warning(
+                'Usuario creado, pero no se pudieron guardar las especialidades. Asígnalas desde la edición.',
+              )
+              navigate(ROUTES.USERS)
+              return
+            }
+          }
           toast.success('Usuario creado correctamente.')
           navigate(ROUTES.USERS)
         },
@@ -419,16 +449,30 @@ export function UserNewPage() {
                   </p>
                 </div>
               ) : isMultiSucursal ? (
-                <FormField label="Sucursales" required error={errors.sucursalId}>
-                  <SucursalMultiSelector
-                    value={form.sucursalesMulti}
-                    onChange={(v) => setForm((prev) => ({ ...prev, sucursalesMulti: v }))}
-                    opciones={sucursales.map((s) => ({ value: s.id, label: s.nombre }))}
-                    loadingOpciones={loadingSucursales}
-                    disabled={!form.empresaId}
-                    error={errors.sucursalId}
-                  />
-                </FormField>
+                <>
+                  <FormField label="Sucursales" required error={errors.sucursalId}>
+                    <SucursalMultiSelector
+                      value={form.sucursalesMulti}
+                      onChange={(v) => setForm((prev) => ({ ...prev, sucursalesMulti: v }))}
+                      opciones={sucursales.map((s) => ({ value: s.id, label: s.nombre }))}
+                      loadingOpciones={loadingSucursales}
+                      disabled={!form.empresaId}
+                      error={errors.sucursalId}
+                    />
+                  </FormField>
+
+                  {/* Especialidades — solo para quienes ejecutan tickets */}
+                  {esEjecutor && (
+                    <FormField label="Especialidades" optional>
+                      <EspecialidadMultiSelector
+                        value={especialidadesMulti}
+                        onChange={setEspecialidadesMulti}
+                        opciones={especialidadesOpciones}
+                        loadingOpciones={loadingEspecialidades}
+                      />
+                    </FormField>
+                  )}
+                </>
               ) : (
                 <FormField label="Sucursal" required error={errors.sucursalId}>
                   <SearchableSelect

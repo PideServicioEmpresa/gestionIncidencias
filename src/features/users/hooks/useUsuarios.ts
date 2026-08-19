@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { usuarioService } from '../services/usuarioService'
+import { especialidadAdminService } from '@features/settings/services/catalogosAdminService'
 import type { UsuarioListParams } from '../services/usuarioService'
 import { toast } from 'sonner'
 
@@ -112,6 +113,35 @@ export function useRestablecerContrasena() {
     },
     onError: () => {
       toast.error('No se pudo enviar el enlace. Verifica el correo e intenta de nuevo.')
+    },
+  })
+}
+
+/** Especialidades activas disponibles para asignar (incluye las globales del grupo). */
+export function useEspecialidadesDisponibles(empresaId?: string) {
+  return useQuery({
+    queryKey: ['especialidades', empresaId],
+    queryFn: async () => {
+      const resp = await especialidadAdminService.listar(empresaId)
+      return (resp.items ?? []).filter((e) => e.activo)
+    },
+    staleTime: 1000 * 60 * 10,
+  })
+}
+
+export function useActualizarEspecialidades() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, especialidades }: { id: string; especialidades: string[] }) =>
+      usuarioService.actualizarEspecialidades(id, especialidades),
+    onSuccess: (_data, { id }) => {
+      void qc.invalidateQueries({ queryKey: USER_KEYS.detail(id) })
+      void qc.invalidateQueries({ queryKey: USER_KEYS.all })
+      void qc.invalidateQueries({ queryKey: ['catalogos', 'tecnicos'] })
+      toast.success('Especialidades actualizadas correctamente.')
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'No se pudieron actualizar las especialidades.')
     },
   })
 }

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using PideServicio.Api.Controllers.Common;
 using PideServicio.Application.Features.Usuarios.Commands;
 using PideServicio.Application.Features.Usuarios.Commands.ActivarUsuario;
+using PideServicio.Application.Features.Usuarios.Commands.ActualizarEspecialidadesUsuario;
 using PideServicio.Application.Features.Usuarios.Commands.ActualizarSucursalesUsuario;
 using PideServicio.Application.Features.Usuarios.Commands.CambiarEstadoLaboral;
 using PideServicio.Application.Features.Usuarios.Commands.CambiarRol;
@@ -207,6 +208,27 @@ public sealed class UsuariosController : ApiControllerBase
         return HandleResult(result);
     }
 
+    /// <summary>Reemplaza las especialidades asignadas a un usuario.</summary>
+    /// <remarks>
+    /// Solo Admin y SuperAdmin. La operación elimina todas las asignaciones actuales e inserta
+    /// las nuevas en una transacción atómica. La relación no tiene jerarquía: no hay principal.
+    /// Una lista vacía es válida y deja al usuario sin especialidades.
+    /// </remarks>
+    [HttpPut("{id:guid}/especialidades")]
+    [Authorize(Policy = "Autenticado")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(422)]
+    public async Task<IActionResult> ActualizarEspecialidades(
+        Guid id,
+        [FromBody] ActualizarEspecialidadesRequest request,
+        CancellationToken ct)
+    {
+        var result = await Mediator.Send(
+            new ActualizarEspecialidadesUsuarioCommand(id, request.Especialidades), ct);
+        return HandleResult(result);
+    }
+
     /// <summary>Elimina lógicamente un usuario del sistema y de Supabase Auth.</summary>
     /// <remarks>
     /// Solo Admin y SuperAdmin. Un admin no puede eliminarse a sí mismo.
@@ -243,6 +265,9 @@ public sealed record CreateUsuarioRequest(
 
 /// <summary>Payload para reemplazar las sucursales de un usuario.</summary>
 public sealed record ActualizarSucursalesRequest(IReadOnlyList<SucursalAsignacion> Sucursales);
+
+/// <summary>Payload para reemplazar las especialidades de un usuario. Puede venir vacío.</summary>
+public sealed record ActualizarEspecialidadesRequest(IReadOnlyList<Guid> Especialidades);
 
 /// <summary>Payload para actualizar el perfil de un usuario.</summary>
 public sealed record UpdatePerfilRequest(

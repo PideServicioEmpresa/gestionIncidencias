@@ -13,14 +13,17 @@ public sealed class GetUsuarioByIdQueryHandler : IQueryHandler<GetUsuarioByIdQue
     private readonly ICurrentUserService _currentUserService;
 
     private readonly IUsuarioSucursalRepository _usuarioSucursalRepository;
+    private readonly IUsuarioEspecialidadRepository _usuarioEspecialidadRepository;
 
     public GetUsuarioByIdQueryHandler(
         IUsuarioRepository         usuarioRepository,
         IUsuarioSucursalRepository usuarioSucursalRepository,
+        IUsuarioEspecialidadRepository usuarioEspecialidadRepository,
         ICurrentUserService        currentUserService)
     {
         _usuarioRepository         = usuarioRepository;
         _usuarioSucursalRepository = usuarioSucursalRepository;
+        _usuarioEspecialidadRepository = usuarioEspecialidadRepository;
         _currentUserService        = currentUserService;
     }
 
@@ -45,7 +48,8 @@ public sealed class GetUsuarioByIdQueryHandler : IQueryHandler<GetUsuarioByIdQue
         if (!puedeVer)
             return Result.NoPermitido<UsuarioDto>("No tiene permisos para ver este usuario.");
 
-        var sucursales = await _usuarioSucursalRepository.ListarPorUsuarioAsync(usuario.Id, ct);
+        var sucursales     = await _usuarioSucursalRepository.ListarPorUsuarioAsync(usuario.Id, ct);
+        var especialidades = await _usuarioEspecialidadRepository.ListarPorUsuarioAsync(usuario.Id, ct);
 
         var dto = new UsuarioDto(
             usuario.Id,
@@ -65,7 +69,8 @@ public sealed class GetUsuarioByIdQueryHandler : IQueryHandler<GetUsuarioByIdQue
             usuario.UltimoAcceso,
             usuario.CreatedAt)
         {
-            Sucursales = sucursales
+            Sucursales     = sucursales,
+            Especialidades = especialidades
         };
 
         return Result.Exito<UsuarioDto>(dto);

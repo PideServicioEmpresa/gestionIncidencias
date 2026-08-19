@@ -15,9 +15,13 @@ import {
   useRoles,
   useCambiarRol,
   useActualizarSucursales,
+  useActualizarEspecialidades,
+  useEspecialidadesDisponibles,
 } from '../hooks/useUsuarios'
 import { SucursalMultiSelector } from '../components/SucursalMultiSelector'
 import type { SucursalItem } from '../components/SucursalMultiSelector'
+import { EspecialidadMultiSelector } from '../components/EspecialidadMultiSelector'
+import type { EspecialidadItem } from '../components/EspecialidadMultiSelector'
 import { useAuthStore } from '@store/auth.store'
 import { useEmpresa } from '@features/empresas/hooks/useEmpresas'
 import { useSucursal, useSucursales } from '@features/sucursales/hooks/useSucursales'
@@ -74,6 +78,17 @@ export function UserEditPage() {
   )
   const [sucursalesMulti, setSucursalesMulti] = useState<SucursalItem[]>([])
 
+  // Las especialidades solo aplican a quienes ejecutan tickets (no a Usuario)
+  const esEjecutor = ['tecnico', 'trabajador'].includes(user?.rol?.toLowerCase() ?? '')
+  const [especialidadesMulti, setEspecialidadesMulti] = useState<EspecialidadItem[]>([])
+  const actualizarEspecialidades = useActualizarEspecialidades()
+  const { data: especialidadesData, isLoading: loadingEspecialidades } =
+    useEspecialidadesDisponibles(user?.empresaId ?? undefined)
+  const especialidadesOpciones = (especialidadesData ?? []).map((e) => ({
+    value: e.id,
+    label: e.nombre,
+  }))
+
   const [form, setForm] = useState<UserFormState>({
     nombre: '',
     apellido: '',
@@ -103,6 +118,12 @@ export function UserEditPage() {
           })),
         )
       }
+      setEspecialidadesMulti(
+        (user.especialidades ?? []).map((e) => ({
+          especialidadId: e.especialidadId,
+          especialidadNombre: e.especialidadNombre,
+        })),
+      )
     }
   }, [user])
 
@@ -194,6 +215,15 @@ export function UserEditPage() {
         </Card>
       </div>
     )
+  }
+
+  function handleSaveEspecialidades() {
+    if (!id) return
+    // La lista puede quedar vacía: significa "sin especialidades".
+    actualizarEspecialidades.mutate({
+      id,
+      especialidades: especialidadesMulti.map((e) => e.especialidadId),
+    })
   }
 
   function handleSaveSucursales() {
@@ -396,6 +426,29 @@ export function UserEditPage() {
                   <p className="truncate text-xs font-medium">
                     {sucursal?.nombre ?? user.sucursalId}
                   </p>
+                </div>
+              </div>
+            )}
+
+            {/* Especialidades — solo para quienes ejecutan tickets */}
+            {esEjecutor && (
+              <div className="space-y-2 border-t pt-3">
+                <p className="text-[11px] font-medium text-foreground">Especialidades</p>
+                <EspecialidadMultiSelector
+                  value={especialidadesMulti}
+                  onChange={setEspecialidadesMulti}
+                  opciones={especialidadesOpciones}
+                  loadingOpciones={loadingEspecialidades}
+                />
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={actualizarEspecialidades.isPending}
+                    onClick={handleSaveEspecialidades}
+                  >
+                    {actualizarEspecialidades.isPending ? 'Guardando...' : 'Guardar especialidades'}
+                  </Button>
                 </div>
               </div>
             )}
