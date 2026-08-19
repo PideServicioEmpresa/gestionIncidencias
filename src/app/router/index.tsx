@@ -1,5 +1,11 @@
 import { lazy, Suspense } from 'react'
-import { createBrowserRouter, Navigate, Outlet, RouterProvider } from 'react-router-dom'
+import {
+  createBrowserRouter,
+  Navigate,
+  Outlet,
+  RouterProvider,
+  useLocation,
+} from 'react-router-dom'
 import { AuthLayout } from '@app/layouts/AuthLayout'
 import { AppLayout } from '@app/layouts/AppLayout'
 import { useAuthStore } from '@store/auth.store'
@@ -99,8 +105,11 @@ const SucursalEditPage = lazy(() =>
 // ── Wrapper de suspense para páginas lazy ─────────────────────────────────────
 
 function LazyPage({ children }: { children: React.ReactNode }) {
+  // El pathname va como key y como resetKey: si una pantalla falla, el boundary se
+  // descarta al navegar y la siguiente se monta limpia, sin exigir un F5 al usuario.
+  const { pathname } = useLocation()
   return (
-    <ErrorBoundary>
+    <ErrorBoundary key={pathname} resetKey={pathname}>
       <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
     </ErrorBoundary>
   )
@@ -200,7 +209,11 @@ const router = createBrowserRouter([
       // Pantalla de selección de sucursal — sin AppLayout para evitar bucle de redirect
       {
         path: ROUTES.SELECT_SUCURSAL,
-        element: <SucursalSelectorPage />,
+        element: (
+          <LazyPage>
+            <SucursalSelectorPage />
+          </LazyPage>
+        ),
       },
       {
         element: <RequireSucursalActiva />,
