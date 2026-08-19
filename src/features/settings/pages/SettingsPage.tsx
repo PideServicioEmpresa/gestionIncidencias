@@ -7,6 +7,7 @@ import { ROUTES } from '@constants/index'
 import { configuracionService } from '../services/configuracionService'
 import { SeccionTiposServicio } from '../components/SeccionTiposServicio'
 import { SeccionCategorias } from '../components/SeccionCategorias'
+import { SeccionEspecialidades } from '../components/SeccionEspecialidades'
 import { SeccionRoles } from '../components/SeccionRoles'
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/ui/card'
 import { Switch } from '@shared/ui/switch'
@@ -189,6 +190,9 @@ export function SettingsPage() {
 
         {/* ── CATEGORÍAS ────────────────────────────────────────────────── */}
         <SeccionCategorias />
+
+        {/* ── ESPECIALIDADES DE TÉCNICOS ─────────────────────────────────── */}
+        <SeccionEspecialidades />
 
         {/* ── ORGANIZACIÓN ────────────────────────────────────────────────── */}
         <Card className="lg:col-span-2">

@@ -49,6 +49,7 @@ public static class DependencyInjection
         // Fase 6.4 Parte B — Catálogos de configuración
         services.AddScoped<ITipoServicioRepository,     TipoServicioRepository>();
         services.AddScoped<ICategoriaRepository,         CategoriaRepository>();
+        services.AddScoped<IEspecialidadRepository,      EspecialidadRepository>();
         services.AddScoped<IMotivoCancelacionRepository, MotivoCancelacionRepository>();
         services.AddScoped<IMotivoRechazoRepository,     MotivoRechazoRepository>();
         services.AddScoped<IParametroRepository,         ParametroRepository>();
