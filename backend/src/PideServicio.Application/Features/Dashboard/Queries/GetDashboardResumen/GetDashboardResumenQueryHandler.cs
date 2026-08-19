@@ -105,6 +105,10 @@ public sealed class GetDashboardResumenQueryHandler
         var sparkCriticos = sparkline.Select(r => r.Criticos).ToList();
         var sparkCerrados = sparkline.Select(r => r.Cerrados).ToList();
 
+        // Contrato explícito con el frontend: los arreglos que alimentan gráficos nunca
+        // viajan como null. Con la base sin tickets todos salen vacíos, no nulos.
+        static IReadOnlyList<T> Vacio<T>(IReadOnlyList<T>? lista) => lista ?? [];
+
         var dto = new DashboardResumenDto(
             TotalAbiertos:    totalAbiertos,
             TotalCerrados:    totalCerrados,
@@ -112,17 +116,17 @@ public sealed class GetDashboardResumenQueryHandler
             Criticos:         criticos,
             CerradosHoy:      cerradosHoy,
             TasaResolucionPct: tasaResolucion,
-            PorEstado:        porEstado,
-            PorPrioridad:     porPrioridad,
-            PorSucursal:      porSucursal,
-            PorArea:          porArea,
-            PorTipoServicio:  porTipoServicio,
-            PorTecnico:       porTecnico,
-            Tendencia16Dias:  tendenciaDiaria,
-            TendenciaSemanal: tendenciaSem,
-            SparkAbiertos:    sparkAbiertos,
-            SparkCriticos:    sparkCriticos,
-            SparkCerrados:    sparkCerrados
+            PorEstado:        Vacio(porEstado),
+            PorPrioridad:     Vacio(porPrioridad),
+            PorSucursal:      Vacio(porSucursal),
+            PorArea:          Vacio(porArea),
+            PorTipoServicio:  Vacio(porTipoServicio),
+            PorTecnico:       Vacio(porTecnico),
+            Tendencia16Dias:  Vacio(tendenciaDiaria),
+            TendenciaSemanal: Vacio(tendenciaSem),
+            SparkAbiertos:    Vacio(sparkAbiertos),
+            SparkCriticos:    Vacio(sparkCriticos),
+            SparkCerrados:    Vacio(sparkCerrados)
         );
 
         return Result.Exito(dto);

@@ -84,12 +84,16 @@ export function AppHeader({ onMenuClick, title, onCommandOpen }: AppHeaderProps)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sucursalSeleccionada, setSucursalSeleccionada] = useState<string>(sucursalActiva ?? '')
 
-  const opcionesSucursal = sucursalesDisponibles
+  // El store se rehidrata desde localStorage: una sesión guardada por una versión
+  // anterior puede traer null aquí y romper el layout entero.
+  const sucursalesSeguras = sucursalesDisponibles ?? []
+
+  const opcionesSucursal = sucursalesSeguras
     .filter((s) => s.activo)
     .map((s) => ({ value: s.sucursalId, label: s.sucursalNombre }))
 
   const nombreSucursalActiva =
-    sucursalesDisponibles.find((s) => s.sucursalId === sucursalActiva)?.sucursalNombre ?? null
+    sucursalesSeguras.find((s) => s.sucursalId === sucursalActiva)?.sucursalNombre ?? null
 
   const handleAbrirSheet = () => {
     setSucursalSeleccionada(sucursalActiva ?? '')
