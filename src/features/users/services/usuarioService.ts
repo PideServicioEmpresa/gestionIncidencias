@@ -60,7 +60,8 @@ export const usuarioService = {
   obtener: (id: string) => apiClient.get<UsuarioDetalleDto>(`/usuarios/${id}`),
 
   crear: (body: {
-    sucursalId: string
+    // Opcional: los roles Admin y SuperAdmin no se asignan a una sucursal y omiten el campo
+    sucursalId?: string
     empresaId?: string
     nombre: string
     apellido: string
