@@ -24,7 +24,8 @@ public sealed class UsuarioRepository : IUsuarioRepository
         public Guid Id { get; init; }
         public Guid AuthId { get; init; }
         public Guid EmpresaId { get; init; }
-        public Guid SucursalId { get; init; }
+        // Nullable en BD: ADMIN y SUPERADMIN no se asignan a una sucursal
+        public Guid? SucursalId { get; init; }
         public Guid? AreaId { get; init; }
         public string Nombre { get; init; } = string.Empty;
         public string Apellido { get; init; } = string.Empty;
@@ -77,7 +78,8 @@ public sealed class UsuarioRepository : IUsuarioRepository
         EntityReconstituter.Set(u, "Id", r.Id);
         EntityReconstituter.Set(u, "AuthId", r.AuthId);
         EntityReconstituter.Set(u, "EmpresaId", r.EmpresaId);
-        EntityReconstituter.Set(u, "SucursalId", r.SucursalId);
+        // La entidad expone Guid no nullable: NULL en BD se representa como Guid.Empty
+        EntityReconstituter.Set(u, "SucursalId", r.SucursalId ?? Guid.Empty);
         EntityReconstituter.Set(u, "AreaId", r.AreaId);
         EntityReconstituter.Set(u, "Nombre", r.Nombre);
         EntityReconstituter.Set(u, "Apellido", r.Apellido);
@@ -318,6 +320,17 @@ public sealed class UsuarioRepository : IUsuarioRepository
 
     // ── Escritura ──────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Traduce el Guid.Empty del dominio a NULL para la columna sucursal_id.
+    /// Usuario.SucursalId es un Guid no nullable, así que los roles que no operan sobre
+    /// una sucursal (ADMIN, SUPERADMIN) llegan aquí con Guid.Empty. Insertarlo tal cual
+    /// viola la FK fk_usuarios_sucursal porque no existe ninguna sucursal con ese id.
+    /// La exigencia de sucursal para los roles que sí la requieren se valida antes,
+    /// en CreateUsuarioCommandValidator.
+    /// </summary>
+    private static Guid? SucursalParaBd(Guid sucursalId) =>
+        sucursalId == Guid.Empty ? null : sucursalId;
+
     public async Task<Guid> CrearAsync(Usuario usuario, CancellationToken ct = default)
     {
         await using var cn = (NpgsqlConnection)await _db.CrearConexionAsync(ct);
@@ -339,7 +352,7 @@ public sealed class UsuarioRepository : IUsuarioRepository
             usuario.Id,
             usuario.AuthId,
             usuario.EmpresaId,
-            usuario.SucursalId,
+            SucursalId = SucursalParaBd(usuario.SucursalId),
             usuario.AreaId,
             usuario.Nombre,
             usuario.Apellido,
@@ -388,7 +401,7 @@ public sealed class UsuarioRepository : IUsuarioRepository
         {
             usuario.Id,
             usuario.AuthId,
-            usuario.SucursalId,
+            SucursalId = SucursalParaBd(usuario.SucursalId),
             usuario.AreaId,
             usuario.Nombre,
             usuario.Apellido,
