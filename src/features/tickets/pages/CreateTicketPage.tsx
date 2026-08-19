@@ -33,7 +33,6 @@ import { useTiposServicio, useSucursales, useCategorias } from '../hooks/useCata
 // ── Schema ────────────────────────────────────────────────────────────────────
 
 const createTicketSchema = z.object({
-  title: z.string().max(150, 'Máximo 150 caracteres.').optional(),
   type: z.string().min(1, 'Selecciona un tipo de servicio.'),
   categoriaId: z.string().min(1, 'La categoría del sistema no está disponible.'),
   priority: z.enum(['baja', 'media', 'alta', 'critica'], {
@@ -49,10 +48,11 @@ type CreateTicketForm = z.infer<typeof createTicketSchema>
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
+// Solo Media y Crítica se ofrecen al crear. Baja y Alta siguen existiendo en el
+// dominio y en la BD: hay tickets históricos con esos valores y el listado permite
+// filtrarlos.
 const PRIORITY_OPTIONS = [
-  { value: 'baja', label: 'Baja', description: 'Sin impacto operativo urgente' },
   { value: 'media', label: 'Media', description: 'Afecta parcialmente las operaciones' },
-  { value: 'alta', label: 'Alta', description: 'Impacto significativo en operaciones' },
   { value: 'critica', label: 'Crítica', description: 'Detiene completamente las operaciones' },
 ]
 
@@ -140,17 +140,31 @@ export function CreateTicketPage() {
   })
 
   const [categoriaError, setCategoriaError] = useState<string | null>(null)
+  const [categoriaNombre, setCategoriaNombre] = useState<string | null>(null)
   const [isUploadingEvidencias, setIsUploadingEvidencias] = useState(false)
 
+  // El formulario no pide la categoría al usuario, pero el backend la exige. Se
+  // resuelve en cascada para no depender de un nombre exacto: si "Servicios
+  // Generales" se renombra o desactiva, se sigue pudiendo crear tickets.
   useEffect(() => {
     if (categoriasQuery.isLoading) return
-    const data = categoriasQuery.data ?? []
-    const sg = data.find((c) => c.activa && c.nombre === 'Servicios Generales')
-    if (sg) {
-      setValue('categoriaId', sg.id)
+    const activas = (categoriasQuery.data ?? []).filter((c) => c.activa)
+    const globales = activas.filter((c) => c.esGlobal || c.empresaId === null)
+
+    const elegida =
+      globales.find((c) => c.nombre === 'Servicios Generales') ?? // preferencia actual
+      globales[0] ?? // cualquier global: existen para todas las empresas
+      activas[0] // último recurso: una categoría propia de la empresa
+
+    if (elegida) {
+      setValue('categoriaId', elegida.id)
+      setCategoriaNombre(elegida.nombre)
       setCategoriaError(null)
     } else {
-      setCategoriaError('No se encontró la categoría del sistema. Contacte al administrador.')
+      setCategoriaNombre(null)
+      setCategoriaError(
+        'No hay ninguna categoría configurada para esta empresa. Un administrador debe crear una en Configuración → Categorías.',
+      )
     }
   }, [categoriasQuery.data, categoriasQuery.isLoading, setValue])
 
@@ -169,7 +183,6 @@ export function CreateTicketPage() {
     let ticketId: string
     try {
       ticketId = await crearTicket.mutateAsync({
-        titulo: data.title?.trim() || undefined,
         descripcion: data.description?.trim() || undefined,
         sucursalId: data.sucursalId,
         areaNombre: data.areaNombre,
@@ -373,7 +386,7 @@ export function CreateTicketPage() {
                       Cargando...
                     </span>
                   ) : (
-                    <span className="font-medium">Servicios Generales</span>
+                    <span className="font-medium">{categoriaNombre ?? '—'}</span>
                   )}
                 </div>
               </FormField>
@@ -479,14 +492,9 @@ export function CreateTicketPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 p-3 pt-0">
-            <FormField label="Título" error={errors.title?.message}>
-              <Input
-                id="title"
-                className="h-8 text-xs"
-                placeholder="Describe brevemente el problema o solicitud..."
-                {...register('title')}
-              />
-            </FormField>
+            {/* El título no se pide al crear: los listados y correos muestran el código
+                del ticket cuando está vacío (ver getTituloTicket). Sigue siendo editable
+                desde "Modificar ticket" en el listado. */}
             <FormField label="Descripción completa" error={errors.description?.message}>
               <Textarea
                 id="description"
