@@ -11,13 +11,16 @@ using PideServicio.Domain.Enums;
 public sealed class ListUsuariosQueryHandler : IQueryHandler<ListUsuariosQuery, PagedResult<UsuarioResumenDto>>
 {
     private readonly IUsuarioRepository _usuarioRepository;
+    private readonly IUsuarioEspecialidadRepository _usuarioEspecialidadRepository;
     private readonly ICurrentUserService _currentUserService;
 
     public ListUsuariosQueryHandler(
         IUsuarioRepository usuarioRepository,
+        IUsuarioEspecialidadRepository usuarioEspecialidadRepository,
         ICurrentUserService currentUserService)
     {
         _usuarioRepository = usuarioRepository;
+        _usuarioEspecialidadRepository = usuarioEspecialidadRepository;
         _currentUserService = currentUserService;
     }
 
@@ -59,8 +62,18 @@ public sealed class ListUsuariosQueryHandler : IQueryHandler<ListUsuariosQuery, 
             tamanoPagina: tamanoPagina,
             ct: ct);
 
+        // Especialidades de toda la página en UNA consulta agregada (no una por usuario).
+        var idsPagina = paginado.Items.Select(u => u.Id).ToList();
+        var especialidadesPorUsuario =
+            await _usuarioEspecialidadRepository.ListarNombresPorUsuariosAsync(idsPagina, ct);
+
         var itemsDto = paginado.Items
-            .Select(u => u.Adapt<UsuarioResumenDto>())
+            .Select(u => u.Adapt<UsuarioResumenDto>() with
+            {
+                Especialidades = especialidadesPorUsuario.TryGetValue(u.Id, out var nombres)
+                    ? nombres
+                    : [],
+            })
             .ToList();
 
         var resultado = new PagedResult<UsuarioResumenDto>

@@ -37,6 +37,35 @@ public sealed class UsuarioEspecialidadRepository : IUsuarioEspecialidadReposito
         return rows.ToList().AsReadOnly();
     }
 
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> ListarNombresPorUsuariosAsync(
+        IReadOnlyList<Guid> usuarioIds, CancellationToken ct = default)
+    {
+        if (usuarioIds.Count == 0)
+            return new Dictionary<Guid, IReadOnlyList<string>>();
+
+        // Una sola consulta agregada para TODOS los usuarios de la página: array_agg
+        // agrupa los nombres por usuario y evita una consulta por técnico (N+1).
+        const string sql = """
+            SELECT ue.usuario_id                        AS "UsuarioId",
+                   array_agg(e.nombre ORDER BY e.nombre) AS "Nombres"
+            FROM   usuario_especialidades ue
+            JOIN   especialidades e ON e.id = ue.especialidad_id
+            WHERE  ue.usuario_id = ANY(@UsuarioIds)
+              AND  ue.activo = true
+              AND  e.activo = true
+              AND  e.deleted_at IS NULL
+            GROUP  BY ue.usuario_id
+            """;
+
+        await using var cn = (NpgsqlConnection)await _db.CrearConexionAsync(ct);
+        var filas = await cn.QueryAsync<(Guid UsuarioId, string[] Nombres)>(
+            sql, new { UsuarioIds = usuarioIds.ToArray() });
+
+        return filas.ToDictionary(
+            f => f.UsuarioId,
+            f => (IReadOnlyList<string>)f.Nombres);
+    }
+
     public async Task ReemplazarAsync(
         Guid usuarioId,
         IReadOnlyList<UsuarioEspecialidad> nuevas,

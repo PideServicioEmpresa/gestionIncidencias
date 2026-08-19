@@ -7,4 +7,11 @@ public sealed record UsuarioResumenDto(
     string Rol,
     string EstadoLaboral,
     bool Activo,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt)
+{
+    /// <summary>
+    /// Nombres de las especialidades activas del usuario. Informativo: se muestra al
+    /// asignar tickets. Lista vacía si no tiene ninguna, nunca null.
+    /// </summary>
+    public IReadOnlyList<string> Especialidades { get; init; } = [];
+}

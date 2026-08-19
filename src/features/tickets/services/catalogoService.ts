@@ -38,6 +38,8 @@ export interface TecnicoResumenDto {
   nombreCompleto: string
   correo: string
   rol: string
+  /** Nombres de especialidades activas. Informativo; vacío si no tiene ninguna. */
+  especialidades?: string[]
   activo: boolean
 }
 
