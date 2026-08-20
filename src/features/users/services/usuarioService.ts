@@ -12,6 +12,8 @@ export interface UsuarioResumenDto {
   activo: boolean
   sucursalId: string
   empresaId: string
+  /** Nombres de especialidades activas. Informativo; vacío si no tiene ninguna. */
+  especialidades?: string[]
 }
 
 export interface SucursalAsignacionItem {

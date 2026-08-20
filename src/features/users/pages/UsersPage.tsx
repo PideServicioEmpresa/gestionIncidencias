@@ -38,6 +38,7 @@ interface DisplayUser {
   sucursal: string
   area: string | undefined
   telefono: string | undefined
+  especialidades: string[]
 }
 
 // ── Mapper DTO → DisplayUser ──────────────────────────────────────────────────
@@ -60,6 +61,7 @@ function mapToDisplayUser(dto: UsuarioResumenDto): DisplayUser {
     sucursal: '',
     area: undefined,
     telefono: undefined,
+    especialidades: dto.especialidades ?? [],
   }
 }
 
@@ -119,6 +121,22 @@ function UserRow({ user, onView, onEdit, onDelete, onToggleStatus, onResetPw }: 
               )}
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">{user.correo}</p>
+
+            {/* Especialidades — informativas. Sin ninguna asignada no se muestra nada. */}
+            {user.especialidades.length > 0 && (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {user.especialidades.map((esp) => (
+                  <Badge
+                    key={esp}
+                    variant="secondary"
+                    className="px-1.5 py-0 text-[10px] font-normal"
+                  >
+                    {esp}
+                  </Badge>
+                ))}
+              </div>
+            )}
+
             <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
               <span>{user.sucursal}</span>
               {user.area && <span>· {user.area}</span>}
