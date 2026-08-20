@@ -631,15 +631,17 @@ export function TicketDetailPage() {
           if (!open) setSelectedWorker('')
         }}
       >
-        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto">
+        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Asignar trabajador</DialogTitle>
           </DialogHeader>
-          {/* min-w-0 evita que el grid del diálogo se ensanche por el contenido, y
-              break-words parte un título sin espacios en vez de desbordarlo. */}
+          {/* Título en una sola línea con puntos suspensivos. min-w-0 en el contenedor
+              es lo que permite que truncate funcione dentro del grid del diálogo. */}
           <div className="min-w-0 rounded-lg bg-muted p-3 text-xs">
-            <p className="break-words font-medium">{getTituloTicket(ticket)}</p>
-            <p className="break-words text-muted-foreground">{ticket.codigo}</p>
+            <p className="truncate font-medium" title={getTituloTicket(ticket)}>
+              {getTituloTicket(ticket)}
+            </p>
+            <p className="truncate text-muted-foreground">{ticket.codigo}</p>
           </div>
           <FormField label="Trabajador" required>
             <Select value={selectedWorker} onValueChange={setSelectedWorker}>
@@ -695,7 +697,7 @@ export function TicketDetailPage() {
 
       {/* ── Modal: Cambiar estado ── */}
       <Dialog open={changeStatusModal} onOpenChange={setChangeStatusModal}>
-        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-sm overflow-y-auto">
+        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-sm overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Cambiar estado</DialogTitle>
             <DialogDescription className="flex items-center gap-1.5 text-xs">
@@ -762,7 +764,7 @@ export function TicketDetailPage() {
           }
         }}
       >
-        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto">
+        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Reabrir ticket</DialogTitle>
             <DialogDescription className="text-xs">
@@ -823,7 +825,7 @@ export function TicketDetailPage() {
           if (!open) setMotivoCancelarTexto('')
         }}
       >
-        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl">
+        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto overflow-x-hidden rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Cancelar ticket</DialogTitle>
             <DialogDescription className="text-xs">
