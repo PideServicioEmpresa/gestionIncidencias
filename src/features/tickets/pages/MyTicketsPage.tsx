@@ -1247,7 +1247,7 @@ export function MyTicketsPage() {
               <SelectContent>
                 {workers.map((w) => (
                   <SelectItem key={w.id} value={w.id}>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-[10px] font-semibold text-primary">
                         {w.nombreCompleto
                           .split(' ')
@@ -1257,6 +1257,17 @@ export function MyTicketsPage() {
                           .toUpperCase()}
                       </span>
                       <span className="text-sm">{w.nombreCompleto}</span>
+                      {/* Especialidades: solo referencia visual, no restringen la asignación.
+                          Sin especialidades no se muestra nada. */}
+                      {(w.especialidades ?? []).map((esp) => (
+                        <Badge
+                          key={esp}
+                          variant="secondary"
+                          className="px-1.5 py-0 text-[10px] font-normal"
+                        >
+                          {esp}
+                        </Badge>
+                      ))}
                     </div>
                   </SelectItem>
                 ))}

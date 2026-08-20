@@ -351,6 +351,24 @@ export function UserDetailPage() {
                 </div>
               ) : null}
 
+              {/* Especialidades — informativas. Si no tiene ninguna, no se muestra nada. */}
+              {(user.especialidades ?? []).length > 0 && (
+                <div className="space-y-1">
+                  <span className="text-muted-foreground">Especialidades</span>
+                  <div className="flex flex-wrap gap-1 pl-2">
+                    {user.especialidades.map((e) => (
+                      <Badge
+                        key={e.especialidadId}
+                        variant="secondary"
+                        className="px-1.5 py-0 text-[10px] font-normal"
+                      >
+                        {e.especialidadNombre}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Estado</span>
                 {user.activo ? (
