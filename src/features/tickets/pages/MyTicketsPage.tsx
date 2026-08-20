@@ -1215,7 +1215,7 @@ export function MyTicketsPage() {
           }
         }}
       >
-        <DialogContent className="ps-glow-modal w-[calc(100%-2rem)] max-w-sm gap-4 rounded-2xl p-5">
+        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-sm gap-4 overflow-y-auto rounded-2xl p-5">
           <DialogHeader className="pb-0">
             <DialogTitle className="text-base font-semibold">Asignar trabajador</DialogTitle>
           </DialogHeader>
