@@ -27,7 +27,10 @@ export function MobileNav() {
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 grid h-16 grid-cols-5 border-t bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/80 lg:hidden">
+    // La barra crece con la zona segura del dispositivo (barra de gestos del iPhone) y
+    // el padding inferior mantiene los iconos fuera de ella. En Android env() vale 0,
+    // así que el alto queda en los 4rem de siempre.
+    <nav className="fixed bottom-0 left-0 right-0 z-50 grid h-[calc(4rem+env(safe-area-inset-bottom))] grid-cols-5 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm supports-[backdrop-filter]:bg-background/80 lg:hidden">
       {navItems.map((item) => {
         const isActive =
           item.to === ROUTES.DASHBOARD

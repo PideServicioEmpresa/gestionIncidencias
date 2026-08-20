@@ -3,8 +3,11 @@ namespace PideServicio.Api.Extensions;
 using System.IO.Compression;
 using System.Threading.RateLimiting;
 using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using PideServicio.Api.Authorization;
+using PideServicio.Domain.Enums;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.OpenApi.Models;
 using PideServicio.Contracts.Common;
@@ -111,8 +114,18 @@ public static class ServiceCollectionExtensions
         });
 
         // ---------------------------------------------------------------------------
-        // Políticas de autorización basadas en rol (claim "rol" del JWT de Supabase)
+        // Políticas de autorización por rol.
+        //
+        // El rol se resuelve contra la BASE DE DATOS (RolDesdeBaseDeDatosHandler), no
+        // contra el claim "rol" del token: ese claim solo existe si el hook de Supabase
+        // llegó a enriquecer el JWT, y cuando falta, usuarios con rol válido en la BD
+        // recibían 403. La BD es la fuente de verdad, igual que en los handlers CQRS.
         // ---------------------------------------------------------------------------
+        // Scoped, no Singleton: depende de ICurrentUserService e IUsuarioRepository, que
+        // viven por petición. Registrarlo como Singleton provocaría una dependencia
+        // cautiva y el contenedor fallaría al validar el arranque.
+        services.AddScoped<IAuthorizationHandler, RolDesdeBaseDeDatosHandler>();
+
         services.AddAuthorization(opts =>
         {
             opts.AddPolicy("Autenticado", p =>
@@ -120,19 +133,21 @@ public static class ServiceCollectionExtensions
 
             opts.AddPolicy("SoloSuperAdmin", p =>
                 p.RequireAuthenticatedUser()
-                 .RequireClaim("rol", "superadmin"));
+                 .AddRequirements(new RolMinimoRequirement(RolTipo.SUPERADMIN)));
 
             opts.AddPolicy("AdminOSuperior", p =>
                 p.RequireAuthenticatedUser()
-                 .RequireClaim("rol", "superadmin", "admin"));
+                 .AddRequirements(new RolMinimoRequirement(RolTipo.SUPERADMIN, RolTipo.ADMIN)));
 
             opts.AddPolicy("SupervisorOSuperior", p =>
                 p.RequireAuthenticatedUser()
-                 .RequireClaim("rol", "superadmin", "admin", "supervisor"));
+                 .AddRequirements(new RolMinimoRequirement(
+                     RolTipo.SUPERADMIN, RolTipo.ADMIN, RolTipo.SUPERVISOR)));
 
             opts.AddPolicy("Tecnico", p =>
                 p.RequireAuthenticatedUser()
-                 .RequireClaim("rol", "superadmin", "admin", "supervisor", "tecnico"));
+                 .AddRequirements(new RolMinimoRequirement(
+                     RolTipo.SUPERADMIN, RolTipo.ADMIN, RolTipo.SUPERVISOR, RolTipo.TECNICO)));
         });
 
         // ---------------------------------------------------------------------------

@@ -60,7 +60,9 @@ export function SettingsPage() {
 
   const { data: parametros, error: parametrosError } = useQuery({
     queryKey: ['configuracion', user?.empresaId],
-    queryFn: () => configuracionService.listar(user?.empresaId),
+    // Sin empresaId: el backend decide el ámbito según el rol real del usuario
+    // (SuperAdmin → parámetros globales, Admin → los de su empresa).
+    queryFn: () => configuracionService.listar(),
     retry: false,
   })
 

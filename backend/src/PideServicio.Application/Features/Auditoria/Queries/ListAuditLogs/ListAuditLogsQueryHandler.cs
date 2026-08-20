@@ -13,13 +13,16 @@ public sealed class ListAuditLogsQueryHandler
     : IQueryHandler<ListAuditLogsQuery, PagedResult<AuditLogDto>>
 {
     private readonly IAuditLogRepository _auditLogRepository;
+    private readonly IUsuarioRepository _usuarioRepository;
     private readonly ICurrentUserService _currentUserService;
 
     public ListAuditLogsQueryHandler(
         IAuditLogRepository auditLogRepository,
+        IUsuarioRepository usuarioRepository,
         ICurrentUserService currentUserService)
     {
         _auditLogRepository = auditLogRepository;
+        _usuarioRepository = usuarioRepository;
         _currentUserService = currentUserService;
     }
 
@@ -27,13 +30,17 @@ public sealed class ListAuditLogsQueryHandler
         ListAuditLogsQuery request,
         CancellationToken cancellationToken)
     {
-        var usuario = _currentUserService.UsuarioActual;
-        if (usuario is null)
+        var claims = _currentUserService.UsuarioActual;
+        if (claims is null)
             return Result.NoAutorizado<PagedResult<AuditLogDto>>();
 
-        if (usuario.Rol is not (RolTipo.ADMIN or RolTipo.SUPERADMIN))
-            return Result.NoPermitido<PagedResult<AuditLogDto>>(
-                "Solo Administradores y SuperAdministradores pueden consultar los logs de auditoría.");
+        // El rol ya lo validó la política AdminOSuperior contra la BD. Se recarga el
+        // usuario porque el ÁMBITO de los datos depende de su rol y empresa reales.
+        var actorDb = claims.Id != Guid.Empty
+            ? await _usuarioRepository.ObtenerPorIdAsync(claims.Id, cancellationToken)
+            : await _usuarioRepository.ObtenerPorAuthIdAsync(claims.AuthId, cancellationToken);
+        if (actorDb is null || !actorDb.Activo)
+            return Result.NoAutorizado<PagedResult<AuditLogDto>>();
 
         try
         {
@@ -43,7 +50,7 @@ public sealed class ListAuditLogsQueryHandler
                 : request.TamanoPagina;
 
             // SuperAdmin consulta sin filtro de empresa; Admin solo la suya.
-            var empresaId = usuario.EsSuperAdmin ? Guid.Empty : usuario.EmpresaId;
+            var empresaId = actorDb.Rol == RolTipo.SUPERADMIN ? Guid.Empty : actorDb.EmpresaId;
 
             var resultado = await _auditLogRepository.ListarAsync(
                 empresaId,
