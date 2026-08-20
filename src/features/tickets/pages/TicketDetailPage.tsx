@@ -631,7 +631,7 @@ export function TicketDetailPage() {
           if (!open) setSelectedWorker('')
         }}
       >
-        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto overflow-x-hidden">
+        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Asignar trabajador</DialogTitle>
           </DialogHeader>
@@ -697,7 +697,7 @@ export function TicketDetailPage() {
 
       {/* ── Modal: Cambiar estado ── */}
       <Dialog open={changeStatusModal} onOpenChange={setChangeStatusModal}>
-        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-sm overflow-y-auto overflow-x-hidden">
+        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-sm overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Cambiar estado</DialogTitle>
             <DialogDescription className="flex items-center gap-1.5 text-xs">
@@ -764,7 +764,7 @@ export function TicketDetailPage() {
           }
         }}
       >
-        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto overflow-x-hidden">
+        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Reabrir ticket</DialogTitle>
             <DialogDescription className="text-xs">
@@ -825,7 +825,7 @@ export function TicketDetailPage() {
           if (!open) setMotivoCancelarTexto('')
         }}
       >
-        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto overflow-x-hidden rounded-2xl">
+        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Cancelar ticket</DialogTitle>
             <DialogDescription className="text-xs">
