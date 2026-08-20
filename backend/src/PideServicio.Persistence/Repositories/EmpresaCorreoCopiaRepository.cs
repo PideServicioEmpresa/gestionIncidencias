@@ -33,7 +33,10 @@ public sealed class EmpresaCorreoCopiaRepository : IEmpresaCorreoCopiaRepository
         Guid empresaId, CancellationToken ct = default)
     {
         const string sql = """
-            SELECT id, correo, activo, created_at AS "CreatedAt"
+            SELECT id         AS "Id",
+                   correo     AS "Correo",
+                   activo     AS "Activo",
+                   created_at AS "CreatedAt"
             FROM   empresa_correos_copia
             WHERE  empresa_id = @EmpresaId
               AND  activo = true
@@ -41,8 +44,27 @@ public sealed class EmpresaCorreoCopiaRepository : IEmpresaCorreoCopiaRepository
             """;
 
         await using var cn = (NpgsqlConnection)await _connectionFactory.CrearConexionAsync(ct);
-        var rows = await cn.QueryAsync<EmpresaCorreoCopiaDto>(sql, new { EmpresaId = empresaId });
-        return rows.ToList().AsReadOnly();
+        var rows = await cn.QueryAsync<CorreoCopiaRow>(sql, new { EmpresaId = empresaId });
+
+        return rows
+            .Select(r => new EmpresaCorreoCopiaDto(r.Id, r.Correo, r.Activo, r.CreatedAt))
+            .ToList()
+            .AsReadOnly();
+    }
+
+    /// <summary>
+    /// Fila intermedia con propiedades asignables. Dapper no puede materializar un
+    /// record de constructor posicional cuando los tipos de las columnas no coinciden
+    /// exactamente con la firma: 'created_at' (timestamptz) llega como DateTime y el
+    /// DTO declara DateTimeOffset, así que no encuentra constructor y falla en runtime.
+    /// Con propiedades sí aplica la conversión, y el DTO se construye a mano.
+    /// </summary>
+    private sealed class CorreoCopiaRow
+    {
+        public Guid Id { get; init; }
+        public string Correo { get; init; } = string.Empty;
+        public bool Activo { get; init; }
+        public DateTimeOffset CreatedAt { get; init; }
     }
 
     public async Task<Guid> AgregarAsync(
