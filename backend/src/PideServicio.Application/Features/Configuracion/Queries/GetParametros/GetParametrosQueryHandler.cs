@@ -13,13 +13,16 @@ public sealed class GetParametrosQueryHandler
     : IQueryHandler<GetParametrosQuery, IReadOnlyList<ParametroDto>>
 {
     private readonly IParametroRepository _parametroRepository;
+    private readonly IUsuarioRepository _usuarioRepository;
     private readonly ICurrentUserService _currentUserService;
 
     public GetParametrosQueryHandler(
         IParametroRepository parametroRepository,
+        IUsuarioRepository usuarioRepository,
         ICurrentUserService currentUserService)
     {
         _parametroRepository = parametroRepository;
+        _usuarioRepository = usuarioRepository;
         _currentUserService = currentUserService;
     }
 
@@ -27,18 +30,24 @@ public sealed class GetParametrosQueryHandler
         GetParametrosQuery request,
         CancellationToken cancellationToken)
     {
-        var usuario = _currentUserService.UsuarioActual;
-        if (usuario is null)
+        var claims = _currentUserService.UsuarioActual;
+        if (claims is null)
             return Result.NoAutorizado<IReadOnlyList<ParametroDto>>();
 
-        if (usuario.Rol is not (RolTipo.ADMIN or RolTipo.SUPERADMIN))
-            return Result.NoPermitido<IReadOnlyList<ParametroDto>>(
-                "Solo Administradores y SuperAdministradores pueden consultar parámetros de configuración.");
+        // El rol ya lo validó la política AdminOSuperior contra la BD. Aquí se recarga el
+        // usuario porque el ÁMBITO de los datos depende de su rol y empresa reales: con
+        // los valores del claim sin enriquecer, un SuperAdmin recibiría los parámetros de
+        // una empresa vacía en lugar de los globales.
+        var actorDb = claims.Id != Guid.Empty
+            ? await _usuarioRepository.ObtenerPorIdAsync(claims.Id, cancellationToken)
+            : await _usuarioRepository.ObtenerPorAuthIdAsync(claims.AuthId, cancellationToken);
+        if (actorDb is null || !actorDb.Activo)
+            return Result.NoAutorizado<IReadOnlyList<ParametroDto>>();
 
         try
         {
             // SuperAdmin ve parámetros globales (sin empresa); Admin ve los de su empresa.
-            var empresaId = usuario.EsSuperAdmin ? (Guid?)null : usuario.EmpresaId;
+            var empresaId = actorDb.Rol == RolTipo.SUPERADMIN ? (Guid?)null : actorDb.EmpresaId;
 
             var parametros = await _parametroRepository.ListarPorEmpresaAsync(
                 empresaId,

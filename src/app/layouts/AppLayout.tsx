@@ -52,7 +52,10 @@ export function AppLayout() {
   }, [])
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    // h-dvh y no h-screen: en Safari móvil 100vh mide la pantalla SIN la barra de
+    // herramientas, así que el contenedor queda más alto que el área visible y el final
+    // del contenido cae debajo de esa barra. dvh sigue la altura real disponible.
+    <div className="flex h-dvh overflow-hidden bg-background">
       {/* Skip to main content — criterio WCAG 2.4.1 */}
       <a
         href="#main-content"
@@ -85,7 +88,9 @@ export function AppLayout() {
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 overflow-y-auto pb-20 pt-4 lg:pb-0 lg:pt-5"
+          // El espacio reservado abajo debe cubrir la barra móvil (4rem) MÁS la zona
+          // segura del dispositivo; con pb-20 fijo el contenido quedaba tapado en iPhone.
+          className="flex-1 overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))] pt-4 lg:pb-0 lg:pt-5"
         >
           <PageBreadcrumb />
           <Outlet />
