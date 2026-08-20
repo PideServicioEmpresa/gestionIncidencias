@@ -631,13 +631,15 @@ export function TicketDetailPage() {
           if (!open) setSelectedWorker('')
         }}
       >
-        <DialogContent className="ps-glow-modal max-w-md">
+        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Asignar trabajador</DialogTitle>
           </DialogHeader>
-          <div className="rounded-lg bg-muted p-3 text-xs">
-            <p className="font-medium">{getTituloTicket(ticket)}</p>
-            <p className="text-muted-foreground">{ticket.codigo}</p>
+          {/* min-w-0 evita que el grid del diálogo se ensanche por el contenido, y
+              break-words parte un título sin espacios en vez de desbordarlo. */}
+          <div className="min-w-0 rounded-lg bg-muted p-3 text-xs">
+            <p className="break-words font-medium">{getTituloTicket(ticket)}</p>
+            <p className="break-words text-muted-foreground">{ticket.codigo}</p>
           </div>
           <FormField label="Trabajador" required>
             <Select value={selectedWorker} onValueChange={setSelectedWorker}>
@@ -693,7 +695,7 @@ export function TicketDetailPage() {
 
       {/* ── Modal: Cambiar estado ── */}
       <Dialog open={changeStatusModal} onOpenChange={setChangeStatusModal}>
-        <DialogContent className="ps-glow-modal max-w-sm">
+        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-sm overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Cambiar estado</DialogTitle>
             <DialogDescription className="flex items-center gap-1.5 text-xs">
@@ -760,7 +762,7 @@ export function TicketDetailPage() {
           }
         }}
       >
-        <DialogContent className="ps-glow-modal max-w-md">
+        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Reabrir ticket</DialogTitle>
             <DialogDescription className="text-xs">
@@ -821,7 +823,7 @@ export function TicketDetailPage() {
           if (!open) setMotivoCancelarTexto('')
         }}
       >
-        <DialogContent className="ps-glow-modal w-[calc(100%-2rem)] max-w-md rounded-2xl">
+        <DialogContent className="ps-glow-modal max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Cancelar ticket</DialogTitle>
             <DialogDescription className="text-xs">
@@ -877,7 +879,9 @@ export function TicketDetailPage() {
               <PriorityBadge priority={currentPriority} />
               <StatusBadge status={currentStatus} />
             </div>
-            <h2 className="mt-1 text-base font-semibold leading-snug">{getTituloTicket(ticket)}</h2>
+            <h2 className="mt-1 break-words text-base font-semibold leading-snug">
+              {getTituloTicket(ticket)}
+            </h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
               Creado el {createdDate}
               {updatedDate !== '—' && ` · Fecha límite: ${updatedDate}`}
