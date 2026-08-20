@@ -48,7 +48,7 @@ public sealed class AgregarCorreoCopiaEmpresaCommandHandler : ICommandHandler<Ag
         if (await _repo.ExisteAsync(request.EmpresaId, request.Correo, ct))
             return Result.Fallo<Guid>("Este correo ya está configurado para esta empresa.");
 
-        var id = await _repo.AgregarAsync(request.EmpresaId, request.Correo, actorDb.Id, ct);
+        var id = await _repo.AgregarAsync(request.EmpresaId, request.Correo, ct);
 
         await _auditService.RegistrarAsync(
             "empresa_correos_copia",
