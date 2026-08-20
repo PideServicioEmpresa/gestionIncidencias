@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PideServicio.Persistence")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0821ee19b7f3ae34a9804e01089000507c769866")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+caab993396a300c920969d2e5fbc8d26ebbeb1cb")]
 [assembly: System.Reflection.AssemblyProductAttribute("PideServicio.Persistence")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PideServicio.Persistence")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

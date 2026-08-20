@@ -317,7 +317,7 @@ export function CreateTicketPage() {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-10 w-10"
           onClick={() => navigate(-1)}
           aria-label="Volver"
         >
@@ -331,16 +331,16 @@ export function CreateTicketPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-3">
+      <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4">
         {/* ── Clasificación ────────────────────────────────────────────── */}
         <Card>
           <CardHeader className="px-3 pb-2 pt-3">
-            <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
               Clasificación
             </CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="grid gap-3 lg:grid-cols-2">
+            <div className="grid gap-4 lg:grid-cols-2">
               {/* Empresa — solo SuperAdmin (interactivo) y Admin (informativo) */}
               {isSuperAdmin && (
                 <FormField label="Empresa" required>
@@ -359,7 +359,7 @@ export function CreateTicketPage() {
 
               {isAdmin && (
                 <FormField label="Empresa">
-                  <div className="flex h-8 items-center rounded-md border border-input bg-muted/40 px-3 text-xs">
+                  <div className="flex h-11 items-center rounded-md border border-input bg-muted/40 px-3 text-sm">
                     <span className="font-medium">
                       {empresasQuery.isLoading
                         ? 'Cargando...'
@@ -382,7 +382,7 @@ export function CreateTicketPage() {
                     >
                       <SelectTrigger
                         id="type"
-                        className="[data-error=true]:ring-1 [data-error=true]:ring-destructive/50 h-8 text-xs"
+                        className="[data-error=true]:ring-1 [data-error=true]:ring-destructive/50 h-11 text-sm"
                         data-error={!!errors.type}
                       >
                         <SelectValue
@@ -406,7 +406,7 @@ export function CreateTicketPage() {
               {/* Categoría — asignada automáticamente por el sistema */}
               <FormField label="Categoría" error={categoriaError ?? errors.categoriaId?.message}>
                 <div
-                  className="flex h-8 items-center rounded-md border border-input bg-muted/40 px-3 text-xs"
+                  className="flex h-11 items-center rounded-md border border-input bg-muted/40 px-3 text-sm"
                   aria-label="Categoría asignada automáticamente"
                 >
                   {categoriasQuery.isLoading ? (
@@ -423,7 +423,7 @@ export function CreateTicketPage() {
               {/* Sucursal — readonly para multi-sucursal (la activa del store), interactivo para Admin/SuperAdmin */}
               {isMultiSucursal ? (
                 <FormField label="Sucursal">
-                  <div className="flex h-8 items-center rounded-md border border-input bg-muted/40 px-3 text-xs">
+                  <div className="flex h-11 items-center rounded-md border border-input bg-muted/40 px-3 text-sm">
                     <span className="font-medium">{nombreSucursalActiva ?? '—'}</span>
                   </div>
                 </FormField>
@@ -457,7 +457,7 @@ export function CreateTicketPage() {
               <FormField label="Área" required error={errors.areaNombre?.message}>
                 <Input
                   id="areaNombre"
-                  className="h-8 text-xs"
+                  className="h-11"
                   placeholder="Ej: Sistemas, Contabilidad, Recursos Humanos..."
                   {...register('areaNombre')}
                 />
@@ -470,7 +470,7 @@ export function CreateTicketPage() {
                   name="priority"
                   render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger id="priority" className="h-8 text-xs">
+                      <SelectTrigger id="priority" className="h-11 text-sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -494,17 +494,17 @@ export function CreateTicketPage() {
         {/* ── Ubicación específica del servicio ────────────────────────── */}
         <Card>
           <CardHeader className="px-3 pb-2 pt-3">
-            <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
               Ubicación
             </CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-0">
             <FormField label="Ubicación específica del servicio" optional>
               <div className="relative">
-                <MapPin className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="location"
-                  className="h-8 pl-7 text-xs"
+                  className="h-11 pl-9"
                   placeholder="Ej: Piso 3 — Módulo B, Impresora del fondo..."
                   {...register('location')}
                 />
@@ -516,11 +516,11 @@ export function CreateTicketPage() {
         {/* ── Detalle de la solicitud ───────────────────────────────────── */}
         <Card>
           <CardHeader className="px-3 pb-2 pt-3">
-            <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
               Detalle de la solicitud
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 p-3 pt-0">
+          <CardContent className="space-y-4 p-3 pt-0">
             {/* El título no se pide al crear: los listados y correos muestran el código
                 del ticket cuando está vacío (ver getTituloTicket). Sigue siendo editable
                 desde "Modificar ticket" en el listado. */}
@@ -529,7 +529,7 @@ export function CreateTicketPage() {
                 id="description"
                 rows={5}
                 placeholder="Describe con detalle: ¿Qué ocurrió? ¿Cuándo empezó? ¿Qué intentaste hacer para resolverlo? ¿A cuántos usuarios afecta?"
-                className="resize-none text-xs"
+                className="resize-none"
                 {...register('description')}
               />
             </FormField>
@@ -539,17 +539,17 @@ export function CreateTicketPage() {
         {/* ── Evidencias ───────────────────────────────────────────────── */}
         <Card>
           <CardHeader className="px-3 pb-2 pt-3">
-            <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
               Evidencias
-              <span className="ml-1 text-[10px] font-normal normal-case tracking-normal text-muted-foreground">
+              <span className="ml-1 text-xs font-normal normal-case tracking-normal text-muted-foreground">
                 (Opcional)
               </span>
             </CardTitle>
-            <CardDescription className="text-[11px] text-muted-foreground">
+            <CardDescription className="text-xs text-muted-foreground">
               Adjunta fotos, capturas de pantalla, videos o documentos.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 p-3 pt-0">
+          <CardContent className="space-y-4 p-3 pt-0">
             {/* Galería de archivos adjuntos */}
             {attachments.length > 0 && (
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
@@ -614,7 +614,7 @@ export function CreateTicketPage() {
               <Upload className="h-5 w-5 text-muted-foreground" />
               <div className="text-center">
                 <p className="text-xs font-medium">Haz clic para adjuntar archivo</p>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   PNG, JPG, GIF, WEBP, MP4, MOV, PDF, DOC, XLS · máx. 10 MB por archivo
                 </p>
               </div>
@@ -625,22 +625,22 @@ export function CreateTicketPage() {
         {/* ── Notificaciones adicionales ───────────────────────────────── */}
         <Card ref={correosJefeRef}>
           <CardHeader className="px-3 pb-2 pt-3">
-            <CardTitle className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
               Supervisores
               {!requiereCorreosJefe && (
-                <span className="ml-1 text-[10px] font-normal normal-case tracking-normal text-muted-foreground">
+                <span className="ml-1 text-xs font-normal normal-case tracking-normal text-muted-foreground">
                   (Opcional)
                 </span>
               )}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 p-3 pt-0">
+          <CardContent className="space-y-4 p-3 pt-0">
             <FormField
               label="Correos del jefe / supervisor"
               required={requiereCorreosJefe}
               error={correosJefeError ?? undefined}
             >
-              <p className="mb-2 text-[11px] text-muted-foreground">
+              <p className="mb-2 text-xs text-muted-foreground">
                 Recibirán copia de todas las notificaciones relacionadas con este ticket.
               </p>
               <EmailChipsInputConGuardados
@@ -679,6 +679,7 @@ export function CreateTicketPage() {
           <Button
             type="button"
             variant="outline"
+            className="h-11"
             onClick={() => navigate(-1)}
             disabled={crearTicket.isPending || isUploadingEvidencias}
           >
@@ -687,7 +688,7 @@ export function CreateTicketPage() {
           <Button
             type="submit"
             disabled={crearTicket.isPending || isUploadingEvidencias}
-            className="sm:min-w-32"
+            className="h-11 sm:min-w-32"
           >
             {isUploadingEvidencias ? (
               <>
