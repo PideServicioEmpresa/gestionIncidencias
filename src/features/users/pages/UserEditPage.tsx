@@ -30,6 +30,9 @@ import { userDetailPath, ROUTES } from '@constants/index'
 
 const ROLES_MULTI_SUCURSAL: UserRole[] = ['tecnico', 'trabajador', 'usuario']
 
+/** El backend expone como Guid vacío la sucursal nula de Admin/SuperAdmin. */
+const GUID_VACIO = '00000000-0000-0000-0000-000000000000'
+
 // ── Tipos de formulario ───────────────────────────────────────────────────────
 
 interface UserFormState {
@@ -62,7 +65,17 @@ export function UserEditPage() {
   )
 
   const { data: empresa } = useEmpresa(user?.empresaId ?? '')
-  const { data: sucursal } = useSucursal(user?.sucursalId ?? '')
+
+  // Admin y SuperAdmin no tienen sucursal: en BD es NULL y el backend lo expone como
+  // Guid vacío. Sin este filtro se pediría GET /sucursales/00000000-... y el 404 llega
+  // como error visible al usuario.
+  const rolUsuarioEditado = (user?.rol?.toLowerCase() ?? '') as UserRole
+  const esRolSuperAdmin = rolUsuarioEditado === 'superadmin'
+  const rolSinSucursal = esRolSuperAdmin || rolUsuarioEditado === 'admin'
+  const sucursalIdConsultable =
+    !rolSinSucursal && user?.sucursalId && user.sucursalId !== GUID_VACIO ? user.sucursalId : ''
+
+  const { data: sucursal } = useSucursal(sucursalIdConsultable)
   const { data: sucursalesData, isLoading: loadingSucursales } = useSucursales(
     user?.empresaId
       ? { empresaId: user.empresaId, soloActivas: true, tamanoPagina: 100 }
@@ -396,7 +409,24 @@ export function UserEditPage() {
               </div>
             </div>
 
-            {isMultiSucursal ? (
+            {rolSinSucursal ? (
+              /* Admin y SuperAdmin no se asignan a sucursales: mismo aviso que en el alta */
+              esRolSuperAdmin ? (
+                <div className="rounded-lg border border-purple-200 bg-purple-50 px-3 py-2.5 dark:border-purple-800 dark:bg-purple-950/30">
+                  <p className="text-xs text-purple-700 dark:text-purple-400">
+                    Este rol tiene acceso a todas las empresas y sucursales del sistema. No se
+                    asigna a ninguna empresa ni sucursal individual.
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 dark:border-blue-800 dark:bg-blue-950/30">
+                  <p className="text-xs text-blue-700 dark:text-blue-400">
+                    El Administrador gestiona la empresa completa. No se asigna a sucursales
+                    individuales.
+                  </p>
+                </div>
+              )
+            ) : isMultiSucursal ? (
               /* Sucursales editables para roles operativos */
               <div className="space-y-2">
                 <p className="text-[11px] font-medium text-foreground">Sucursales asignadas</p>
@@ -418,14 +448,12 @@ export function UserEditPage() {
                 </div>
               </div>
             ) : (
-              /* Sucursal solo lectura para admins/superadmins */
+              /* Rol con una sola sucursal (solo lectura) */
               <div className="flex items-center gap-2.5 rounded-lg border bg-muted/20 px-3 py-2.5">
                 <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <div className="min-w-0">
                   <p className="text-[10px] text-muted-foreground">Sucursal</p>
-                  <p className="truncate text-xs font-medium">
-                    {sucursal?.nombre ?? user.sucursalId}
-                  </p>
+                  <p className="truncate text-xs font-medium">{sucursal?.nombre ?? '—'}</p>
                 </div>
               </div>
             )}
