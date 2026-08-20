@@ -6,6 +6,19 @@ using PideServicio.Application.Common.Interfaces;
 using PideServicio.Application.Common.Interfaces.Repositories;
 using PideServicio.Application.Features.Empresas.DTOs;
 
+/// <summary>
+/// Repositorio de empresa_correos_copia.
+///
+/// IMPORTANTE — esta tabla tiene una auditoría reducida a propósito, a diferencia del
+/// resto del modelo. Sus únicas columnas son:
+///     id, empresa_id, correo, activo, created_at
+/// No existen created_by, updated_at, updated_by, deleted_at ni deleted_by. El "borrado"
+/// se hace poniendo activo = false, y la reinserción de un correo previamente retirado
+/// se resuelve con ON CONFLICT (empresa_id, correo) DO UPDATE SET activo = true.
+///
+/// Cualquier consulta que intente escribir columnas de auditoría fallará en runtime con
+/// 42703 (column does not exist). El esquema autoritativo está en schema.sql.
+/// </summary>
 public sealed class EmpresaCorreoCopiaRepository : IEmpresaCorreoCopiaRepository
 {
     private readonly IDbConnectionFactory _connectionFactory;
@@ -68,18 +81,21 @@ public sealed class EmpresaCorreoCopiaRepository : IEmpresaCorreoCopiaRepository
     }
 
     public async Task<Guid> AgregarAsync(
-        Guid empresaId, string correo, Guid? creadoPor = null, CancellationToken ct = default)
+        Guid empresaId, string correo, CancellationToken ct = default)
     {
+        // Sin created_by: esta tabla no lleva columnas de autoría (ver nota de la clase).
         const string sql = """
-            INSERT INTO empresa_correos_copia (empresa_id, correo, created_by)
-            VALUES (@EmpresaId, @Correo, @CreadoPor)
+            INSERT INTO empresa_correos_copia (empresa_id, correo)
+            VALUES (@EmpresaId, @Correo)
             ON CONFLICT (empresa_id, correo)
             DO UPDATE SET activo = true
             RETURNING id
             """;
 
         await using var cn = (NpgsqlConnection)await _connectionFactory.CrearConexionAsync(ct);
-        return await cn.ExecuteScalarAsync<Guid>(sql, new { EmpresaId = empresaId, Correo = correo.Trim().ToLowerInvariant(), CreadoPor = creadoPor });
+        return await cn.ExecuteScalarAsync<Guid>(
+            sql,
+            new { EmpresaId = empresaId, Correo = correo.Trim().ToLowerInvariant() });
     }
 
     public async Task<bool> EliminarAsync(Guid id, CancellationToken ct = default)
